@@ -1,0 +1,27 @@
+services:
+  web-server:
+    build:
+      context: ../web-server
+      dockerfile: Dockerfile
+    image: web_server:v1
+    ports:
+      - 5004:5004
+    working_dir: /web-server
+
+  preprocessor:
+    build:
+      context: ../preprocessor
+      dockerfile: Dockerfile
+    image: preprocessor:v1
+    ports:
+      - 5003:5003
+    working_dir: /proc-server
+
+  inference:
+    build:
+      context: ../edge-inference-server
+      dockerfile: Dockerfile
+    image: inference:v1
+    ports:
+      - 5002:5002
+    working_dir: /inference
