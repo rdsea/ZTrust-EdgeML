@@ -19,7 +19,7 @@ A cloud-based database that stores the processed images for further analysis.
 
 ## Test Scenario
 
-- Objective: To demonstrate the application of ZT architecture in an IoT-Edge-Cloud environment.
+- Objective: To demonstrate Bthe application of ZT architecture in an IoT-Edge-Cloud environment.
 
 - Components:
   - Windows machine: Functions as the IoT device, communicating with the edge system.
@@ -29,6 +29,11 @@ A cloud-based database that stores the processed images for further analysis.
 
 - ZT implementation:
   - Utilizes the OpenZiti framework to create a secure overlay network between the IoT device and the edge system.
+
+- Stakeholders:
+
+  - Security company: Owns and operates image processing microservices on the Edge
+  - Client: Owns the CCTV camera and cloud DB where observed data is stored
 
 ## Setup Steps
 
@@ -51,9 +56,9 @@ A cloud-based database that stores the processed images for further analysis.
 
 ## Encountered Issues
 
- - Problem: "CONTROLLER_UNAVAILABLE" error when trying to enroll the client identity on the Windows machine.
-   - Cause: DNS issue - The Windows machine could not resolve the host name of the Ubuntu machine.
-    - Solution: Added a new entry (the Ubuntu machine's IP address and hostname) in the `/etc/hosts` on the Windows machine side.
+- Problem: "CONTROLLER_UNAVAILABLE" error when trying to enroll the client identity on the Windows machine.
+  - Cause: DNS issue - The Windows machine could not resolve the host name of the Ubuntu machine.
+  - Solution: Added a new entry (the Ubuntu machine's IP address and hostname) in the `/etc/hosts` on the Windows machine side.
 
 - Problem: Unauthorized computer can still access the HTTP server.
   - Cause: Incorrect configuration at step 3 and 4?
