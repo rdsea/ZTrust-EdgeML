@@ -7,6 +7,8 @@ services:
     ports:
       - 5004:5004
     working_dir: /web-server
+    networks:
+      - ziti
 
   preprocessor:
     build:
@@ -16,6 +18,8 @@ services:
     ports:
       - 5003:5003
     working_dir: /proc-server
+    networks:
+      - ziti
 
   inference:
     build:
@@ -25,3 +29,9 @@ services:
     ports:
       - 5002:5002
     working_dir: /inference
+    networks:
+      - ziti
+
+networks:
+  ziti:
+    external: true
