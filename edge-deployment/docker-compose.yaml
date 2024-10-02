@@ -7,6 +7,10 @@ services:
     ports:
       - 5004:5004
     working_dir: /web-server
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
     networks:
       - ziti
 
@@ -18,6 +22,10 @@ services:
     ports:
       - 5003:5003
     working_dir: /proc-server
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
     networks:
       - ziti
 
@@ -29,6 +37,10 @@ services:
     ports:
       - 5002:5002
     working_dir: /inference
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
     networks:
       - ziti
 
