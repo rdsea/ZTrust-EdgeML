@@ -76,17 +76,6 @@ services:
     entrypoint: /bin/bash
     command: "/var/openziti/scripts/run-router.sh edge"
 
-  # web-test-blue:
-  #   image: openziti/hello-world
-  #   ports:
-  #     - ${ZITI_INTERFACE:-0.0.0.0}:8000:8000
-  #   networks:
-  #     - ziti:
-  #       aliases:
-  #         - web-test-blue
-  #         - web-test.blue
-  #         - web.test.blue
-
   ziti-console:
     image: openziti/zac
     working_dir: /usr/src/app
