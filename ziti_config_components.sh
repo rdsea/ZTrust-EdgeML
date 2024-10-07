@@ -89,7 +89,7 @@ fi
 
 # Step 6: Create the service-policy for COMPONENT1 to dial to COMPONENT2
 echo "Creating service-policy for $COMPONENT1_NAME to dial $COMPONENT2_NAME..."
-ziti edge create service-policy "${SERVICE_NAME}.dial" Dial \
+ziti edge create service-policy "${COMPONENT1_NAME}-to-${COMPONENT2_NAME}.dial" Dial \
 --service-roles "@$SERVICE_NAME" --identity-roles "#$COMPONENT1_ROLE"
 if [ $? -eq 0 ]; then
     echo "Service-policy for Dial created successfully."
@@ -101,7 +101,7 @@ fi
 # Step 7: Create the service-policy for COMPONENT2 to bind to the service
 echo "Creating service-policy for $COMPONENT2_NAME to bind $COMPONENT1_NAME..."
 component2_id=$(ziti edge list identities | grep $COMPONENT2_NAME | awk '{print $2}')
-ziti edge create service-policy "${SERVICE_NAME}.bind" Bind \
+ziti edge create service-policy "${COMPONENT1_NAME}-to-${COMPONENT2_NAME}.bind" Bind \
 --service-roles "@$SERVICE_NAME" --identity-roles "@${component2_id}"
 if [ $? -eq 0 ]; then
     echo "Service-policy for Bind created successfully."
