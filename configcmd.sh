@@ -71,7 +71,7 @@ ziti edge create service-policy web-to-preprocessor.bind Bind \
 --service-roles '@web-to-preprocessor.svc' --identity-roles '@${preprocessor-id}'
 
 #7
-Run ziti-edge-tunnel for the preprocessor identity
+# Enroll and run the preprocessor identity with ziti-edge-tunnel
 
 ________________________________________________________________________________________________________________________
 
@@ -100,4 +100,36 @@ ziti edge create service-policy preprocessor-to-inference.bind Bind \
 --service-roles '@preprocessor-to-inference.svc' --identity-roles '@${inference-id}'
 
 #7
-Run ziti-edge-tunnel for the inference identity
+# Enroll and run the inference identity with ziti-edge-tunnel
+
+________________________________________________________________________________________________________________________
+
+INFERENCE-SERVER - RABBITMQ
+
+#1
+ziti edge create identity rabbitmq -a 'rabbitmq' -o rabbitmq.jwt
+
+#2
+ziti edge create config inference-to-rabbitmq.intercept.v1 intercept.v1 \
+'{"protocols":["tcp"],"addresses":["ziti.rabbitmq"], "portRanges":[{"low":5672, "high":5672}]}'
+
+#3
+ziti edge create config rabbitmq.host.v1 host.v1 \
+'{"protocol":"tcp", "address":"rabbitmq", "port":5672}'
+
+#4
+ziti edge create service inference-to-rabbitmq.svc --configs inference-to-rabbitmq.intercept.v1,rabbitmq.host.v1
+
+#5
+ziti edge create service-policy inference-to-rabbitmq.dial Dial \
+--service-roles "@inference-to-rabbitmq.svc" --identity-roles '#inference'
+
+#6
+ziti edge create service-policy inference-to-rabbitmq.bind Bind \
+--service-roles '@inference-to-rabbitmq.svc' --identity-roles '@${rabbitmq-id}'
+
+#7
+# Update /etc/hosts file in the rabbitmq-server to bind the rabbitmq hostname to 127.0.0.1
+
+#8
+# Enroll and run the rabbitmq identity with ziti-edge-tunnel
