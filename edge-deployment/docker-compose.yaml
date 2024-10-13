@@ -11,8 +11,6 @@ services:
       - NET_ADMIN
     devices:
       - /dev/net/tun:/dev/net/tun
-    networks:
-      - ziti
 
   preprocessor:
     build:
@@ -26,8 +24,6 @@ services:
       - NET_ADMIN
     devices:
       - /dev/net/tun:/dev/net/tun
-    networks:
-      - ziti
 
   inference:
     build:
@@ -41,9 +37,3 @@ services:
       - NET_ADMIN
     devices:
       - /dev/net/tun:/dev/net/tun
-    networks:
-      - ziti
-
-networks:
-  ziti:
-    external: true
