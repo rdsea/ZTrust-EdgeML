@@ -32,6 +32,7 @@ services:
     image: inference:v1
     ports:
       - 5002:5002
+      - 5000:5000
     working_dir: /inference
     cap_add:
       - NET_ADMIN
