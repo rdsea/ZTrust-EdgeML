@@ -6,6 +6,7 @@ services:
     image: web_server:v1
     ports:
       - 5004:5004
+      - 5201:5201 #for iperf testing
     working_dir: /web-server
     cap_add:
       - NET_ADMIN
@@ -19,6 +20,7 @@ services:
     image: preprocessor:v1
     ports:
       - 5003:5003
+      - 5202:5202 #for iperf testing
     working_dir: /proc-server
     cap_add:
       - NET_ADMIN
@@ -33,6 +35,7 @@ services:
     ports:
       - 5002:5002
       - 5000:5000
+      - 5203:5203 #for iperf testing
     working_dir: /inference
     cap_add:
       - NET_ADMIN
