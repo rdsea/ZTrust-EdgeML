@@ -1,0 +1,1 @@
+The script for latency testing is implemented as the `client-async.py` script in the `ziti` branch of `rdsea/RunningExample` repository, which is available at [rdsea/RunningExample/cctvs-ziti/client/client-async.py](https://github.com/rdsea/RunningExample/blob/ziti/cctvs-ziti/client/client-async.py).
