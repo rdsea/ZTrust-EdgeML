@@ -1,0 +1,43 @@
+services:
+  web-server:
+    build:
+      context: ../web-server
+      dockerfile: Dockerfile
+    image: web_server:v1
+    ports:
+      - 5004:5004
+      - 5201:5201 #for iperf testing
+    working_dir: /web-server
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+
+  preprocessor:
+    build:
+      context: ../preprocessor
+      dockerfile: Dockerfile
+    image: preprocessor:v1
+    ports:
+      - 5003:5003
+      - 5202:5202 #for iperf testing
+    working_dir: /proc-server
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+
+  inference:
+    build:
+      context: ../edge-inference-server
+      dockerfile: Dockerfile
+    image: inference:v1
+    ports:
+      - 5002:5002
+      - 5000:5000
+      - 5203:5203 #for iperf testing
+    working_dir: /inference
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
