@@ -40,6 +40,10 @@ A cloud-based database that stores the processed images for further analysis.
 - Setup the overlay network on the Ubuntu machine according to the [Local - No Docker](https://openziti.io/docs/learn/quickstarts/network/local-no-docker/).
 
 - Also on the Ubuntu machine, follow the [Your First Service](https://openziti.io/docs/learn/quickstarts/network/local-no-docker/) guide as below:
+
+> cd controller
+> ./install-ziti-edge-tunnel.sh <client> <server> <port> # output client.jwt and server.jwt
+
   1. Create an identity for the HTTP client and assign an attribute "http-clients". We'll use this attribute when authorizing the clients to access the HTTP service
   2. Create an identity for the HTTP server if you are not using an edge-router with the tunneling option enabled. Also note that if you are using the docker-compose quickstart or just plan to use an edge-router with tunneling enabled you can also skip this step.
   3. Create an `intercept.v1` config. This config is used to instruct the client-side tunneler how to correctly intercept the targeted traffic and put it onto the overlay.
@@ -49,9 +53,31 @@ A cloud-based database that stores the processed images for further analysis.
   7. Create a service-policy to authorize the "HTTP Server" to "bind" the service representing the HTTP server.
   8. Start the server-side tunneler with the HTTP server identity, providing access to the HTTP server.
   9. Start the client-side tunneler from the Windows machine using the HTTP client identity by:
-      - Copy the `http.client.jwt` from step 1 to the Windows machine.
-      - Enroll the client identity using `ziti-edge-tunnel` binary.
-      - Run the `ziti-edge-tunnel` for the client.
+
+  - Copy the `http.client.jwt` from step 1 to the Windows machine.
+> cd controller
+> docker cp controller:client.jwt client:/client
+> docker cp controller:server.jwt server:/server
+
+  - Enroll the client identity using `ziti-edge-tunnel` binary.
+> cd client
+> ziti-edge-tunnel enroll -j client.jwt -i client.json
+
+> cd server
+> ziti-edge-tunnel enroll -j server.jwt -i server.json
+
+  - Edit host from client and server to know the controller and router IP
+``` bash
+vim /etc/hosts
+192.168.1.235 ziti-edge-controller
+192.168.1.235 ziti-edge-router
+```
+  - Run the `ziti-edge-tunnel` for the client.
+> cd client
+> ziti-edge-tunnel run -i client.json
+> cd server
+> ziti-edge-tunnel run -i server.json
+
   10. Access the HTTP server securely over the OpenZiti zero trust overlay
 
 ## Encountered Issues
@@ -64,3 +90,4 @@ A cloud-based database that stores the processed images for further analysis.
   - Cause: Incorrect configuration at step 3 and 4?
 
 - Problem: Ziti Admin Console (ZAC) not discovering the controller.
+
