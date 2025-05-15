@@ -41,3 +41,13 @@ services:
       - NET_ADMIN
     devices:
       - /dev/net/tun:/dev/net/tun
+
+  rabbitmq:
+    image: hongtringuyen/messageq-ziti:latest
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ./rabbitMQ-config/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      - ./rabbitMQ-config/rabbitmq-env.conf:/etc/rabbitmq/rabbitmq-env.conf
