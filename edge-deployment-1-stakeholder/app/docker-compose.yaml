@@ -1,9 +1,6 @@
 services:
   web-server:
-    build:
-      context: ../web-server
-      dockerfile: Dockerfile
-    image: web_server:v1
+    image: hongtringuyen/web-ziti:latest
     ports:
       - 5004:5004
       - 5201:5201 #for iperf testing
@@ -14,10 +11,7 @@ services:
       - /dev/net/tun:/dev/net/tun
 
   preprocessor:
-    build:
-      context: ../preprocessor
-      dockerfile: Dockerfile
-    image: preprocessor:v1
+    image: hongtringuyen/preprocessor-ziti:latest
     ports:
       - 5003:5003
       - 5202:5202 #for iperf testing
@@ -28,10 +22,7 @@ services:
       - /dev/net/tun:/dev/net/tun
 
   inference:
-    build:
-      context: ../edge-inference-server
-      dockerfile: Dockerfile
-    image: inference:v1
+    image: nvc97/ziti-inference:v2
     ports:
       - 5002:5002
       - 5000:5000

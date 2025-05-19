@@ -91,3 +91,6 @@ vim /etc/hosts
 
 - Problem: Ziti Admin Console (ZAC) not discovering the controller.
 
+# 
+clinet -zt-   ser  - adpater  -zt- ser2 
+ controller          controller2
