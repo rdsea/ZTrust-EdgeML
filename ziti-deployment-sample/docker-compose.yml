@@ -1,6 +1,7 @@
 services:
   ziti-controller:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
+    container_name: ziti-controller
     healthcheck:
       test: curl -m 1 -s -k -f https://${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS:-ziti-edge-controller}:${ZITI_CTRL_EDGE_ADVERTISED_PORT:-1280}/edge/client/v1/version
       interval: 1s
@@ -27,11 +28,13 @@ services:
           - ziti-edge-controller
     volumes:
       - ziti-fs:/persistent
+      - ./artifacts:/persistent/artifacts
     entrypoint:
       - "/var/openziti/scripts/run-controller.sh"
 
   ziti-controller-init-container:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
+    container_name: ziti-controller-init-container
     depends_on:
       ziti-controller:
         condition: service_healthy
@@ -51,6 +54,7 @@ services:
 
   ziti-edge-router:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
+    container_name: ziti-edge-router
     env_file:
       - ./.env
     depends_on:
@@ -78,6 +82,7 @@ services:
 
   ziti-console:
     image: openziti/zac
+    container_name: ziti-console
     working_dir: /usr/src/app
     environment:
       - ZAC_SERVER_CERT_CHAIN=/persistent/pki/${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS:-ziti-edge-controller}-intermediate/certs/${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS:-ziti-edge-controller}-server.cert

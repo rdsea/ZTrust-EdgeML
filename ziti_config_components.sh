@@ -10,11 +10,19 @@ fi
 COMPONENT1_NAME="$1"
 COMPONENT2_NAME="$2"
 COMPONENT_PORT="$3"  # Port passed from command-line
-COMPONENT1_JWT_PATH="${COMPONENT1_NAME}.jwt"
-COMPONENT2_JWT_PATH="${COMPONENT2_NAME}.jwt"
 SERVICE_NAME="${COMPONENT1_NAME}-to-${COMPONENT2_NAME}.svc"
 COMPONENT1_ROLE="${COMPONENT1_NAME}"
 COMPONENT2_ROLE="${COMPONENT2_NAME}"
+
+# Directory where JWTs will be stored (host-mounted from the Controller container)
+ARTIFACT_DIR="/persistent/artifacts"
+
+# Ensure artifact directory exists
+mkdir -p "$ARTIFACT_DIR"
+
+# Path to each JWT
+COMPONENT1_JWT_PATH="${ARTIFACT_DIR}/${COMPONENT1_NAME}.jwt"
+COMPONENT2_JWT_PATH="${ARTIFACT_DIR}/${COMPONENT2_NAME}.jwt"
 
 # Initialize a flag to track if both identities already exist
 both_identities_exist=true
