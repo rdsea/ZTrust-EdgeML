@@ -4,15 +4,26 @@ ARTIFACT_DIR="./artifacts"
 
 # Mapping: component_name → working directory inside the container
 declare -A WORKING_DIRS=(
-  ["web-server"]="/web-server"
-  ["preprocessor"]="/proc-server"
-  ["inference"]="/inference"
-  ["rabbitmq"]="/"
-  ["database"]="/"
+#   ["web-server"]="/web-server"
+#   ["preprocessor"]="/proc-server"
+#   ["inference"]="/inference"
+#   ["rabbitmq"]="/"
+#   ["database"]="/"
+    ["preprocessing"]="/image_preprocessing/preprocessing"
+    ["ensemble"]="/ensemble/ensemble"
+    ["mobilenetv2"]="/object_classification/inference"
+    ["efficientnetb0"]="/object_classification/inference"
+    ["rabbitmq"]="/"
 )
 
 # List of identity names that should NOT be copied (e.g., remote devices)
 EXCLUDE_COMPONENTS=("client")
+
+# Host entries to inject into each container
+HOST_ENTRIES=(
+    "192.168.1.235  ziti-edge-controller"
+    "192.168.1.235  ziti-edge-router"
+)
 
 echo "Watching $ARTIFACT_DIR for new JWT files..."
 
@@ -48,6 +59,24 @@ inotifywait -m -e create --format "%f" "$ARTIFACT_DIR" | while read NEW_FILE; do
                 echo "Successfully copied $NEW_FILE to $COMPONENT_NAME"
             else
                 echo "Failed to copy $NEW_FILE to $COMPONENT_NAME"
+            fi
+
+            echo "Updating /etc/hosts in container '$COMPONENT_NAME'..."
+            for entry in "${HOST_ENTRIES[@]}"; do
+                docker exec "$CONTAINER_ID" sh -c "grep -q '$entry' /etc/hosts || echo '$entry' >> /etc/hosts"
+            done
+            echo "/etc/hosts updated in $COMPONENT_NAME"
+
+            echo "Enrolling Ziti identity in $COMPONENT_NAME..."
+            docker exec "$CONTAINER_ID" sh -c "
+              cd ${WORKING_DIRS[$COMPONENT_NAME]} && \
+              ziti-edge-tunnel enroll -j $file -i ${COMPONENT_NAME}.json
+            "
+            if [ $? -eq 0 ]; then
+                echo "Successfully enrolled identity for $COMPONENT_NAME."
+            else
+                echo "Failed to enroll identity for $COMPONENT_NAME."
+                continue  # Skip running the tunnel if enrollment failed
             fi
         else
             echo "No working_dir mapping found for $COMPONENT_NAME. Skipping copy."
