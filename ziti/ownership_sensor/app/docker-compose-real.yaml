@@ -1,0 +1,44 @@
+services:
+  preprocessing:
+    image: rdsea/preprocessing:latest
+    ports:
+      - 5010:5010
+      - 5201:5201 #for iperf testing
+    working_dir: /web-server
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+
+  ensemble:
+    image: rdsea/ensemble:latest
+    ports:
+      - 5011:5011
+      - 5202:5202 #for iperf testing
+    working_dir: /proc-server
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+
+  inference:
+    image: rdsea/inference:latest
+    ports:
+      - 5012:5012
+      #- 5000:5000
+      - 5203:5203 #for iperf testing
+    working_dir: /inference
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+
+  rabbitmq:
+    image: hongtringuyen/messageq-ziti:latest
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ./rabbitMQ-config/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      - ./rabbitMQ-config/rabbitmq-env.conf:/etc/rabbitmq/rabbitmq-env.conf
