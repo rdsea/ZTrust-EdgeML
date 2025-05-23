@@ -68,10 +68,8 @@ inotifywait -m -e create --format "%f" "$ARTIFACT_DIR" | while read NEW_FILE; do
             echo "/etc/hosts updated in $COMPONENT_NAME"
 
             echo "Enrolling Ziti identity in $COMPONENT_NAME..."
-            docker exec "$CONTAINER_ID" sh -c "
-              cd ${WORKING_DIRS[$COMPONENT_NAME]} && \
-              ziti-edge-tunnel enroll -j $file -i ${COMPONENT_NAME}.json
-            "
+            ENROLL_CMD="cd ${WORKING_DIRS[$COMPONENT_NAME]} && ziti-edge-tunnel enroll -j $NEW_FILE -i ${COMPONENT_NAME}.json"
+            docker exec "$CONTAINER_ID" sh -c "$ENROLL_CMD"
             if [ $? -eq 0 ]; then
                 echo "Successfully enrolled identity for $COMPONENT_NAME."
             else
