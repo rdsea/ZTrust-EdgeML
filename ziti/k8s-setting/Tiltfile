@@ -1,0 +1,53 @@
+print("Enabling Ingress and MetalLB addons...")
+local("minikube addons enable ingress")
+local("minikube addons enable metallb")
+
+print("Configuring MetalLB...")
+minikube_ip = str(local("minikube ip")).strip()
+print("Minikube IP: " + minikube_ip)
+
+# Extract network base from IP to create a network range
+minikube_network_prefix = ".".join(minikube_ip.split(".")[:3])
+minikube_network_range = minikube_ip + "-{0}.255".format(minikube_network_prefix)
+
+print(minikube_network_range)
+
+#Construct the MetalLB ConfigMap content directly in the shell command
+metallb_config = """
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: metallb-system
+  name: config
+data:
+  config: |
+    address-pools:
+    - name: default
+      protocol: layer2
+      addresses:
+      - {network_range}
+""".format(network_range=minikube_network_range)
+
+# Using a shell command to write config and apply it directly
+local('echo "{content}" | kubectl apply -f -'.format(content=metallb_config))
+
+#local("kubectl create namespace ziti-controller")
+local("kubectl get namespace ziti-controller || kubectl create namespace ziti-controller")
+
+local('kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.crds.yaml')
+local('kubectl apply -f https://raw.githubusercontent.com/cert-manager/trust-manager/v0.7.0/deploy/crds/trust.cert-manager.io_bundles.yaml')
+
+# local('helm install \
+#     --namespace ziti-controller ziti-controller-minimal1 \
+#     openziti/ziti-controller \
+#         --set clientApi.advertisedHost="ziti-controller-minimal.example.com" \
+#         --set clientApi.advertisedPort="443"')
+
+# local('helm install \
+#     --namespace ziti-controller ziti-controller-minimal1 \
+#     openziti/ziti-controller \
+#         --set cert-manager.enabled="true" --set trust-manager.enabled="true" \
+#         --set clientApi.advertisedHost="ziti-controller-minimal.example.com" \
+#         --set clientApi.advertisedPort="443"')
+
+
