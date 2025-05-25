@@ -64,10 +64,10 @@ create_identity() {
 }
 
 # Step 1: Create identity for COMPONENT1
-create_identity "$COMPONENT1_NAME" "$COMPONENT1_ROLE" "$COMPONENT1_JWT_PATH"
+create_identity "$COMPONENT1_NAME" "$COMPONENT1_ROLE" "$COMPONENT1_JWT_PATH" "$ROLE_TAG"
 
 # Step 2: Create identity for COMPONENT2
-create_identity "$COMPONENT2_NAME" "$COMPONENT2_ROLE" "$COMPONENT2_JWT_PATH"
+create_identity "$COMPONENT2_NAME" "$COMPONENT2_ROLE" "$COMPONENT2_JWT_PATH" "$ROLE_TAG"
 
 # Check if both identities already existed
 if [ "$both_identities_exist" = true ]; then
