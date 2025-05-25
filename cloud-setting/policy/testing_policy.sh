@@ -57,8 +57,8 @@ create_identity() {
 }
 
 # Create identities
-create_identity "$COMPONENT1_NAME" "$COMPONENT1_ROLE" "$COMPONENT1_JWT_PATH" "#$LOCATION_ROLE"
-create_identity "$COMPONENT2_NAME" "$COMPONENT2_ROLE" "$COMPONENT2_JWT_PATH" "#$LOCATION_ROLE"
+create_identity "$COMPONENT1_NAME" "$COMPONENT1_ROLE" "$COMPONENT1_JWT_PATH" "$LOCATION_ROLE"
+create_identity "$COMPONENT2_NAME" "$COMPONENT2_ROLE" "$COMPONENT2_JWT_PATH" "$LOCATION_ROLE"
 
 if [ "$both_identities_exist" = true ]; then
   echo "Both identities already exist, exiting."
@@ -103,7 +103,7 @@ fi
 
 # Create service-policy for bind (COMPONENT2)
 echo "Creating service-policy (bind) for $COMPONENT2_NAME..."
-component2_id=$(ziti edge list identities | grep "^$COMPONENT2_NAME " | awk '{print $2}')
+component2_id=$(ziti edge list identities | grep "$COMPONENT2_NAME" | awk '{print $2}')
 if [ -z "$component2_id" ]; then
   echo "Failed to find identity ID for $COMPONENT2_NAME"
   exit 1
@@ -111,8 +111,8 @@ fi
 
 ziti edge create service-policy "${COMPONENT1_NAME}-to-${COMPONENT2_NAME}.bind" Bind \
   --service-roles "@$SERVICE_NAME" \
-  --identity-roles "@${component2_id}" \
-  --identity-roles "#$LOCATION_ROLE"
+  --identity-roles "@${component2_id}"
+#--identity-roles "#$LOCATION_ROLE"
 if [ $? -ne 0 ]; then
   echo "Failed to create bind service-policy."
   exit 1
