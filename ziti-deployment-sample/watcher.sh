@@ -9,10 +9,10 @@ declare -A WORKING_DIRS=(
 #   ["inference"]="/inference"
 #   ["rabbitmq"]="/"
 #   ["database"]="/"
-    ["preprocessing"]="/image_preprocessing/preprocessing"
+    ["preprocessing-service"]="/image_preprocessing/preprocessing"
     ["ensemble"]="/ensemble/ensemble"
-    ["mobilenetv2"]="/object_classification/inference"
-    ["efficientnetb0"]="/object_classification/inference"
+    ["mobilenetv2-service"]="/object_classification/inference"
+    ["efficientnetb0-service"]="/object_classification/inference"
     ["rabbitmq"]="/"
 )
 

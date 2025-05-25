@@ -1,6 +1,7 @@
 services:
   preprocessing-service:
     image: rdsea/preprocessing:latest
+    container_name: preprocessing-service
     ports:
       - 5010:5010
       - 5201:5201 #for iperf testing
@@ -12,6 +13,7 @@ services:
 
   ensemble:
     image: rdsea/ensemble:latest
+    container_name: ensemble
     ports:
       - 5011:5011
       - 5202:5202 #for iperf testing
@@ -23,6 +25,7 @@ services:
 
   mobilenetv2-service:
     image: rdsea/inference:cpu
+    container_name: mobilenetv2-service
     ports:
       - 5012:5012
       #- 5000:5000
@@ -35,6 +38,7 @@ services:
 
   efficientnetb0-service:
     image: rdsea/inference:cpu
+    container_name: efficientnetb0-service
     ports:
       - 5013:5012
       #- 5000:5000
