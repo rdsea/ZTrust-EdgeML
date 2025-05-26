@@ -94,8 +94,8 @@ fi
 echo "Creating service-policy (dial) for $COMPONENT1_NAME..."
 ziti edge create service-policy "${COMPONENT1_NAME}-to-${COMPONENT2_NAME}.dial" Dial \
   --service-roles "@$SERVICE_NAME" \
-  --identity-roles "#$COMPONENT1_ROLE" \
-  --identity-roles "#$LOCATION_ROLE"
+  --identity-roles "#$COMPONENT1_ROLE" 
+  #--identity-roles "#$LOCATION_ROLE"
 if [ $? -ne 0 ]; then
   echo "Failed to create dial service-policy."
   exit 1
@@ -112,7 +112,7 @@ fi
 ziti edge create service-policy "${COMPONENT1_NAME}-to-${COMPONENT2_NAME}.bind" Bind \
   --service-roles "@$SERVICE_NAME" \
   --identity-roles "@${component2_id}"
-#--identity-roles "#$LOCATION_ROLE"
+ #--identity-roles "#$LOCATION_ROLE"
 if [ $? -ne 0 ]; then
   echo "Failed to create bind service-policy."
   exit 1
