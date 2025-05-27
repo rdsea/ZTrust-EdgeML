@@ -1,6 +1,5 @@
+import logging
 from typing import Union
-
-from qoa4ml.utils.logger import qoa_logger
 
 
 # ---------------------------------------------------------
@@ -17,7 +16,7 @@ def average_probability(predictions: list, request_id: str) -> Union[dict, None]
         Union[Dict, None]: Aggregated results including mean probabilities, or None if not enough data.
     """
     if len(predictions) < 2:
-        qoa_logger.error("No aggregation needed for only one prediction")
+        logging.error("No aggregation needed for only one prediction")
         return None
 
     class_probabilities = {}

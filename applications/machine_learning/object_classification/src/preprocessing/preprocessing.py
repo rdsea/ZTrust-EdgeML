@@ -13,7 +13,11 @@ from fastapi import FastAPI, HTTPException, Request, UploadFile, status
 from fastapi.responses import JSONResponse
 from image_processing_functions import resize
 
-if os.environ.get("MANUAL_DEBUG"):
+if os.environ.get("MANUAL_TRACING"):
+    span_processor_endpoint = os.environ.get("OTEL_ENDPOINT")
+    if span_processor_endpoint is None:
+        raise Exception("Manual debugging requires OTEL_ENDPOINT environment variable")
+
     from opentelemetry import trace
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
     from opentelemetry.instrumentation.aiohttp_client import AioHttpClientInstrumentor
@@ -29,9 +33,7 @@ if os.environ.get("MANUAL_DEBUG"):
     resource = Resource(attributes={SERVICE_NAME: "preprocessing"})
 
     trace_provider = TracerProvider(resource=resource)
-    processor = BatchSpanProcessor(
-        OTLPSpanExporter(endpoint="http://jaeger:4318/v1/traces")
-    )
+    processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=span_processor_endpoint))
     trace_provider.add_span_processor(processor)
     trace.set_tracer_provider(trace_provider)
 
@@ -103,7 +105,6 @@ def validate_image_type(content_type: Union[str, None]):
 @app.post("/preprocessing")
 async def processing_image(file: UploadFile, request: Request):
     logging.info(request.headers)
-    print("from preprocessing")
     validate_image_type(file.content_type)
 
     contents = await file.read()
@@ -167,7 +168,7 @@ async def processing_image(file: UploadFile, request: Request):
         )
 
 
-if os.environ.get("MANUAL_DEBUG"):
+if os.environ.get("MANUAL_TRACING"):
     from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-    FastAPIInstrumentor.instrument_app(app)
+    FastAPIInstrumentor.instrument_app(app, exclude_spans=["send", "receive"])

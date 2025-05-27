@@ -1,0 +1,19 @@
+[project]
+name = "object_detection"
+version = "0.1.0"
+description = "Add your description here"
+authors = [{ name = "nguu0123", email = "nguu0123@gmail.com" }]
+dependencies = []
+readme = "README.md"
+requires-python = ">= 3.9"
+
+[tool.rye]
+dev-dependencies = []
+managed = true
+virtual = true
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.rye.workspace]
+members = ["src/*"]

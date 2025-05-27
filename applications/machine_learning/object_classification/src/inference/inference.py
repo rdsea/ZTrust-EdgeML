@@ -9,25 +9,28 @@ from fastapi import FastAPI, Request
 from image_classification_agent import ImageClassificationAgent
 
 chosen_model = os.environ["CHOSEN_MODEL"]
-if os.environ.get("MANUAL_DEBUG"):
-    from opentelemetry import trace
+if os.environ.get("MANUAL_TRACING"):
+    span_processor_endpoint = os.environ.get("OTEL_ENDPOINT")
+    if span_processor_endpoint is None:
+        raise Exception("Manual debugging requires OTEL_ENDPOINT environment variable")
 
-    # from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+    from opentelemetry import trace
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 
     # from opentelemetry.sdk.metrics import MeterProvider
+    # from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
     from opentelemetry.sdk.resources import SERVICE_NAME, Resource
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-    resource = Resource(attributes={SERVICE_NAME: f"inference_{chosen_model}"})
+    # Service name is required for most backends
+    resource = Resource(attributes={SERVICE_NAME: f"inference-{chosen_model.lower()}"})
 
     trace_provider = TracerProvider(resource=resource)
-    processor = BatchSpanProcessor(
-        OTLPSpanExporter(endpoint="http://jaeger:4318/v1/traces")
-    )
+    processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=span_processor_endpoint))
     trace_provider.add_span_processor(processor)
     trace.set_tracer_provider(trace_provider)
+
     tracer = trace.get_tracer(__name__)
 #
 
@@ -95,9 +98,7 @@ async def inference(request: Request):
     return ml_agent.predict(reconstructed_image)
 
 
-if os.environ.get("MANUAL_DEBUG"):
+if os.environ.get("MANUAL_TRACING"):
     from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-    FastAPIInstrumentor.instrument_app(
-        app,
-    )
+    FastAPIInstrumentor.instrument_app(app, exclude_spans=["send", "receive"])
