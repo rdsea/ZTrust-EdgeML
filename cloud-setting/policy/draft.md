@@ -45,12 +45,13 @@ helm install \
     openziti/ziti-controller \
         --set clientApi.advertisedHost="ziti-controller-minimal.example.com" \
         --set clientApi.advertisedPort="443"
+        --set service.type=LoadBalancer
 
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.crds.yaml
 kubectl apply -f https://raw.githubusercontent.com/cert-manager/trust-manager/v0.7.0/deploy/crds/trust.cert-manager.io_bundles.yaml
 
-kubectl create configmap ziti-controller-minimal1-ctrl-plane-cas --from-literal=ca.crt="dummy" -n ziti-controller
+#kubectl create configmap ziti-controller-minimal1-ctrl-plane-cas --from-literal=ca.crt="dummy" -n ziti-controller
 
 kubectl get secret ziti-controller-minimal1-ctrl-plane-root-secret -n ziti-controller -o jsonpath='{.data.tls\.crt}' | base64 -d > ctrl-plane-cas.crt
 
@@ -60,9 +61,9 @@ kubectl create configmap ziti-controller-minimal1-ctrl-plane-cas --from-file=ctr
 kubectl get svc -n ziti-controller
 
 ## setting login
-❯ kubectl port-forward -n ziti-controller pods/ziti-controller-minimal1-6ff58f69b7-88pvd 1280:1280
+kubectl port-forward -n ziti-controller pods/ziti-controller-minimal1-6ff58f69b7-88pvd 1280:1280
 
- ziti edge login localhost:1280 \                                                                                                                                      ─╯
+ ziti edge login localhost:1280 \
     --yes \
     --username admin \
     --password $(
@@ -70,4 +71,19 @@ kubectl get svc -n ziti-controller
             get secrets ziti-controller-minimal1-admin-secret \
                 -o go-template='{{index .data "admin-password" | base64decode }}'
         )
+
+## adding router has error with domain name ()
+
+helm upgrade ziti-controller-minimal1 openziti/ziti-controller \
+  -n ziti-controller \
+  --set clientApi.advertisedHost=ziti-controller-minimal1-client.ziti-controller.svc.cluster.local \
+  --set clientApi.advertisedPort=443
+
+helm upgrade --install ziti-router-internal openziti/ziti-router \                                                                                                            ─╯
+   --set-file enrollmentJwt=routerinternal.jwt --set ctrl.endpoint=ziti-controller.openziti.svc.cluster.local:443 \
+    --set edge.advertisedHost=routerinternal.ziti.example.com
+
+helm upgrade --install ziti-router-internal openziti/ziti-router \
+   --set-file enrollmentJwt=routerinternal.jwt --set ctrl.endpoint==ziti-controller-minimal1-client.ziti-controller.svc.cluster.local:443  \
+    --set edge.advertisedHost=routerinternal.ziti.example.com
 
