@@ -29,19 +29,3 @@ spec:
       backendRefs:
         - name: preprocessing-service
           port: 5010
-    # - matches:
-    #     - headers:
-    #         - type: Exact
-    #           name: magic
-    #           value: foo
-    #       queryParams:
-    #         - type: Exact
-    #           name: great
-    #           value: example
-    #       path:
-    #         type: PathPrefix
-    #         value: /
-    #       method: GET
-    #   backendRefs:
-    #     - name: productpage
-    #       port: 9080
