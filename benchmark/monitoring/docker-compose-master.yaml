@@ -37,8 +37,8 @@ services:
       - "4317:4317"
       - "4318:4318"
       - "9411:9411"
-  volumes:
-    - jaeger_data:/tmp/jaeger
+    volumes:
+      - jaeger_data:/tmp/jaeger
 
 volumes:
   grafana-data:
