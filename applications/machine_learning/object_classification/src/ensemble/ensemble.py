@@ -21,6 +21,7 @@ if os.environ.get("MANUAL_TRACING"):
 
     from opentelemetry import trace
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.instrumentation.aio_pika import AioPikaInstrumentor
     from opentelemetry.instrumentation.aiohttp_client import AioHttpClientInstrumentor
 
     # from opentelemetry.sdk.metrics import MeterProvider
@@ -30,6 +31,8 @@ if os.environ.get("MANUAL_TRACING"):
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
     AioHttpClientInstrumentor().instrument()
+
+    AioPikaInstrumentor().instrument()
     # Service name is required for most backends
     resource = Resource(attributes={SERVICE_NAME: "ensemble"})
 

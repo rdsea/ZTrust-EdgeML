@@ -8,6 +8,6 @@ rabbitmq:
   password: default_password
 
 mongodb:
-  url: 34.88.207.138
+  url: mongodb
   username: default_username
   password: default_password

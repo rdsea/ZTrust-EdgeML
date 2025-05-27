@@ -53,6 +53,9 @@ services:
         condition: service_started
       rabbitmq:
         condition: service_started
+    environment:
+      MANUAL_TRACING: true
+      OTEL_ENDPOINT: "http://jaeger:4318/v1/traces"
 
 volumes:
   mongo_data:

@@ -25,8 +25,6 @@ anyio==4.9.0
     # via watchfiles
 asgiref==3.8.1
     # via opentelemetry-instrumentation-asgi
-asttokens==2.4.1
-    # via devtools
 async-timeout==5.0.1
     # via aiohttp
 attrs==25.3.0
@@ -54,24 +52,15 @@ deprecated==1.2.18
     # via opentelemetry-exporter-otlp-proto-grpc
     # via opentelemetry-exporter-otlp-proto-http
     # via opentelemetry-semantic-conventions
-devtools==0.12.2
-    # via qoa4ml
 dnspython==2.7.0
     # via email-validator
     # via pymongo
-docker==7.1.0
-    # via qoa4ml
 email-validator==2.2.0
     # via fastapi
-eval-type-backport==0.2.2
-    # via qoa4ml
 exceptiongroup==1.3.0
     # via aio-pika
     # via anyio
-executing==2.2.0
-    # via devtools
 fastapi==0.115.12
-    # via qoa4ml
 fastapi-cli==0.0.7
     # via fastapi
 flask==3.1.1
@@ -82,8 +71,6 @@ flask-cors==6.0.0
     # via locust
 flask-login==0.6.3
     # via locust
-flatten-dict==0.4.2
-    # via qoa4ml
 frozenlist==1.6.0
     # via aiohttp
     # via aiosignal
@@ -122,8 +109,6 @@ itsdangerous==2.2.0
 jinja2==3.1.6
     # via fastapi
     # via flask
-lazy-import==0.2.2
-    # via qoa4ml
 locust==2.34.0
 markdown-it-py==3.0.0
     # via rich
@@ -141,13 +126,13 @@ multidict==6.4.4
     # via yarl
 numpy==2.0.2
     # via opencv-python
-    # via qoa4ml
 opencv-python==4.10.0.84
 opentelemetry-api==1.33.1
     # via opentelemetry-distro
     # via opentelemetry-exporter-otlp-proto-grpc
     # via opentelemetry-exporter-otlp-proto-http
     # via opentelemetry-instrumentation
+    # via opentelemetry-instrumentation-aio-pika
     # via opentelemetry-instrumentation-aiohttp-client
     # via opentelemetry-instrumentation-asgi
     # via opentelemetry-instrumentation-fastapi
@@ -164,9 +149,11 @@ opentelemetry-exporter-otlp-proto-http==1.33.1
     # via opentelemetry-exporter-otlp
 opentelemetry-instrumentation==0.54b1
     # via opentelemetry-distro
+    # via opentelemetry-instrumentation-aio-pika
     # via opentelemetry-instrumentation-aiohttp-client
     # via opentelemetry-instrumentation-asgi
     # via opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-aio-pika==0.54b1
 opentelemetry-instrumentation-aiohttp-client==0.54b1
 opentelemetry-instrumentation-asgi==0.54b1
     # via opentelemetry-instrumentation-fastapi
@@ -193,8 +180,6 @@ packaging==25.0
     # via opentelemetry-instrumentation
 pamqp==3.3.0
     # via aiormq
-pika==1.3.2
-    # via qoa4ml
 pillow==11.2.1
 propcache==0.3.1
     # via aiohttp
@@ -204,14 +189,11 @@ protobuf==5.29.4
     # via opentelemetry-proto
 psutil==7.0.0
     # via locust
-    # via qoa4ml
 pydantic==2.7.4
     # via fastapi
-    # via qoa4ml
 pydantic-core==2.18.4
     # via pydantic
 pygments==2.19.1
-    # via devtools
     # via rich
 pymongo==4.13.0
     # via motor
@@ -220,16 +202,12 @@ python-dotenv==1.1.0
 python-multipart==0.0.20
     # via fastapi
 pyyaml==6.0.2
-    # via qoa4ml
     # via uvicorn
 pyzmq==26.4.0
     # via locust
-qoa4ml==0.3.18
 requests==2.32.3
-    # via docker
     # via locust
     # via opentelemetry-exporter-otlp-proto-http
-    # via qoa4ml
 rich==14.0.0
     # via rich-toolkit
     # via typer
@@ -241,16 +219,10 @@ setuptools==80.9.0
     # via zope-interface
 shellingham==1.5.4
     # via typer
-six==1.17.0
-    # via asttokens
-    # via flatten-dict
-    # via lazy-import
 sniffio==1.3.1
     # via anyio
 starlette==0.46.2
     # via fastapi
-tinyflux==1.0.0
-    # via qoa4ml
 tomli==2.2.1
     # via locust
 typer==0.16.0
@@ -272,13 +244,11 @@ typing-extensions==4.13.2
     # via typer
     # via uvicorn
 urllib3==2.4.0
-    # via docker
     # via geventhttpclient
     # via requests
 uvicorn==0.34.2
     # via fastapi
     # via fastapi-cli
-    # via qoa4ml
 uvloop==0.21.0
     # via uvicorn
 v==1
@@ -294,6 +264,7 @@ werkzeug==3.1.3
 wrapt==1.17.2
     # via deprecated
     # via opentelemetry-instrumentation
+    # via opentelemetry-instrumentation-aio-pika
     # via opentelemetry-instrumentation-aiohttp-client
 yarl==1.20.0
     # via aio-pika
