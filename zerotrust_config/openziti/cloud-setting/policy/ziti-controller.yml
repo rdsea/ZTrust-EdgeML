@@ -1,0 +1,3 @@
+web:
+  advertiseAddress: ziti-controller-minimal1-client.ziti-controller.svc.cluster.local
+  advertisedPort: 443
