@@ -1,0 +1,11 @@
+clientApi:
+  advertisedHost: "ziti-controller-minimal.example.com"
+  advertisedPort: 443
+cert-manager:
+  enabled: true
+trust-manager:
+  enabled: true
+  app:
+    trust:
+      # Match this namespace where you install the chart
+      namespace: "ziti-controller"
