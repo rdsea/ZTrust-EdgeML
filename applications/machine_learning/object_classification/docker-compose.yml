@@ -17,12 +17,7 @@ services:
       DOCKER: "true"
       MANUAL_TRACING: true
       OTEL_ENDPOINT: "http://jaeger:4318/v1/traces"
-    deploy:
-      resources:
-        limits:
-          cpus: "0.75"
-        reservations:
-          cpus: "0.25"
+      cpus: 0.5
 
   ensemble:
     image: rdsea/ensemble
@@ -35,12 +30,7 @@ services:
       MANUAL_TRACING: true
       OTEL_ENDPOINT: "http://jaeger:4318/v1/traces"
       SEND_TO_QUEUE: true
-    deploy:
-      resources:
-        limits:
-          cpus: "0.75"
-        reservations:
-          cpus: "0.25"
+      cpus: 0.5
 
   efficientnetb0:
     image: rdsea/inference:cpu
@@ -50,12 +40,7 @@ services:
     environment:
       MANUAL_TRACING: true
       OTEL_ENDPOINT: "http://jaeger:4318/v1/traces"
-    deploy:
-      resources:
-        limits:
-          cpus: "2"
-        reservations:
-          cpus: "1"
+    cpus: 2
 
   mobilenetv2:
     image: rdsea/inference:cpu
@@ -65,12 +50,7 @@ services:
     environment:
       MANUAL_TRACING: true
       OTEL_ENDPOINT: "http://jaeger:4318/v1/traces"
-    deploy:
-      resources:
-        limits:
-          cpus: "2"
-        reservations:
-          cpus: "1"
+    cpus: 2
 
   # jaeger:
   #   image: jaegertracing/all-in-one:1.56
