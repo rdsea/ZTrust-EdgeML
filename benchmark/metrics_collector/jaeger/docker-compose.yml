@@ -3,6 +3,7 @@ version: "3"
 services:
   jaeger:
     image: jaegertracing/all-in-one:1.56
+    restart: unless-stopped
     ports:
       # - "5775:5775/udp"
       # - "6831:6831/udp"

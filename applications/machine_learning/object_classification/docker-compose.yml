@@ -10,6 +10,7 @@ services:
     build:
       context: ./src
       dockerfile: preprocessing/Dockerfile
+    restart: unless-stopped
     ports:
       - 5010:5010
     environment:
@@ -22,6 +23,7 @@ services:
     build:
       context: ./src
       dockerfile: ensemble/Dockerfile
+    restart: unless-stopped
     environment:
       DOCKER: "true"
       MANUAL_TRACING: true
@@ -31,6 +33,7 @@ services:
   efficientnetb0:
     image: rdsea/inference:cpu
     build: *inference-build
+    restart: unless-stopped
     command: ["--model", "EfficientNetB0"]
     environment:
       MANUAL_TRACING: true
@@ -39,6 +42,7 @@ services:
   mobilenetv2:
     image: rdsea/inference:cpu
     build: *inference-build
+    restart: unless-stopped
     command: ["--model", "MobileNetV2"]
     environment:
       MANUAL_TRACING: true
