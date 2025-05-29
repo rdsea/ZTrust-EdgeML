@@ -5,9 +5,7 @@ metadata:
   namespace: kube-system
 data:
   hosts: |
-    34.118.228.177 ctrl.ziti.hong3nguyen.com
-    ::1 ctrl.ziti.hong3nguyen.com
-
+    34.118.230.238 ctrl.ziti.hong3nguyen.com
 ---
 apiVersion: apps/v1
 kind: Deployment
