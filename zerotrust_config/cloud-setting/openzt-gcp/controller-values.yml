@@ -1,5 +1,5 @@
 clientApi:
-  advertisedHost: "ziti-controller-minimal.example.com"
+  advertisedHost: "ziti-controller-minimal1-client.ziti-controller.svc.cluster.local"
   advertisedPort: 443
 cert-manager:
   enabled: true

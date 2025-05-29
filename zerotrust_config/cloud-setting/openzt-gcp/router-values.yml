@@ -1,0 +1,4 @@
+ctrl:
+  endpoint: "ziti-controller-minimal1-client.ziti-controller.svc.cluster.local:443"
+edge:
+  advertisedHost: "router2.ziti.example.com"
