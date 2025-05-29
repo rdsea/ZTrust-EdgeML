@@ -192,9 +192,9 @@ spec:
     protocol: TCP
     name: dns-tcp
 
+```
 - take ip and add from cluster custom-dns-service to hong3.nguyen.com 
 
-```
 ```yaml
 apiVersion: v1
 data:

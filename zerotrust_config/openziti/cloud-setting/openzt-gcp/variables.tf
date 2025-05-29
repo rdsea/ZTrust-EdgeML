@@ -1,4 +1,6 @@
-variable "project_id" {}
+variable "project_id" {
+  default = "aalto-t313-cs-e4640"
+}
 variable "region" {
   default = "europe-north1"
 }

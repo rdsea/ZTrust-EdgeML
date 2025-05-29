@@ -3,7 +3,7 @@
 # Set common variables
 PKI_ROOT=/home/hong3nguyen/.config/ziti/environments/pki
 DNS_NAME=ctrl.ziti.hong3nguyen.com
-IP_ADDR=34.116.195.220
+IP_ADDR=xxxx
 
 rm -rf $PKI_ROOT/ca
 
