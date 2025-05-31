@@ -2,3 +2,11 @@ ctrl:
   endpoint: "ziti-controller-minimal1-client.ziti-controller.svc.cluster.local:443"
 edge:
   advertisedHost: "router2.ziti.example.com"
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      kubernetes.io/ingress.allow-http: "false"
+      nginx.ingress.kubernetes.io/ssl-passthrough: "true"

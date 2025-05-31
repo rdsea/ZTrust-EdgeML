@@ -70,6 +70,13 @@ def get_inference_service_url_docker(ensemble_chosen: list[str]):
     return [f"http://{item.lower()}:5012/inference" for item in ensemble_chosen]
 
 
+def get_inference_service_url_openziti(ensemble_chosen: list[str]):
+    return [
+        f"http://{item.lower()}.miniziti.private:5012/inference"
+        for item in ensemble_chosen
+    ]
+
+
 def get_rabbitmq_connection_url(config: dict):
     rabbitmq_url = config["rabbitmq"]["url"]  # Example config
     username = config["rabbitmq"]["username"]
@@ -80,6 +87,9 @@ def get_rabbitmq_connection_url(config: dict):
 INFERENCE_SERVICE_URLS = get_inference_service_url(config["ensemble"])
 if os.environ.get("DOCKER"):
     INFERENCE_SERVICE_URLS = get_inference_service_url_docker(config["ensemble"])
+
+if os.environ.get("OPENZITI"):
+    INFERENCE_SERVICE_URLS = get_inference_service_url_openziti(config["ensemble"])
 RABBITMQ_URL = get_rabbitmq_connection_url(config)
 
 

@@ -1,6 +1,14 @@
 clientApi:
   advertisedHost: "ziti-controller-minimal1-client.ziti-controller.svc.cluster.local"
   advertisedPort: 443
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      kubernetes.io/ingress.allow-http: "false"
+      nginx.ingress.kubernetes.io/ssl-passthrough: "true"
 cert-manager:
   enabled: true
 trust-manager:
