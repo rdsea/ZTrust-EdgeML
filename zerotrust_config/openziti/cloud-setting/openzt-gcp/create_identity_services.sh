@@ -100,8 +100,8 @@ ziti edge create service-policy "efficientnetb0-bind-policy" Bind \
 ziti edge create service-policy "efficientnetb0-dial-policy" Dial \
   --service-roles '@efficientnetb0-service' --identity-roles '#ensemble'
 
-# ziti edge create edge-router-policy "public-routers" \
-#   --edge-router-roles '#public-routers' --identity-roles '#all'
-#
-# ziti edge create service-edge-router-policy "public-routers" \
-#   --edge-router-roles '#public-routers' --service-roles '#all'
+ziti edge create edge-router-policy "public-routers" \
+  --edge-router-roles '#public-routers' --identity-roles '#all'
+
+ziti edge create service-edge-router-policy "public-routers" \
+  --edge-router-roles '#public-routers' --service-roles '#all'
