@@ -38,7 +38,7 @@ kubectl create secret generic "efficientnetb0-sidecar-client-identity" \
 
 # Client to preprocessing
 ziti edge create config "client-intercept-config" intercept.v1 \
-  '{"protocols":["tcp"],"addresses":["preprocessing.miniziti.private"], "portRanges":[{"low":5010, "high":5010}]}'
+  '{"protocols":["tcp"],"addresses":["preprocessing.ziti-controller.private"], "portRanges":[{"low":5010, "high":5010}]}'
 
 ziti edge create config "preprocessing-host-config" host.v1 \
   '{"protocol":"tcp", "address":"localhost","port":5010}'
@@ -54,7 +54,7 @@ ziti edge create service-policy "preprocessing-dial-policy" Dial \
 
 # Preprocessing to ensemble
 ziti edge create config "preprocessing-intercept-config" intercept.v1 \
-  '{"protocols":["tcp"],"addresses":["ensemble.miniziti.private"], "portRanges":[{"low":5011, "high":5011}]}'
+  '{"protocols":["tcp"],"addresses":["ensemble.ziti-controller.private"], "portRanges":[{"low":5011, "high":5011}]}'
 
 ziti edge create config "ensemble-host-config" host.v1 \
   '{"protocol":"tcp", "address":"localhost","port":5011}'
@@ -70,7 +70,7 @@ ziti edge create service-policy "ensemble-dial-policy" Dial \
 
 # Ensemble to mobilenetv2
 ziti edge create config "ensemble-intercept-mobilenetv2-config" intercept.v1 \
-  '{"protocols":["tcp"],"addresses":["mobilenetv2.miniziti.private"], "portRanges":[{"low":5012, "high":5012}]}'
+  '{"protocols":["tcp"],"addresses":["mobilenetv2.ziti-controller.private"], "portRanges":[{"low":5012, "high":5012}]}'
 
 ziti edge create config "mobilenetv2-host-config" host.v1 \
   '{"protocol":"tcp", "address":"localhost","port":5012}'
@@ -86,7 +86,7 @@ ziti edge create service-policy "mobilenetv2-dial-policy" Dial \
 
 # Ensemble to efficientnetb0
 ziti edge create config "ensemble-intercept-efficientnetb0-config" intercept.v1 \
-  '{"protocols":["tcp"],"addresses":["efficientnetb0.miniziti.private"], "portRanges":[{"low":5012, "high":5012}]}'
+  '{"protocols":["tcp"],"addresses":["efficientnetb0.ziti-controller.private"], "portRanges":[{"low":5012, "high":5012}]}'
 
 ziti edge create config "efficientnetb0-host-config" host.v1 \
   '{"protocol":"tcp", "address":"localhost","port":5012}'
