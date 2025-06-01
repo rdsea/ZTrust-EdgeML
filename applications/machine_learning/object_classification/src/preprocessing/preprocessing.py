@@ -40,7 +40,7 @@ if os.environ.get("MANUAL_TRACING"):
     tracer = trace.get_tracer(__name__)
 
 ENSEMBLE_SERVICE_URL = (
-    "http://ensemble-service.default.svc.cluster.local:5011/ensemble_service"
+    "http://ensemble.ziti-controller.private:5011/ensemble_service"
 )
 if os.environ.get("DOCKER"):
     ENSEMBLE_SERVICE_URL = "http://ensemble:5011/ensemble_service"
