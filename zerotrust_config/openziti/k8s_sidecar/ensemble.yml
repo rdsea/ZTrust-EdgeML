@@ -1,0 +1,68 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ensemble
+  labels:
+    app: ensemble
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ensemble
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: ensemble
+        version: v1
+      annotations:
+        sidecar.istio.io/inject: "true"
+    spec:
+      containers:
+        - name: ensemble
+          imagePullPolicy: "IfNotPresent"
+          image: rdsea/ensemble
+          ports:
+            - containerPort: 5011
+          env:
+            - name: SEND_TO_QUEUE
+              value: "false"
+            - name: OPENZITI
+              value: "true"
+        - name: ziti-tunnel
+          image: openziti/ziti-tunnel
+          args: ["tproxy"]
+          env:
+            - name: ZITI_IDENTITY_BASENAME
+              value: ensemble # the filename in the volume is sidecar-client.json
+          volumeMounts:
+            - name: sidecar-client-identity
+              mountPath: /netfoundry
+              readOnly: true
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+      dnsPolicy: None
+      dnsConfig:
+        nameservers:
+          - 127.0.0.1 # used by the tunneler during startup to verify own DNS for the pod
+          - 10.96.0.10 # change to CoreDNS cluster service address
+      restartPolicy: Always
+      volumes:
+        - name: sidecar-client-identity
+          secret:
+            secretName: ensemble-sidecar-client-identity
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ensemble-service
+spec:
+  ports:
+    - port: 5011
+      targetPort: 5011
+  selector:
+    app: ensemble

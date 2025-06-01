@@ -45,6 +45,10 @@ ENSEMBLE_SERVICE_URL = (
 if os.environ.get("DOCKER"):
     ENSEMBLE_SERVICE_URL = "http://ensemble:5011/ensemble_service"
 
+if os.environ.get("OPENZITI"):
+    ENSEMBLE_SERVICE_URL = "http://ensemble.miniziti.private:5011/ensemble_service"
+
+
 current_directory = os.path.dirname(os.path.abspath(__file__))
 util_directory = os.path.join(current_directory, "..", "util")
 sys.path.append(util_directory)

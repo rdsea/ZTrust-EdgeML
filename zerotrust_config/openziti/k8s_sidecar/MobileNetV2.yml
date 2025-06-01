@@ -1,0 +1,64 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mobilenetv2
+  labels:
+    app: mobilenetv2
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mobilenetv2
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: mobilenetv2
+        version: v1
+      annotations:
+        sidecar.istio.io/inject: "true"
+    spec:
+      containers:
+        - name: mobilenetv2
+          imagePullPolicy: "IfNotPresent"
+          image: rdsea/inference:cpu
+          ports:
+            - containerPort: 5012
+          args: ["--model", "MobileNetV2"]
+        - name: ziti-tunnel
+          image: openziti/ziti-tunnel
+          args: ["tproxy"]
+          env:
+            - name: ZITI_IDENTITY_BASENAME
+              value: mobilenetv2 # the filename in the volume is sidecar-client.json
+          volumeMounts:
+            - name: sidecar-client-identity
+              mountPath: /netfoundry
+              readOnly: true
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+      dnsPolicy: None
+      dnsConfig:
+        nameservers:
+          - 127.0.0.1 # used by the tunneler during startup to verify own DNS for the pod
+          - 10.96.0.10 # change to CoreDNS cluster service address
+      restartPolicy: Always
+      volumes:
+        - name: sidecar-client-identity
+          secret:
+            secretName: mobilenetv2-sidecar-client-identity
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mobilenetv2-service
+spec:
+  ports:
+    - port: 5012
+      targetPort: 5012
+  selector:
+    app: mobilenetv2

@@ -1,0 +1,64 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: efficientnetb0
+  labels:
+    app: efficientnetb0
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: efficientnetb0
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: efficientnetb0
+        version: v1
+      annotations:
+        sidecar.istio.io/inject: "true"
+    spec:
+      containers:
+        - name: efficientnetb0
+          imagePullPolicy: "IfNotPresent"
+          image: rdsea/inference:cpu
+          ports:
+            - containerPort: 5012
+          args: ["--model", "EfficientNetB0"]
+        - name: ziti-tunnel
+          image: openziti/ziti-tunnel
+          args: ["tproxy"]
+          env:
+            - name: ZITI_IDENTITY_BASENAME
+              value: efficientnetb0 # the filename in the volume is sidecar-client.json
+          volumeMounts:
+            - name: sidecar-client-identity
+              mountPath: /netfoundry
+              readOnly: true
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+      dnsPolicy: None
+      dnsConfig:
+        nameservers:
+          - 127.0.0.1 # used by the tunneler during startup to verify own DNS for the pod
+          - 10.96.0.10 # change to CoreDNS cluster service address
+      restartPolicy: Always
+      volumes:
+        - name: sidecar-client-identity
+          secret:
+            secretName: efficientnetb0-sidecar-client-identity
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: efficientnetb0-service
+spec:
+  ports:
+    - port: 5012
+      targetPort: 5012
+  selector:
+    app: efficientnetb0

@@ -12,6 +12,7 @@ cd /opt/ziti/bin
 curl -sSLo ziti.tar.gz https://github.com/openziti/ziti/releases/latest/download/ziti-linux-amd64.tar.gz
 tar -xzf ziti.tar.gz
 chmod +x ziti*
+
 #
 # # Add to PATH
 # export PATH=$PATH:/opt/ziti/bin
