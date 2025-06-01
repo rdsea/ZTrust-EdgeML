@@ -90,6 +90,7 @@ if os.environ.get("DOCKER"):
 
 if os.environ.get("OPENZITI"):
     INFERENCE_SERVICE_URLS = get_inference_service_url_openziti(config["ensemble"])
+
 RABBITMQ_URL = get_rabbitmq_connection_url(config)
 
 

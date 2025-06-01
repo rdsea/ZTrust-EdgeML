@@ -19,6 +19,7 @@ services:
       OTEL_ENDPOINT: "http://jaeger:4318/v1/traces"
       cpus: 0.5
 
+
   ensemble:
     image: rdsea/ensemble
     build:
