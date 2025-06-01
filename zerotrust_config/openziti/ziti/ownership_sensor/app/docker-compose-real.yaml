@@ -1,3 +1,12 @@
+#  run script to connect serverss to the openziti
+#
+# networks:
+#   default:
+#   shared_ziti_network:
+#     external: true
+volumes:
+  artifacts:
+
 services:
   preprocessing-service:
     image: rdsea/preprocessing:latest
@@ -10,6 +19,15 @@ services:
       - NET_ADMIN
     devices:
       - /dev/net/tun:/dev/net/tun
+    extra_hosts:
+    - "ziti-edge-controller:192.168.1.2"
+    - "ziti-edge-router:192.168.1.3"
+    networks:
+      - default
+    volumes:
+      - ./install-ziti-edge-tunnel.sh:/data_ziti/install-ziti-edge-tunnel.sh
+      - ./artifacts:/data_ziti/
+    #entrypoint: ["/bin/bash", "-c", "/usr/local/bin/install-ziti-edge-tunnel.sh"]
 
   ensemble:
     image: rdsea/ensemble:latest
@@ -22,6 +40,15 @@ services:
       - NET_ADMIN
     devices:
       - /dev/net/tun:/dev/net/tun
+    extra_hosts:
+    - "ziti-edge-controller:192.168.1.2"
+    - "ziti-edge-router:192.168.1.3"
+    networks:
+      - default
+    volumes:
+      - ./install-ziti-edge-tunnel.sh:/data_ziti/install-ziti-edge-tunnel.sh
+      - ./artifacts:/data_ziti/
+    #entrypoint: ["/bin/bash", "-c", "/usr/local/bin/install-ziti-edge-tunnel.sh"]
 
   mobilenetv2-service:
     image: rdsea/inference:cpu
@@ -35,6 +62,15 @@ services:
       - NET_ADMIN
     devices:
       - /dev/net/tun:/dev/net/tun
+    extra_hosts:
+    - "ziti-edge-controller:192.168.1.2"
+    - "ziti-edge-router:192.168.1.3"
+    networks:
+      - default
+    volumes:
+      - ./install-ziti-edge-tunnel.sh:/data_ziti/install-ziti-edge-tunnel.sh
+      - ./artifacts:/data_ziti/
+    #entrypoint: ["/bin/bash", "-c", "/usr/local/bin/install-ziti-edge-tunnel.sh"]
 
   efficientnetb0-service:
     image: rdsea/inference:cpu
@@ -48,6 +84,15 @@ services:
       - NET_ADMIN
     devices:
       - /dev/net/tun:/dev/net/tun
+    extra_hosts:
+    - "ziti-edge-controller:192.168.1.2"
+    - "ziti-edge-router:192.168.1.3"
+    networks:
+      - default
+    volumes:
+      - ./install-ziti-edge-tunnel.sh:/data_ziti/install-ziti-edge-tunnel.sh
+      - ./artifacts:/data_ziti/
+    #entrypoint: ["/bin/bash", "-c", "/usr/local/bin/install-ziti-edge-tunnel.sh"]
 
   rabbitmq:
     image: hongtringuyen/messageq-ziti:latest
@@ -57,4 +102,13 @@ services:
       - 15672:15672
     volumes:
       - ./rabbitMQ-config/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      - ./install-ziti-edge-tunnel.sh:/usr/local/bin/install-ziti-edge-tunnel.sh
       - ./rabbitMQ-config/rabbitmq-env.conf:/etc/rabbitmq/rabbitmq-env.conf
+      - ./install-ziti-edge-tunnel.sh:/data_ziti/install-ziti-edge-tunnel.sh
+      - ./artifacts:/data_ziti/
+    extra_hosts:
+    - "ziti-edge-controller:192.168.1.2"
+    - "ziti-edge-router:192.168.1.3"
+    networks:
+      - default
+    #entrypoint: ["/bin/bash", "-c", "/usr/local/bin/install-ziti-edge-tunnel.sh"]
