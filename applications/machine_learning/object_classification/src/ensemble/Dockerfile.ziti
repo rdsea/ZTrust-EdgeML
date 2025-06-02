@@ -20,8 +20,9 @@ COPY --from=ghcr.io/astral-sh/uv:0.4.3 /uv /bin/uv
 
 COPY ./ensemble/*.toml ./
 
-
 COPY ./ensemble/run_server.sh ./ensemble/run_server.sh
+
+COPY ./preprocessing/ziti_start.sh ./preprocessing/ziti_start.sh
 
 RUN uv sync --compile-bytecode --no-cache
 
