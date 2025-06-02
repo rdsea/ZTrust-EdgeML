@@ -11,7 +11,7 @@ ziti edge login localhost:1280 --yes --username admin --password admin
 # client not yet runs
 # connect those services to ziti network
 
-docker compose -f docker-compose.yml up
+docker compose -f docker-compose.yml up -d
 
 ZITI_NETWORK=$1
 SERVICES=(
