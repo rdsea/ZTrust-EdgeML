@@ -24,7 +24,7 @@ services:
       - ZITI_PWD=${ZITI_PWD}
     networks:
       ziti:
-        ipv4_address: 192.168.1.2
+        ipv4_address: 192.168.132.2
         aliases:
           - ziti-edge-controller
     volumes:
@@ -76,7 +76,7 @@ services:
       - ZITI_ROUTER_ROLES=public
     networks:
       ziti:
-        ipv4_address: 192.168.1.3
+        ipv4_address: 192.168.132.3
     volumes:
       - ziti-fs:/persistent
     entrypoint: /bin/bash
@@ -135,6 +135,6 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 192.168.1.0/24
+        - subnet: 192.168.132.0/24
 volumes:
   ziti-fs:

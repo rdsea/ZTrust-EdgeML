@@ -20,8 +20,8 @@ services:
     devices:
       - /dev/net/tun:/dev/net/tun
     extra_hosts:
-    - "ziti-edge-controller:192.168.1.2"
-    - "ziti-edge-router:192.168.1.3"
+    - "ziti-edge-controller:192.168.132.2"
+    - "ziti-edge-router:192.168.132.3"
     networks:
       - default
     volumes:
@@ -43,8 +43,8 @@ services:
     devices:
       - /dev/net/tun:/dev/net/tun
     extra_hosts:
-    - "ziti-edge-controller:192.168.1.2"
-    - "ziti-edge-router:192.168.1.3"
+    - "ziti-edge-controller:192.168.132.2"
+    - "ziti-edge-router:192.168.132.3"
     networks:
       - default
     volumes:
@@ -64,8 +64,8 @@ services:
     devices:
       - /dev/net/tun:/dev/net/tun
     extra_hosts:
-    - "ziti-edge-controller:192.168.1.2"
-    - "ziti-edge-router:192.168.1.3"
+    - "ziti-edge-controller:192.168.132.2"
+    - "ziti-edge-router:192.168.132.3"
     networks:
       - default
     volumes:
@@ -85,8 +85,8 @@ services:
     devices:
       - /dev/net/tun:/dev/net/tun
     extra_hosts:
-    - "ziti-edge-controller:192.168.1.2"
-    - "ziti-edge-router:192.168.1.3"
+    - "ziti-edge-controller:192.168.132.2"
+    - "ziti-edge-router:192.168.132.3"
     networks:
       - default
     volumes:
@@ -105,8 +105,8 @@ services:
       - ./install-ziti-edge-tunnel.sh:/usr/local/bin/install-ziti-edge-tunnel.sh
       - ./rabbitMQ-config/rabbitmq-env.conf:/etc/rabbitmq/rabbitmq-env.conf
     extra_hosts:
-    - "ziti-edge-controller:192.168.1.2"
-    - "ziti-edge-router:192.168.1.3"
+    - "ziti-edge-controller:192.168.132.2"
+    - "ziti-edge-router:192.168.132.3"
     networks:
       - default
     #entrypoint: ["/bin/bash", "-c", "/usr/local/bin/install-ziti-edge-tunnel.sh"]
