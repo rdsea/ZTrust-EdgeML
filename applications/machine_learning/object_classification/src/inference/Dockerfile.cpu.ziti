@@ -32,6 +32,8 @@ COPY ./util/ ./util
 
 COPY ./inference/run_server.sh ./inference/run_server.sh
 
+COPY ./preprocessing/ziti_start.sh ./preprocessing/ziti_start.sh
+
 EXPOSE 5012
 
 WORKDIR /object_classification/inference

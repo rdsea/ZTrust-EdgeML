@@ -26,6 +26,8 @@ WORKDIR /image_preprocessing
 
 COPY ./preprocessing/run_server.sh ./preprocessing/run_server.sh
 
+COPY ./preprocessing/ziti_start.sh ./preprocessing/ziti_start.sh
+
 COPY ./preprocessing/*.yaml ./preprocessing/
 
 COPY ./preprocessing/*.py ./preprocessing/
