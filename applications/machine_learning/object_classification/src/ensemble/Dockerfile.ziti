@@ -22,7 +22,7 @@ COPY ./ensemble/*.toml ./
 
 COPY ./ensemble/run_server.sh ./ensemble/run_server.sh
 
-COPY ./preprocessing/ziti_start.sh ./preprocessing/ziti_start.sh
+COPY ./ensemble/ziti_start.sh ./ensemble/ziti_start.sh
 
 RUN uv sync --compile-bytecode --no-cache
 
@@ -38,4 +38,4 @@ WORKDIR /ensemble/ensemble
 
 ENV PATH="/ensemble/.venv/bin:$PATH"
 
-ENTRYPOINT [ "./run_server.sh" ]
+ENTRYPOINT [ "./ziti_start.sh" ]
