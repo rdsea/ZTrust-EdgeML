@@ -24,17 +24,17 @@ ziti edge enroll --jwt /tmp/mobilenetv2.jwt --out /tmp/mobilenetv2.json
 
 ziti edge enroll --jwt /tmp/efficientnetb0.jwt --out /tmp/efficientnetb0.json
 
-kubectl create secret generic "preprocessing-sidecar-client-identity" \
-  --from-file=/tmp/preprocessing.json
-
-kubectl create secret generic "ensemble-sidecar-client-identity" \
-  --from-file=/tmp/ensemble.json
-
-kubectl create secret generic "mobilenetv2-sidecar-client-identity" \
-  --from-file=/tmp/mobilenetv2.json
-
-kubectl create secret generic "efficientnetb0-sidecar-client-identity" \
-  --from-file=/tmp/efficientnetb0.json
+# kubectl create secret generic "preprocessing-sidecar-client-identity" \
+#   --from-file=/tmp/preprocessing.json
+#
+# kubectl create secret generic "ensemble-sidecar-client-identity" \
+#   --from-file=/tmp/ensemble.json
+#
+# kubectl create secret generic "mobilenetv2-sidecar-client-identity" \
+#   --from-file=/tmp/mobilenetv2.json
+#
+# kubectl create secret generic "efficientnetb0-sidecar-client-identity" \
+#   --from-file=/tmp/efficientnetb0.json
 
 # Client to preprocessing
 ziti edge create config "client-intercept-config" intercept.v1 \

@@ -69,7 +69,7 @@ services:
     networks:
       - default
     volumes:
-      - /tmp/efficientnetb0.json:/opt/secret.json
+      - /tmp/mobilenetv2.json:/opt/secret.json
     #entrypoint: ["/bin/bash", "-c", "/usr/local/bin/install-ziti-edge-tunnel.sh"]
 
   efficientnetb0-service:
@@ -90,7 +90,7 @@ services:
     networks:
       - default
     volumes:
-      - /tmp/mobilenetv2.json:/opt/secret.json
+      - /tmp/efficientnetb0.json:/opt/secret.json
     #entrypoint: ["/bin/bash", "-c", "/usr/local/bin/install-ziti-edge-tunnel.sh"]
 
   rabbitmq:
@@ -100,9 +100,8 @@ services:
     #   - 5672:5672
     #   - 15672:15672
     volumes:
-      - /tmp/mobilenetv2.json:/opt/secret.json
+      #- /tmp/messQ.json:/opt/secret.json
       - ./rabbitMQ-config/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
-      - ./install-ziti-edge-tunnel.sh:/usr/local/bin/install-ziti-edge-tunnel.sh
       - ./rabbitMQ-config/rabbitmq-env.conf:/etc/rabbitmq/rabbitmq-env.conf
     extra_hosts:
     - "ziti-edge-controller:192.168.132.2"
