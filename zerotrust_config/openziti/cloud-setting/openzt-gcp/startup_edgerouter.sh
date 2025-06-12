@@ -2,16 +2,12 @@
 
 set -e
 
+export PUBLIC_IP=""
+CURRENT_DIR=$(pwd)
+
 # Install dependencies
-apt-get update -y
-apt-get install -y curl unzip jq
-
+#
 # Download Ziti binaries
-mkdir -p /opt/ziti/bin
-cd /opt/ziti/bin
-
-curl -sS https://get.openziti.io/install.bash | sudo bash -s openziti-controller
-
 curl -sS https://get.openziti.io/install.bash | sudo bash -s openziti-router
 
 curl -sS https://get.openziti.io/install.bash | sudo bash -s openziti-console
@@ -24,43 +20,24 @@ export ZITI_USER="admin"
 export ZITI_PWD="admin"
 export ZITI_BOOTSTRAP_CONFIG_ARGS=""
 
-# ----------- Create bootstrap.env -----------
-cat <<EOF >${ZITI_HOME}/etc/controller/bootstrap.env
-ZITI_CTRL_ADVERTISED_ADDRESS='$ZITI_CTRL_ADVERTISED_ADDRESS'
-ZITI_CTRL_ADVERTISED_PORT='$ZITI_CTRL_ADVERTISED_PORT'
-ZITI_USER='$ZITI_USER'
-ZITI_PWD='$ZITI_PWD'
-ZITI_BOOTSTRAP_CONFIG_ARGS=''
-EOF
-
-# ----------- Bootstrap and start controller -----------
-${ZITI_HOME}/etc/controller/bootstrap.bash
-
-systemctl enable --now ziti-controller.service
-
-# -----------  wait for controller to come up -----------
-sleep 10
-
 # ----------- Add DNS entry for hostname resolution -----------
-PUBLIC_IP=$(curl -s ifconfig.me || curl -s https://ipinfo.io/ip)
-
 echo "$PUBLIC_IP ctrl.cloud.hong3nguyen.com" >>/etc/hosts
+echo "$PUBLIC_IP router.cloud.hong3nguyen.com" >>/etc/hosts
 
-CURRENT_DIR=$(pwd)
-export JWT_FILE="${CURRENT_DIR}/router_cloud.jwt"
+export JWT_FILE="${CURRENT_DIR}/router_edge.jwt"
 
 # -----------Generate edge router token and config (not enrolled yet) -----------
 ${ZITI_HOME}/bin/ziti edge login https://$ZITI_CTRL_ADVERTISED_ADDRESS:$ZITI_CTRL_ADVERTISED_PORT --yes -u $ZITI_USER -p $ZITI_PWD
 
-${ZITI_HOME}/bin/ziti edge create edge-router router_cloud \
-  --jwt-output-rile "$JWT_FILE" \
+${ZITI_HOME}/bin/ziti edge create edge-router router_edge \
+  --jwt-output-file "$JWT_FILE" \
   --tunneler-enabled
 
 # ----------- (Optional) Write router bootstrap.env -----------
 cat <<EOF >${ZITI_HOME}/etc/router/bootstrap.env
 ZITI_CTRL_ADVERTISED_ADDRESS='$ZITI_CTRL_ADVERTISED_ADDRESS'
 ZITI_CTRL_ADVERTISED_PORT='$ZITI_CTRL_ADVERTISED_PORT'
-ZITI_ROUTER_ADVERTISED_ADDRESS='router.cloud.hong3nguyen.com'
+ZITI_ROUTER_ADVERTISED_ADDRESS='router.edge.hong3nguyen.com'
 ZITI_ROUTER_PORT='3022'
 ZITI_ENROLL_TOKEN='$JWT_FILE'
 ZITI_BOOTSTRAP_CONFIG_ARGS=''
