@@ -135,8 +135,8 @@ provider "google" {
 # ------------------------------
 # Ziti Controller VM
 # ------------------------------
-resource "google_compute_instance" "ziti_controller" {
-  name         = "ziti-controller"
+resource "google_compute_instance" "ziti_controller_router" {
+  name         = "ziti-controller-router"
   machine_type = var.machine_type
   zone         = var.zone
 
@@ -151,7 +151,7 @@ resource "google_compute_instance" "ziti_controller" {
     access_config {}
   }
 
-  metadata_startup_script = file("controller-startup.sh")
+  metadata_startup_script = file("startup.sh")
 
   metadata = {
     ssh-keys = "hong3nguyen:${file("~/.ssh/id_ed25519_2024.pub")}"
@@ -163,30 +163,30 @@ resource "google_compute_instance" "ziti_controller" {
 # ------------------------------
 # Ziti Router VM
 # ------------------------------
-resource "google_compute_instance" "ziti_router" {
-  name         = "ziti-router"
-  machine_type = var.machine_type
-  zone         = var.zone
-
-  boot_disk {
-    initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2204-lts"
-    }
-  }
-
-  network_interface {
-    network       = "default"
-    access_config {}
-  }
-
-  metadata_startup_script = file("router-startup.sh")
-
-  metadata = {
-    ssh-keys = "hong3nguyen:${file("~/.ssh/id_ed25519_2024.pub")}"
-  }
-
-  tags = ["ziti", "router"]
-}
+# resource "google_compute_instance" "ziti_router" {
+#   name         = "ziti-router"
+#   machine_type = var.machine_type
+#   zone         = var.zone
+#
+#   boot_disk {
+#     initialize_params {
+#       image = "ubuntu-os-cloud/ubuntu-2204-lts"
+#     }
+#   }
+#
+#   network_interface {
+#     network       = "default"
+#     access_config {}
+#   }
+#
+#   metadata_startup_script = file("router-startup.sh")
+#
+#   metadata = {
+#     ssh-keys = "hong3nguyen:${file("~/.ssh/id_ed25519_2024.pub")}"
+#   }
+#
+#   tags = ["ziti", "router"]
+#}
 
 # ------------------------------
 # Shared Firewall Rules
@@ -210,7 +210,7 @@ resource "google_compute_firewall" "allow-ziti" {
 
   allow {
     protocol = "tcp"
-    ports    = ["1280", "6262", "10080", "8440-8443"]
+    ports    = ["1280", "443",  "6262", "10080", "8440-8443"]
   }
 
   source_ranges = ["0.0.0.0/0"]
@@ -219,11 +219,11 @@ resource "google_compute_firewall" "allow-ziti" {
 # ------------------------------
 # Outputs
 # ------------------------------
-output "controller_ip" {
-  value = google_compute_instance.ziti_controller.network_interface[0].access_config[0].nat_ip
-}
-
-output "router_ip" {
-  value = google_compute_instance.ziti_router.network_interface[0].access_config[0].nat_ip
-}
-
+# output "controller_ip" {
+#   value = google_compute_instance.ziti_controller.network_interface[0].access_config[0].nat_ip
+# }
+#
+# output "router_ip" {
+#   value = google_compute_instance.ziti_router.network_interface[0].access_config[0].nat_ip
+# }
+#

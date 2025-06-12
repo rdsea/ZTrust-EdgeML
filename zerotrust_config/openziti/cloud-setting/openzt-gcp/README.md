@@ -1,106 +1,84 @@
-# Errors
+#  GCP
 
-- Controller failed to mount: my hypothesis is because the trust-manager init later than the controller so it can't mount the secret. Solution: restart the pod
+## Terraform base
 
-```bash
-kubectl rollout restart -n ziti-controller deployment ziti-controller-minimal1
-```
-
-## Nginx ingress controller
+- setting a VM gcp for openziti 
+- loading basic installation for openZT, but need to add more configuration later (check more doc from [ZT deployment](https://openziti.io/docs/guides/deployments/linux/controller/deploy))
 
 ```bash
-helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx/
-
-# install ingress-nginx
-helm install \
-  --namespace ingress-nginx --create-namespace --generate-name \
-  ingress-nginx/ingress-nginx \
-    --set controller.extraArgs.enable-ssl-passthrough=true
+terraform init 
+terraform init -upgrade
+terraform apply
 ```
 
-## Openziti controller
+## Controller setting
+- copy from ctrl_boostrap.env to /opt/openziti/etc/controller/bootstrap.env
 
-```bash
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.crds.yaml
-kubectl apply -f https://raw.githubusercontent.com/cert-manager/trust-manager/v0.7.0/deploy/crds/trust.cert-manager.io_bundles.yaml
-helm install \
-    --namespace ziti-controller ziti-controller \
-    openziti/ziti-controller \
-    --create-namespace \
-    --values controller-values.yml
+```env
+# the controller's permanent FQDN (required)
+ZITI_CTRL_ADVERTISED_ADDRESS='ctrl.cloud.hong3nguyen.com'
 
-kubectl wait deployments "ziti-controller" \
-   --namespace ziti-controller \
-   --for condition=Available=True \
-   --timeout=240s
-```
+# the controller's advertised and listening port (default: 1280)
+ZITI_CTRL_ADVERTISED_PORT='1280'
 
-- Update the DNS to resolve to the advertisedHost by adding (this adds DNS query forwarder for name like \*.example.com)
+# name of the default user (default: admin)
+ZITI_USER='admin'
 
-```
-    example.com:53 {
-       errors
-       cache 30
-       forward . 192.168.49.2
-    }
+# password will be scrubbed from this file after creating default admin during database initialization
+ZITI_PWD='admin'
+
+# additional arguments to: ziti create config controller
+ZITI_BOOTSTRAP_CONFIG_ARGS=''
 ```
 
 ```bash
-kubectl edit configmap "coredns" \
-   --namespace kube-system
+sudo /opt/openziti/etc/controller/bootstrap.bash
+
+sudo systemctl enable --now ziti-controller.service
+
+sudo ss -tlnp | grep ziti
 ```
 
-## Ziti cli login
-
-- Add the following to `/etc/hosts` of your client
-
-```
-<controller-client-external-ip> ziti-controller-managed.example.com
-```
-
-- Login to the controller
-
+- Using a ZT console to connect 
+  - edit /etc/hosts file with 
 ```bash
-ziti edge login ziti-controller-managed.example.com \
-    --yes \
-    --username admin \
-    --password $(
-        kubectl -n ziti-controller \
-            get secrets ziti-controller-admin-secret \
-                -o go-template='{{index .data "admin-password" | base64decode }}'
-        )
+echo "<Public_IP_VM> ctrl.cloud.hong3nguyen.com" | sudo tee -a /etc/hosts
+
+# if using the VM machine
+echo "127.0.0.1 ctrl.cloud.hong3nguyen.com" | sudo tee -a /etc/hosts
+
+```
+- login with the command:
+> ziti edge login https://ctrl.cloud.hong3nguyen.com:1280
+
+## Router setting
+- generate a JWT token for the router
+```bash
+ziti edge create edge-router "router_cloud" \
+    --jwt-output-file router_cloud.jwt \
+    --tunneler-enabled
 ```
 
-## Openziti router
+- edit the configuration file
 
-```bash
-ziti edge create edge-router "router1" \
-  --role-attributes "public-routers" \
-  --tunneler-enabled --jwt-output-file /tmp/router1.jwt
+```env
+# the controller's DNS name (required)
+ZITI_CTRL_ADVERTISED_ADDRESS='ctrl.cloud.hong3nguyen.com'
 
-helm upgrade --install \
-  "ziti-router-123456789" \
-  openziti/ziti-router \
-    --set-file enrollmentJwt=/tmp/router1.jwt \
-    --values router-values.yml
-```
+# the controller's port (default: 1280)
+ZITI_CTRL_ADVERTISED_PORT='1280'
 
-## Get admin password
+# this router's DNS name or IP address (default: localhost)
+ZITI_ROUTER_ADVERTISED_ADDRESS='router.cloud.hong3nguyen.com'
 
-```bash
-kubectl get secrets "ziti-controller-admin-secret" \
-   --namespace ziti-controller \
-   --output go-template='{{"\nINFO: Your console https://ziti-controller-managed.example.com/zac/ password for \"admin\" is: "}}{{index .data "admin-password" | base64decode }}{{"\n\n"}}'
-```
+# this router's port (default: 3022), if <= 1024, then grant the NET_BIND_SERVICE ambient capability in
+# /etc/systemd/system/ziti-router.service.d/override.conf
+ZITI_ROUTER_PORT='3022'
 
-## Create and enroll identity, configuration, service, and policies
+# token will be scrubbed from this file after enrollment
+ZITI_ENROLL_TOKEN='/home/hong3nguyen/router_cloud.jwt'
 
-```bash
-./create_identity_services.sh
-```
-
-## Create tunnel for client
-
-```bash
-sudo ziti-edge-tunnel run -i  /tmp/object-detection-client.json
+# additional arguments to:
+#  ziti create config ${ZITI_ROUTER_TYPE:-edge} --tunnelerMode ${ZITI_ROUTER_MODE:-host}
+ZITI_BOOTSTRAP_CONFIG_ARGS=''
 ```
