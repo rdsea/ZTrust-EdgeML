@@ -88,6 +88,9 @@ ZITI_BOOTSTRAP_CONFIG_ARGS=''
 - update the PUBLIC_IP from the controller and the router of the cloud
 
 ```bash
+
 chmod +x startup_edgerouter
 sudo ./startup_edgerouter.sh
+
+sudo ss -tlnp | grep ziti
 ```
