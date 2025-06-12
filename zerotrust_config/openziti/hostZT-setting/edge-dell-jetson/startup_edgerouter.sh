@@ -2,15 +2,15 @@
 
 set -e
 
-export PUBLIC_IP=""
+export CLOUD_IP=""
+export EDGE_IP=""
+
 CURRENT_DIR=$(pwd)
 
 # Install dependencies
 #
 # Download Ziti binaries
 curl -sS https://get.openziti.io/install.bash | sudo bash -s openziti-router
-
-curl -sS https://get.openziti.io/install.bash | sudo bash -s openziti-console
 
 # ----------- Set variables -----------
 export ZITI_HOME="/opt/openziti"
@@ -19,10 +19,12 @@ export ZITI_CTRL_ADVERTISED_PORT="1280"
 export ZITI_USER="admin"
 export ZITI_PWD="admin"
 export ZITI_BOOTSTRAP_CONFIG_ARGS=""
+export ZITI_ROUTER_ADVERTISED_ADDRESS="router.cloud.hong3nguyen.com"
 
 # ----------- Add DNS entry for hostname resolution -----------
-echo "$PUBLIC_IP ctrl.cloud.hong3nguyen.com" >>/etc/hosts
-echo "$PUBLIC_IP router.cloud.hong3nguyen.com" >>/etc/hosts
+echo "$CLOUD_IP ctrl.cloud.hong3nguyen.com" >>/etc/hosts
+echo "$CLOUD_IP router.cloud.hong3nguyen.com" >>/etc/hosts
+echo "$EDGE_IP router.edge.hong3nguyen.com" >>/etc/hosts
 
 export JWT_FILE="${CURRENT_DIR}/router_edge.jwt"
 

@@ -1,4 +1,4 @@
-#  GCP
+# ZT
 
 ## Terraform base
 
@@ -83,6 +83,8 @@ ZITI_ENROLL_TOKEN='/home/hong3nguyen/router_cloud.jwt'
 ZITI_BOOTSTRAP_CONFIG_ARGS=''
 ```
 
+# Edge
+
 ## setting router at the edge
 - execute startup_edgerouter.sh on the machine presenting the router
 - update the PUBLIC_IP from the controller and the router of the cloud
@@ -94,3 +96,14 @@ sudo ./startup_edgerouter.sh
 
 sudo ss -tlnp | grep ziti
 ```
+
+# Application
+
+
+## GCP
+
+
+## Edge
+
+
+## Sensor
