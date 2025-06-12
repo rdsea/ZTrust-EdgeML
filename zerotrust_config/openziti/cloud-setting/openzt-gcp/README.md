@@ -86,3 +86,8 @@ ZITI_BOOTSTRAP_CONFIG_ARGS=''
 ## setting router at the edge
 - execute startup_edgerouter.sh on the machine presenting the router
 - update the PUBLIC_IP from the controller and the router of the cloud
+
+```bash
+chmod +x startup_edgerouter
+sudo ./startup_edgerouter.sh
+```
