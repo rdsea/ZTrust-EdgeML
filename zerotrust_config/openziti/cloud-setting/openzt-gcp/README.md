@@ -11,7 +11,7 @@ terraform init -upgrade
 terraform apply
 ```
 
-## Controller setting
+## Controller setting along with router at cloud
 - copy from ctrl_boostrap.env to /opt/openziti/etc/controller/bootstrap.env
 
 ```env
@@ -82,3 +82,7 @@ ZITI_ENROLL_TOKEN='/home/hong3nguyen/router_cloud.jwt'
 #  ziti create config ${ZITI_ROUTER_TYPE:-edge} --tunnelerMode ${ZITI_ROUTER_MODE:-host}
 ZITI_BOOTSTRAP_CONFIG_ARGS=''
 ```
+
+## setting router at the edge
+- execute startup_edgerouter.sh on the machine presenting the router
+- update the PUBLIC_IP from the controller and the router of the cloud
