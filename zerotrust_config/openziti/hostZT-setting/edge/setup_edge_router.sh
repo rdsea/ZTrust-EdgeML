@@ -2,22 +2,40 @@
 
 set -e
 
-export CLOUD_IP=""
-export EDGE_IP=""
+# export CLOUD_IP=""
+# export EDGE_IP=""
 
 CURRENT_DIR=$(pwd)
 
+echo "EDGE ROUTER ----------------------------"
 # Install dependencies
 #
 # Download Ziti binaries
-curl -sS https://get.openziti.io/install.bash | sudo bash -s openziti-router
+#curl -sS https://get.openziti.io/install.bash | sudo bash -s openziti-router
+if ! command -v ziti &>/dev/null; then
+  echo "'ziti' CLI not found — installing..."
+  curl -sS https://get.openziti.io/install.bash | sudo bash -s openziti-router
+else
+  echo "'ziti' CLI is already installed — skipping installation."
+fi
 
+# Check if ziti-edge-tunnel is installed
 apt install curl gpg -y
-curl -sSLf https://get.openziti.io/tun/package-repos.gpg | gpg --dearmor --output /usr/share/keyrings/openziti.gpg
-chmod -c +r /usr/share/keyrings/openziti.gpg
-echo "deb [signed-by=/usr/share/keyrings/openziti.gpg] https://packages.openziti.org/zitipax-openziti-deb-stable jammy main" | tee /etc/apt/sources.list.d/openziti.list >/dev/null
-apt update
-apt install -y ziti-edge-tunnel
+# curl -sSLf https://get.openziti.io/tun/package-repos.gpg | gpg --dearmor --output /usr/share/keyrings/openziti.gpg
+# chmod -c +r /usr/share/keyrings/openziti.gpg
+# echo "deb [signed-by=/usr/share/keyrings/openziti.gpg] https://packages.openziti.org/zitipax-openziti-deb-stable jammy main" | tee /etc/apt/sources.list.d/openziti.list >/dev/null
+# apt update
+# apt install -y ziti-edge-tunnel
+if ! command -v ziti-edge-tunnel &>/dev/null; then
+  echo "'ziti-edge-tunnel' not found — installing..."
+  curl -sSLf https://get.openziti.io/tun/package-repos.gpg | gpg --batch --yes --dearmor --output /usr/share/keyrings/openziti.gpg
+  chmod -c +r /usr/share/keyrings/openziti.gpg
+  echo "deb [signed-by=/usr/share/keyrings/openziti.gpg] https://packages.openziti.org/zitipax-openziti-deb-stable jammy main" | tee /etc/apt/sources.list.d/openziti.list >/dev/null
+  apt update
+  apt install -y ziti-edge-tunnel
+else
+  echo "'ziti-edge-tunnel' is already installed — skipping installation."
+fi
 
 # ----------- Set variables -----------
 export ZITI_HOME="/opt/openziti"
@@ -63,4 +81,5 @@ ${ZITI_HOME}/bin/ziti edge create identity "loadbalancer" \
 
 ${ZITI_HOME}/bin/ziti edge enroll --jwt /tmp/loadbalancer.jwt --out /tmp/loadbalancer.json
 
-ziti-edge-tunnel run -i /tmp/loadbalancer.json
+# ziti-edge-tunnel run -i /tmp/loadbalancer.json
+nohup ziti-edge-tunnel run -i /tmp/loadbalancer.json >/var/log/ziti-edge-tunnel.log 2>&1 &

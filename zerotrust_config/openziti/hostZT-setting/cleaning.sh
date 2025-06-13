@@ -13,3 +13,7 @@ sed -i '/router\.cloud\.hong3nguyen\.com/d' /etc/hosts
 sed -i '/router\.edge\.hong3nguyen\.com/d' /etc/hosts
 
 echo "Removed OpenZiti DNS entries from /etc/hosts"
+
+# ziti-edge-tunnel pkill
+pkill -f ziti-edge-tunnel
+echo "Shutdown running ziti-edge-tunnel"

@@ -219,9 +219,9 @@ resource "google_compute_firewall" "allow-ziti" {
 # ------------------------------
 # Outputs
 # ------------------------------
-# output "controller_ip" {
-#   value = google_compute_instance.ziti_controller.network_interface[0].access_config[0].nat_ip
-# }
+output "controller_ip" {
+  value = google_compute_instance.ziti_controller_router.network_interface[0].access_config[0].nat_ip
+}
 #
 # output "router_ip" {
 #   value = google_compute_instance.ziti_router.network_interface[0].access_config[0].nat_ip

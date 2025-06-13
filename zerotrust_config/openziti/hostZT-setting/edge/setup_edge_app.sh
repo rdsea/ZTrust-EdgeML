@@ -2,13 +2,23 @@
 
 set -e
 
-export CLOUD_IP=""
-export EDGE_IP=""
+# export CLOUD_IP=""
+# export EDGE_IP=""
 
-CURRENT_DIR=$(pwd)
+CURRENT_DIR=$(pwd)/hong3nguyen
+
+echo $CURRENT_DIR
+
+echo "EDGE APPLICATION ----------------------------------------------"
 
 # Download Ziti binaries
-curl -sS https://get.openziti.io/install.bash | sudo bash -s openziti-router
+# Check if 'ziti' CLI exists
+if ! command -v ziti &>/dev/null; then
+  echo "'ziti' CLI not found — installing..."
+  curl -sS https://get.openziti.io/install.bash | sudo bash -s openziti-router
+else
+  echo "'ziti' CLI is already installed — skipping installation."
+fi
 
 # ----------- Set variables -----------
 export ZITI_HOME="/opt/openziti"
@@ -25,17 +35,17 @@ echo "$CLOUD_IP router.cloud.hong3nguyen.com" >>/etc/hosts
 echo "$EDGE_IP router.edge.hong3nguyen.com" >>/etc/hosts
 
 # prepare docker-compose file
-envsubst <docker-compose.template.yml >docker-compose.yml
+envsubst <"$CURRENT_DIR/docker-compose.template.yml" >"$CURRENT_DIR/docker-compose.yml"
 
-docker compose -f docker-compose.yml down --volumes
+docker compose -f $CURRENT_DIR/docker-compose.yml down --volumes
 
 ${ZITI_HOME}/bin/ziti edge login https://${ZITI_CTRL_ADVERTISED_ADDRESS}:1280 --yes --username admin --password admin
 
-sudo rm -f /tmp/*.json
+sudo rm -rf /tmp/*.json
 
-sudo rm -f /tmp/*.jwt
+sudo rm -rf /tmp/*.jwt
 
 # login and enroll to /tmp/
-./create_id_entities.sh
+$CURRENT_DIR/create_id_entities.sh
 
-docker compose -f docker-compose.yml up -d
+docker compose -f $CURRENT_DIR/docker-compose.yml up -d

@@ -53,7 +53,7 @@ export JWT_FILE="${CURRENT_DIR}/router_cloud.jwt"
 ${ZITI_HOME}/bin/ziti edge login https://$ZITI_CTRL_ADVERTISED_ADDRESS:$ZITI_CTRL_ADVERTISED_PORT --yes -u $ZITI_USER -p $ZITI_PWD
 
 ${ZITI_HOME}/bin/ziti edge create edge-router router_cloud \
-  --jwt-output-rile "$JWT_FILE" \
+  --jwt-output-file "$JWT_FILE" \
   --tunneler-enabled
 
 # ----------- (Optional) Write router bootstrap.env -----------
@@ -68,4 +68,5 @@ EOF
 
 # enroll
 ${ZITI_HOME}/etc/router/bootstrap.bash
+
 systemctl enable --now ziti-router.service

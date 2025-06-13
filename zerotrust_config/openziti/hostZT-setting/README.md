@@ -1,6 +1,14 @@
 # ZT
 ![Figure to show the setting](ZThost_setting.svg)
 
+### Note and prepare for setting
+```bash
+ssh-copy-id -i ~/.ssh/<public_key> <user>@<device IP>
+
+ssh <username>@$(terraform output -raw controller_ip)  
+
+sudo ss -tlnp | grep ziti
+```
 ## Terraform base
 
 - setting a VM gcp for openziti 

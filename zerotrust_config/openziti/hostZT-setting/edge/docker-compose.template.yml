@@ -5,8 +5,8 @@ services:
   preprocessing-service:
     image: rdsea/preprocessing_ziti:latest
     container_name: preprocessing-service
-    # ports:
-    #   - 5010:5010
+    ports:
+      - 5010:5010
     #   - 5201:5201 #for iperf testing
     #working_dir: /web-server
     cap_add:
@@ -24,8 +24,8 @@ services:
   ensemble:
     image: rdsea/ensemble_ziti:latest
     container_name: ensemble
-    # ports:
-    #   - 5011:5011
+    ports:
+      - 5011:5011
     #   - 5202:5202 #for iperf testing
     #working_dir: /proc-server
     cap_add:

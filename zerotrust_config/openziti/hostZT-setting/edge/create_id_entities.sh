@@ -1,18 +1,18 @@
 #!/bin/bash
 
-ziti edge create identity "object-detection-client" \
+ziti edge create identity "object-detection-client-$(cat /etc/hostname)" \
   --jwt-output-file /tmp/object-detection-client.jwt --role-attributes object-detection-client
 
-ziti edge create identity "preprocessing" \
+ziti edge create identity "preprocessing-$(cat /etc/hostname)" \
   --jwt-output-file /tmp/preprocessing.jwt --role-attributes preprocessing
 
-ziti edge create identity "ensemble" \
+ziti edge create identity "ensemble-$(cat /etc/hostname)" \
   --jwt-output-file /tmp/ensemble.jwt --role-attributes ensemble
 
-ziti edge create identity "mobilenetv2" \
+ziti edge create identity "mobilenetv2-$(cat /etc/hostname)" \
   --jwt-output-file /tmp/mobilenetv2.jwt --role-attributes mobilenetv2
 
-ziti edge create identity "efficientnetb0" \
+ziti edge create identity "efficientnetb0"-$(cat /etc/hostname) \
   --jwt-output-file /tmp/efficientnetb0.jwt --role-attributes efficientnetb0
 
 ziti edge enroll --jwt /tmp/object-detection-client.jwt --out /tmp/object-detection-client.json
