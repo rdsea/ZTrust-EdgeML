@@ -106,13 +106,19 @@ sudo ./startup_edgerouter.sh
 sudo ss -tlnp | grep ziti
 ```
 
-# Application
+# Sum up
+- edit IP address from cloud, edge router, edge application, and sensors
+```bash
+CTRL_IP=$(cd cloud-gcp && terraform output -raw controller_ip)
+CLOUD_ROUTER_IP=$(cd cloud-gcp && terraform output -raw controller_ip)
 
+EDGE_ROUTER_IP=""
+EDGE_APP_IP=""
+SENSOR_IP_2=""
+SENSOR_IP_1=""
+```
 
-## GCP
-
-
-## Edge
-
-
-## Sensor
+- run
+```bash
+./script_settup_sensor_edge.sh
+```
