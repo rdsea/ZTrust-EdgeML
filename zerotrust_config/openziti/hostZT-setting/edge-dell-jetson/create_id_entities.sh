@@ -1,4 +1,5 @@
 #!/bin/bash
+
 ziti edge create identity "object-detection-client" \
   --jwt-output-file /tmp/object-detection-client.jwt --role-attributes object-detection-client
 
@@ -24,6 +25,12 @@ ziti edge enroll --jwt /tmp/mobilenetv2.jwt --out /tmp/mobilenetv2.json
 
 ziti edge enroll --jwt /tmp/efficientnetb0.jwt --out /tmp/efficientnetb0.json
 
+### add loadbalancer jwt and json
+# ziti edge create identity "loadbalancer" \
+#   --jwt-output-file /tmp/loadbalancer.jwt --role-attributes loadbalancer
+#
+# ziti edge enroll --jwt /tmp/loadbalancer.jwt --out /tmp/loadbalancer.json
+
 # kubectl create secret generic "preprocessing-sidecar-client-identity" \
 #   --from-file=/tmp/preprocessing.json
 #
@@ -36,21 +43,52 @@ ziti edge enroll --jwt /tmp/efficientnetb0.jwt --out /tmp/efficientnetb0.json
 # kubectl create secret generic "efficientnetb0-sidecar-client-identity" \
 #   --from-file=/tmp/efficientnetb0.json
 
-# Client to preprocessing
+# ziti edge create config "client-intercept-config" intercept.v1 \
+#   '{"protocols":["tcp"],"addresses":["preprocessing.ziti-controller.private"], "portRanges":[{"low":5010, "high":5010}]}'
+#
+# ziti edge create config "preprocessing-host-config" host.v1 \
+#   '{"protocol":"tcp", "address":"localhost","port":5010}'
+#
+# ziti edge create service "preprocessing-service" \
+#   --configs client-intercept-config,preprocessing-host-config
+#
+# ziti edge create service-policy "preprocessing-bind-policy" Bind \
+#   --service-roles '@preprocessing-service' --identity-roles '#preprocessing'
+#
+# ziti edge create service-policy "preprocessing-dial-policy" Dial \
+#   --service-roles '@preprocessing-service' --identity-roles '#object-detection-client'
+
+# Client to loadbalancer
 ziti edge create config "client-intercept-config" intercept.v1 \
+  '{"protocols":["tcp"],"addresses":["loadbalancer.ziti-controller.private"], "portRanges":[{"low":5009, "high":5009}]}'
+
+ziti edge create config "loadbalancer-host-config" host.v1 \
+  '{"protocol":"tcp", "address":"localhost","port":5009}'
+
+ziti edge create service "loadbalancer-service" \
+  --configs client-intercept-config,loadbalancer-host-config
+
+ziti edge create service-policy "loadbalancer-bind-policy" Bind \
+  --service-roles '@loadbalancer-service' --identity-roles '#loadbalancer'
+
+ziti edge create service-policy "loadbalancer-dial-policy" Dial \
+  --service-roles '@loadbalancer-service' --identity-roles '#object-detection-client'
+
+# loadbalancer to preprocessing
+ziti edge create config "loadbalancer-intercept-config" intercept.v1 \
   '{"protocols":["tcp"],"addresses":["preprocessing.ziti-controller.private"], "portRanges":[{"low":5010, "high":5010}]}'
 
 ziti edge create config "preprocessing-host-config" host.v1 \
   '{"protocol":"tcp", "address":"localhost","port":5010}'
 
 ziti edge create service "preprocessing-service" \
-  --configs client-intercept-config,preprocessing-host-config
+  --configs loadbalancer-intercept-config,preprocessing-host-config
 
 ziti edge create service-policy "preprocessing-bind-policy" Bind \
   --service-roles '@preprocessing-service' --identity-roles '#preprocessing'
 
 ziti edge create service-policy "preprocessing-dial-policy" Dial \
-  --service-roles '@preprocessing-service' --identity-roles '#object-detection-client'
+  --service-roles '@preprocessing-service' --identity-roles '#loadbalancer'
 
 # Preprocessing to ensemble
 ziti edge create config "preprocessing-intercept-config" intercept.v1 \

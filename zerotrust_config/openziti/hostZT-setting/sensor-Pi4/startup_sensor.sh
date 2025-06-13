@@ -33,34 +33,12 @@ echo "$CLOUD_IP ctrl.cloud.hong3nguyen.com" >>/etc/hosts
 echo "$CLOUD_IP router.cloud.hong3nguyen.com" >>/etc/hosts
 echo "$EDGE_IP router.edge.hong3nguyen.com" >>/etc/hosts
 
-export JWT_FILE="${CURRENT_DIR}/router_edge.jwt"
-
 # -----------Generate edge router token and config (not enrolled yet) -----------
 ${ZITI_HOME}/bin/ziti edge login https://$ZITI_CTRL_ADVERTISED_ADDRESS:$ZITI_CTRL_ADVERTISED_PORT --yes -u $ZITI_USER -p $ZITI_PWD
 
-${ZITI_HOME}/bin/ziti edge create edge-router router_edge \
-  --jwt-output-file "$JWT_FILE" \
-  --tunneler-enabled
+ziti edge create identity "object-detection-client-ras" \
+  --jwt-output-file /tmp/object-detection-client.jwt --role-attributes object-detection-client
 
-# ----------- (Optional) Write router bootstrap.env -----------
-cat <<EOF >${ZITI_HOME}/etc/router/bootstrap.env
-ZITI_CTRL_ADVERTISED_ADDRESS='$ZITI_CTRL_ADVERTISED_ADDRESS'
-ZITI_CTRL_ADVERTISED_PORT='$ZITI_CTRL_ADVERTISED_PORT'
-ZITI_ROUTER_ADVERTISED_ADDRESS='router.edge.hong3nguyen.com'
-ZITI_ROUTER_PORT='3022'
-ZITI_ENROLL_TOKEN='$JWT_FILE'
-ZITI_BOOTSTRAP_CONFIG_ARGS=''
-EOF
+ziti edge enroll --jwt /tmp/object-detection-client.jwt --out /tmp/object-detection-client.json
 
-# enroll
-${ZITI_HOME}/etc/router/bootstrap.bash
-
-systemctl enable --now ziti-router.service
-
-# ---------------register and enroll ZT tunnel for nginx ------------------
-${ZITI_HOME}/bin/ziti edge create identity "loadbalancer" \
-  --jwt-output-file /tmp/loadbalancer.jwt --role-attributes loadbalancer
-
-${ZITI_HOME}/bin/ziti edge enroll --jwt /tmp/loadbalancer.jwt --out /tmp/loadbalancer.json
-
-ziti-edge-tunnel run -i /tmp/loadbalancer.json
+ziti-edge-tunnel run -i /tmp/object-detection-client.json
