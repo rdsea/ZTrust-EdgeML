@@ -1,4 +1,5 @@
 # ZT
+![Figure to show the setting](ZThost_setting.svg)
 
 ## Terraform base
 
