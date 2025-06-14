@@ -27,8 +27,8 @@ spec:
           ports:
             - containerPort: 5011
           env:
-            - name: MANUAL_TRACING
-              value: "false"
+            # - name: MANUAL_TRACING
+            #   value: "false"
             - name: OTEL_ENDPOINT
               value: "http://jaeger-collector.observe.svc.cluster.local:4318/v1/traces"
             - name: SEND_TO_QUEUE

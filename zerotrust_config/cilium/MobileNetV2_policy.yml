@@ -5,11 +5,11 @@ metadata:
 spec:
   endpointSelector:
     matchLabels:
-      app: mobilenetv2
+      app: mobilenetv2-service
   ingress:
     - fromEndpoints:
         - matchLabels:
-            app: ensemble
+            app: ensemble-service
     - toPorts:
         - ports:
             - port: "5012"

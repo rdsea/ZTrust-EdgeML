@@ -9,7 +9,7 @@ spec:
   ingress:
     - fromEndpoints:
         - matchLabels:
-            app: preprocessing
+            app: preprocessing-service
     - toPorts:
         - ports:
             - port: "5011"
@@ -22,13 +22,13 @@ metadata:
 spec:
   endpointSelector:
     matchLabels:
-      app: ensemble
+      app: ensemble-service
   egress:
     - toEndpoints:
         - matchLabels:
-            app: mobilenetv2
+            app: mobilenetv2-service
         - matchLabels:
-            app: efficientnetb0
+            app: efficientnetb0-service
     - toPorts:
         - ports:
             - port: "5012"

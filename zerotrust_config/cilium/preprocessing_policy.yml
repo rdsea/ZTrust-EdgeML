@@ -21,11 +21,11 @@ metadata:
 spec:
   endpointSelector:
     matchLabels:
-      app: preprocessing
+      app: preprocessing-service
   egress:
     - toEndpoints:
         - matchLabels:
-            app: ensemble
+            app: ensemble-service
     - toPorts:
         - ports:
             - port: "5011"

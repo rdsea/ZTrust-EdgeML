@@ -5,11 +5,11 @@ metadata:
 spec:
   endpointSelector:
     matchLabels:
-      app: efficientnetb0
+      app: efficientnetb0-service
   ingress:
     - fromEndpoints:
         - matchLabels:
-            app: ensemble
+            app: ensemble-service
     - toPorts:
         - ports:
             - port: "5012"
