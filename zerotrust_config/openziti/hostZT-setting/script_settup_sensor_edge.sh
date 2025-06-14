@@ -6,6 +6,10 @@ CLOUD_ROUTER_IP=$(cd cloud-gcp && terraform output -raw controller_ip)
 MESSAGEQ_IP=$(cd cloud-gcp && terraform output -raw messageq_ip)
 
 # Load .env
+# EDGE_ROUTER_IP=""
+# EDGE_APP_IP=""
+# SENSOR_IP_1=""
+# SENSOR_IP_2=""
 # # Enable auto export
 if [ -f .env ]; then
   set -a
