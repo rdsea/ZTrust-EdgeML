@@ -1,5 +1,6 @@
 ziti-deployment-sample/artifacts/*
 
+.env
 *.onnx
 *.JPEG
 

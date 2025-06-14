@@ -8,6 +8,10 @@ ssh-copy-id -i ~/.ssh/<public_key> <user>@<device IP>
 ssh <username>@$(terraform output -raw controller_ip)  
 
 sudo ss -tlnp | grep ziti
+
+# check policy
+ziti edge policy-advisor identities -q
+
 ```
 ## Terraform base
 
@@ -107,6 +111,13 @@ sudo ss -tlnp | grep ziti
 ```
 
 # Sum up
+- cloud setting
+```bash
+cd cloud-gcp
+
+terraform apply
+
+```
 - edit IP address from cloud, edge router, edge application, and sensors
 ```bash
 CTRL_IP=$(cd cloud-gcp && terraform output -raw controller_ip)

@@ -143,3 +143,16 @@ ziti edge create edge-router-policy "public-routers" \
 
 ziti edge create service-edge-router-policy "public-routers" \
   --edge-router-roles '#public-routers' --service-roles '#all'
+
+# policy router edge
+
+#ziti edge update edge-router routerCloud  -a 'cloud'
+# assigne atribute to the router
+ziti edge update edge-router router_edge -a 'edge'
+
+# edge router policy
+ziti edge create edge-router-policy allow.edge --edge-router-roles '#edge' --identity-roles '#edge'
+
+ziti edge create edge-router-policy edge-only-routing \
+  --identity-roles "#edge-only" \
+  --edge-router-roles "#edge"

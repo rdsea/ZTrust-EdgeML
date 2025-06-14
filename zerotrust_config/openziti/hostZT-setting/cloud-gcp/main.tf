@@ -69,11 +69,11 @@ resource "google_compute_instance" "ziti_controller_router" {
 #}
 
 # ------------------------------
-# Application (MessageQ and Database)
+# Application (MessageQ)
 # ------------------------------
 
-resource "google_compute_instance" "MessageQ-DB" {
-  name         = "cloud-messageq-db"
+resource "google_compute_instance" "message_q" {
+  name         = "cloud-messageq"
   machine_type = var.machine_type
   zone         = var.zone
 
@@ -88,15 +88,54 @@ resource "google_compute_instance" "MessageQ-DB" {
     access_config {}
   }
 
-  metadata_startup_script = file("startup.sh")
+  # metadata_startup_script = file("setup_cloud_messageq.sh")
+
+  metadata_startup_script = templatefile("setup_cloud_messageq.sh.tmpl", {
+    ziti_edge_controller_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
+    ziti_edge_router_ip     = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
+  })
 
   metadata = {
     ssh-keys = "hong3nguyen:${file("~/.ssh/id_ed25519_2024.pub")}"
   }
 
-  tags = ["cloud-app", "ziti-app"]
+  #depends_on = [google_compute_instance.ziti_edge_controller]
+
+  tags = ["cloud-messageq", "ziti-app"]
 }
 
+# ------------------------------
+# Application (Database)
+# ------------------------------
+resource "google_compute_instance" "database" {
+  name         = "cloud-db"
+  machine_type = var.machine_type
+  zone         = var.zone
+
+  boot_disk {
+    initialize_params {
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
+    }
+  }
+
+  network_interface {
+    network       = "default"
+    access_config {}
+  }
+
+  #metadata_startup_script = file("setup_cloud_db.sh")
+
+  metadata_startup_script = templatefile("setup_cloud_db.sh.tmpl", {
+    ziti_edge_controller_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
+    ziti_edge_router_ip     = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
+  })
+
+  metadata = {
+    ssh-keys = "hong3nguyen:${file("~/.ssh/id_ed25519_2024.pub")}"
+  }
+
+  tags = ["cloud-db", "ziti-app"]
+}
 # ------------------------------
 # Shared Firewall Rules
 # ------------------------------
@@ -130,6 +169,9 @@ resource "google_compute_firewall" "allow-ziti" {
 # ------------------------------
 output "controller_ip" {
   value = google_compute_instance.ziti_controller_router.network_interface[0].access_config[0].nat_ip
+}
+output "messageq_ip" {
+  value = google_compute_instance.message_q.network_interface[0].access_config[0].nat_ip
 }
 #
 # output "router_ip" {
