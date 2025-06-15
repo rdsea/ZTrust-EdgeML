@@ -1,0 +1,16 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-ensemble-to-mobilenetv2
+spec:
+  endpointSelector:
+    matchLabels:
+      app: mobilenetv2-service
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app: ensemble-service
+    - toPorts:
+        - ports:
+            - port: "5012"
+              protocol: TCP
