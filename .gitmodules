@@ -1,0 +1,4 @@
+[submodule "applications/machine_learning/object_classification_v2"]
+	path = applications/machine_learning/object_classification_v2
+	url = git@hong3nguyen:rdsea/object_classification_v2.git
+  branch = ziti
