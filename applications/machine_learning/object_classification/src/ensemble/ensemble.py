@@ -72,13 +72,20 @@ def get_inference_service_url_docker(ensemble_chosen: list[str]):
 
 def get_inference_service_url_openziti(ensemble_chosen: list[str]):
     return [
-        f"http://{item.lower()}.miniziti.private:5012/inference"
+        f"http://{item.lower()}.ziti-controller.private:5012/inference"
         for item in ensemble_chosen
     ]
 
 
 def get_rabbitmq_connection_url(config: dict):
     rabbitmq_url = config["rabbitmq"]["url"]  # Example config
+    username = config["rabbitmq"]["username"]
+    password = config["rabbitmq"]["password"]
+    return f"amqp://{username}:{password}@{rabbitmq_url}"
+
+
+def get_rabbitmq_connection_url_openziti(config: dict):
+    rabbitmq_url = f"config["rabbitmq"]["url"].ziti-controller.private"  # Example config
     username = config["rabbitmq"]["username"]
     password = config["rabbitmq"]["password"]
     return f"amqp://{username}:{password}@{rabbitmq_url}"
@@ -92,6 +99,11 @@ if os.environ.get("OPENZITI"):
     INFERENCE_SERVICE_URLS = get_inference_service_url_openziti(config["ensemble"])
 
 RABBITMQ_URL = get_rabbitmq_connection_url(config)
+if os.environ.get("DOCKER"):
+    RABBITMQ_URL = get_rabbitmq_connection_url(config)
+
+if os.environ.get("OPENZITI"):
+    RABBITMQ_URL = get_rabbitmq_connection_url_openziti(config)
 
 
 @asynccontextmanager

@@ -77,10 +77,10 @@ systemctl enable --now ziti-router.service
 
 # ensemble to messageQ
 ziti edge create config "ensemble" intercept.v1 \
-  '{"protocols":["tcp"],"addresses":["ensemble.ziti-controller.private"], "portRanges":[{"low":5672, "high":5672}]}'
+  '{"protocols":["tcp"],"addresses":["rabbitmq.ziti-controller.private"], "portRanges":[{"low":5672, "high":5672}]}'
 
 ziti edge create config "message-queue" host.v1 \
-  '{"protocol":"tcp", "address":"message-queue.ziti-controller.private","port":5672}'
+  '{"protocol":"tcp", "address":"rabbitmq.ziti-controller.private","port":5672}'
 
 ziti edge create service "message-queue-service" \
   --configs ensemble-intercept-message-queue-config,message-queue-host-config
@@ -95,7 +95,7 @@ ziti edge create service-policy "ensemble-dial-policy" Dial \
 
 # messageQ to database
 ziti edge create config "message-queue" intercept.v1 \
-  '{"protocols":["tcp"],"addresses":["message-queue.ziti-controller.private"], "portRanges":[{"low":27017, "high":27017}]}'
+  '{"protocols":["tcp"],"addresses":["database.ziti-controller.private"], "portRanges":[{"low":27017, "high":27017}]}'
 
 ziti edge create config "database" host.v1 \
   '{"protocol":"tcp", "address":"database.ziti-controller.private","port":27017}'
