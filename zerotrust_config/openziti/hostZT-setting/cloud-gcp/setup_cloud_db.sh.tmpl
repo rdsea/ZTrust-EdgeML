@@ -34,7 +34,39 @@ net:
   bindIp: 0.0.0.0
 EOF
 
+# Variables
+MONGO_ADMIN_USER="admin"
+MONGO_ADMIN_PASS="ChangeMeStrongPassword"
+
+
+# 3. Wait until mongod is ready
+echo "Waiting for MongoDB to start..."
+until mongosh --eval "print(\"waited for connection\")"; do
+  sleep 2
+done
+
+# 4. Create the admin user if it doesn't exist
+echo "Creating admin user..."
+mongosh <<EOF
+use admin
+db.createUser({
+  user: "$MONGO_ADMIN_USER",
+  pwd: "$MONGO_ADMIN_PASS",
+  roles: [ { role: "userAdminAnyDatabase", db: "admin" } ]
+})
+EOF
+
+echo "Admin user created: $MONGO_ADMIN_USER"
+
+# 5. Enable authentication in mongod.conf if not already set
+echo "Enabling authorization..."
+sudo sed -i '/^#*security:/a\  authorization: enabled' /etc/mongod.conf
+
+# 6. Restart mongod to apply changes
 sudo systemctl restart mongod
+
+echo "MongoDB setup complete with authentication enabled!"
+
 
 ####################################
 #    add /etc/hosts
