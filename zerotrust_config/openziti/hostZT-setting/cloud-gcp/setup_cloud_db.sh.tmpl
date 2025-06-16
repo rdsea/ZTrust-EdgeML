@@ -19,6 +19,23 @@ sudo systemctl daemon-reload
 
 sudo systemctl enable mongod
 
+
+####################################
+#    Config MongoDB
+####################################
+# Create RabbitMQ config directory
+sudo mkdir -p /etc/rabbitmq
+
+# Write rabbitmq.conf
+sudo tee /etc/mongod.conf >/dev/null <<EOF
+# BEGIN rabbitmq.conf
+# Paste the content of your rabbitmq.conf here
+net:
+  bindIp: 0.0.0.0
+EOF
+
+sudo systemctl restart mongod
+
 ####################################
 #    add /etc/hosts
 ####################################
