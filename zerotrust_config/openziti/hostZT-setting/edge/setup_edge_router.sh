@@ -52,7 +52,7 @@ echo "$CLOUD_IP ctrl.cloud.hong3nguyen.com" >>/etc/hosts
 echo "$CLOUD_IP router.cloud.hong3nguyen.com" >>/etc/hosts
 echo "$EDGE_IP router.edge.hong3nguyen.com" >>/etc/hosts
 
-export ROUTER_NAME="router_edge11"
+export ROUTER_NAME="router_edge"
 
 export JWT_FILE="${CURRENT_DIR}/$ROUTER_NAME.jwt"
 

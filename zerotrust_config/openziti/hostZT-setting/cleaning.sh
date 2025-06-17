@@ -18,20 +18,32 @@ echo "Shutdown running ziti-edge-tunnel"
 
 SERVICE="ziti-router.service"
 if systemctl list-unit-files | grep -q "^$SERVICE"; then
-  echo "Found $SERVICE. Disabling, stopping, and cleaning it..."
+  echo "$SERVICE unit file exists."
 
-  sudo systemctl disable --now "$SERVICE"
-  sudo systemctl reset-failed "$SERVICE" || true
-  sudo systemctl clean --what=state "$SERVICE" || true
-  sudo apt-get purge -y openziti-router
-  sudo apt autoremove -y
+  # Now check if it is running
+  if systemctl is-active "$SERVICE"; then
+    echo "$SERVICE is running. Disabling, stopping, and cleaning it..."
 
-  echo "Done: $SERVICE has been disabled, reset, and cleaned."
+    sudo systemctl disable --now "$SERVICE"
+    sudo systemctl reset-failed "$SERVICE" || true
+    sudo systemctl clean --what=state "$SERVICE" || true
+    sudo apt-get purge -y openziti-router
+    sudo apt autoremove -y
+
+    echo "Done: $SERVICE has been disabled, reset, and cleaned."
+  else
+    echo "$SERVICE is NOT running. Skipping disable and purge."
+  fi
+
 else
-  echo "Service $SERVICE does not exist. Nothing to do."
+  echo "Service unit file $SERVICE does not exist. Nothing to do."
 fi
 
-# ziti-edge-tunnel pkill
-pkill -f ziti-edge-tunnel
-
-echo "Done: ziti-edge-tunnel has been disabled, reset, and cleaned."
+# Check if ziti-edge-tunnel is running
+if pgrep -f ziti-edge-tunnel >/dev/null; then
+  echo "ziti-edge-tunnel is running. Killing it now..."
+  pkill -f ziti-edge-tunnel
+  echo "ziti-edge-tunnel has been killed."
+else
+  echo "ziti-edge-tunnel is NOT running. Nothing to do."
+fi
