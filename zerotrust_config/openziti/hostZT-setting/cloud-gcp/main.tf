@@ -127,35 +127,35 @@ resource "google_compute_instance" "message_q" {
 # ------------------------------
 # Application (Database)
 # ------------------------------
-# resource "google_compute_instance" "database" {
-#   name         = "cloud-db"
-#   machine_type = var.machine_type
-#   zone         = var.zone
-#
-#   boot_disk {
-#     initialize_params {
-#       image = "ubuntu-os-cloud/ubuntu-2204-lts"
-#     }
-#   }
-#
-#   network_interface {
-#     network       = "default"
-#     access_config {}
-#   }
-#
-#   #metadata_startup_script = file("setup_cloud_db.sh")
-#
-#   metadata_startup_script = templatefile("setup_cloud_db.sh.tmpl", {
-#     ziti_edge_controller_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
-#     ziti_edge_router_ip     = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
-#   })
-#
-#   metadata = {
-#     ssh-keys = "hong3nguyen:${file("~/.ssh/id_ed25519.pub")}"
-#   }
-#
-#   tags = ["cloud-db", "ziti-app"]
-# }
+resource "google_compute_instance" "database" {
+  name         = "cloud-db"
+  machine_type = var.machine_type
+  zone         = var.zone
+
+  boot_disk {
+    initialize_params {
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
+    }
+  }
+
+  network_interface {
+    network       = "default"
+    access_config {}
+  }
+
+  #metadata_startup_script = file("setup_cloud_db.sh")
+
+  metadata_startup_script = templatefile("setup_cloud_db.sh.tmpl", {
+    ziti_edge_controller_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
+    ziti_edge_router_ip     = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
+  })
+
+  metadata = {
+    ssh-keys = "hong3nguyen:${file("~/.ssh/id_ed25519.pub")}"
+  }
+
+  tags = ["cloud-db", "ziti-app"]
+}
 # ------------------------------
 # Shared Firewall Rules
 # ------------------------------
