@@ -118,6 +118,30 @@ export ZITI_ROUTER_ADVERTISED_ADDRESS="router.cloud.hong3nguyen.com"
 
 export OPENZITI="true"
 
+####################################
+#    setting consumer
+####################################
+sudo apt install python3 python3-venv python3-pip -y
+
+# python3 -m venv /home/$USER/venv
+# 1. Install uv
+
+curl -Ls https://astral.sh/uv/install.sh | bash
+
+export PATH="$HOME/.local/bin:$PATH"
+
+source $HOME/.local/bin/env
+
+cd /home/hong3nguyen/app
+
+# 2. Install project env from pyproject.toml
+uv venv install
+
+# 3. Run your Python script with the env
+#uv venv run python ml_consumer.py
+
+uv run python ml_consumer.py
+
 # -----------Generate edge router token and config (not enrolled yet) -----------
 $ZITI_HOME/bin/ziti edge login https://$ZITI_CTRL_ADVERTISED_ADDRESS:$ZITI_CTRL_ADVERTISED_PORT --yes -u $ZITI_USER -p $ZITI_PWD
 
@@ -129,13 +153,3 @@ $ZITI_HOME/bin/ziti  edge enroll --jwt /tmp/message-queue.jwt --out /tmp/message
 # ziti-edge-tunnel run -i /tmp/message-queue.json
 nohup ziti-edge-tunnel run -i /tmp/message-queue.json >/var/log/ziti-edge-tunnel.log 2>&1 &
 
-
-####################################
-#    Install rye
-####################################
-
-curl -sSf https://rye.astral.sh/get | bash
-
-echo 'source "$HOME/.rye/env"' >> ~/.bashrc
-
- 
