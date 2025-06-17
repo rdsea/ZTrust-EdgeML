@@ -154,15 +154,45 @@ ziti edge create edge-router-policy "public-routers" \
 ziti edge create service-edge-router-policy "public-routers" \
   --edge-router-roles '#public-routers' --service-roles '#all'
 
-# policy router edge
+# ensemble to messageQ
+ziti edge create config "ensemble-intercept-message-queue-config" intercept.v1 \
+  '{"protocols":["tcp"],"addresses":["rabbitmq.ziti-controller.private"], "portRanges":[{"low":5672, "high":5672}]}'
 
-#ziti edge update edge-router routerCloud  -a 'cloud'
-# assigne atribute to the router
-ziti edge update edge-router router_edge -a 'edge'
+ziti edge create config "message-queue-host-config" host.v1 \
+  '{"protocol":"tcp", "address":"rabbitmq.ziti-controller.private","port":5672}'
 
-# edge router policy
-ziti edge create edge-router-policy allow.edge --edge-router-roles '#edge' --identity-roles '#edge'
+ziti edge create service "message-queue-service" \
+  --configs ensemble-intercept-message-queue-config,message-queue-host-config
 
-ziti edge create edge-router-policy edge-only-routing \
-  --identity-roles "#edge-only" \
-  --edge-router-roles "#edge"
+ziti edge create service-policy "message-queue-bind-policy" Bind \
+  --service-roles '@message-queue-service' --identity-roles '#message-queue' \
+  --identity-roles '#cloud-only'
+
+ziti edge create service-policy "ensemble-dial-policy" Dial \
+  --service-roles '@ensemble-service' --identity-roles '#ensemble' \
+  --identity-roles '#cloud-only'
+
+# messageQ to database
+ziti edge create config "message-queue-intercept-database-config" intercept.v1 \
+  '{"protocols":["tcp"],"addresses":["database.ziti-controller.private"], "portRanges":[{"low":27017, "high":27017}]}'
+
+ziti edge create config "database-host-config" host.v1 \
+  '{"protocol":"tcp", "address":"database.ziti-controller.private","port":27017}'
+
+ziti edge create service "database-service" \
+  --configs message-queue-intercept-database-config,database-host-config
+
+ziti edge create service-policy "database-bind-policy" Bind \
+  --service-roles '@database-service' --identity-roles '#database' \
+  --identity-roles '#cloud-only'
+
+ziti edge create service-policy "message-queue-dial-policy" Dial \
+  --service-roles '@message-queue-service' --identity-roles '#message-queue' \
+  --identity-roles '#cloud-only'
+
+#### policy
+ziti edge create edge-router-policy "public-routers" \
+  --edge-router-roles '#public-routers' --identity-roles '#all'
+
+ziti edge create service-edge-router-policy "public-routers" \
+  --edge-router-roles '#public-routers' --service-roles '#all'

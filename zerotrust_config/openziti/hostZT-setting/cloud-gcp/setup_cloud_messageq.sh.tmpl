@@ -116,14 +116,15 @@ export ZITI_PWD="admin"
 export ZITI_BOOTSTRAP_CONFIG_ARGS=""
 export ZITI_ROUTER_ADVERTISED_ADDRESS="router.cloud.hong3nguyen.com"
 
+export OPENZITI="true"
 
 # -----------Generate edge router token and config (not enrolled yet) -----------
 $ZITI_HOME/bin/ziti edge login https://$ZITI_CTRL_ADVERTISED_ADDRESS:$ZITI_CTRL_ADVERTISED_PORT --yes -u $ZITI_USER -p $ZITI_PWD
 
-ziti edge create identity "message-queue-$(cat /etc/hostname)" \
+$ZITI_HOME/bin/ziti  edge create identity "message-queue-$(cat /etc/hostname)" \
   --jwt-output-file /tmp/message-queue.jwt --role-attributes message-queue
 
-ziti edge enroll --jwt /tmp/message-queue.jwt --out /tmp/message-queue.json
+$ZITI_HOME/bin/ziti  edge enroll --jwt /tmp/message-queue.jwt --out /tmp/message-queue.json
 
 # ziti-edge-tunnel run -i /tmp/message-queue.json
 nohup ziti-edge-tunnel run -i /tmp/message-queue.json >/var/log/ziti-edge-tunnel.log 2>&1 &

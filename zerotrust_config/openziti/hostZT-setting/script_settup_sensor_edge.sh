@@ -11,6 +11,7 @@ MESSAGEQ_IP=$(cd cloud-gcp && terraform output -raw messageq_ip)
 # SENSOR_IP_1=""
 # SENSOR_IP_2=""
 # # Enable auto export
+# PASS=""
 if [ -f .env ]; then
   set -a
   source .env
@@ -24,10 +25,10 @@ fi
 scp edge/setup_edge_router.sh aaltosea@$EDGE_ROUTER_IP:~/hong3nguyen
 scp cleaning.sh aaltosea@$EDGE_ROUTER_IP:~/hong3nguyen
 
-echo "aaltosea" | ssh aaltosea@$EDGE_ROUTER_IP "sudo -S bash ~/hong3nguyen/cleaning.sh"
+echo $PASS | ssh aaltosea@$EDGE_ROUTER_IP "echo '$PASS' | sudo -S bash ~/hong3nguyen/cleaning.sh"
 
-echo "aaltosea" | ssh aaltosea@$EDGE_ROUTER_IP \
-  "echo 'aaltosea' | sudo -E -S env CLOUD_IP=${CTRL_IP} EDGE_IP=${EDGE_ROUTER_IP} bash ~/hong3nguyen/setup_edge_router.sh"
+echo $PASS | ssh aaltosea@$EDGE_ROUTER_IP \
+  "echo '$PASS' | sudo -E -S env CLOUD_IP=${CTRL_IP} EDGE_IP=${EDGE_ROUTER_IP} bash ~/hong3nguyen/setup_edge_router.sh"
 
 ############ work with edge app
 scp edge/setup_edge_app.sh aaltosea@$EDGE_APP_IP:~/hong3nguyen

@@ -5,9 +5,10 @@ set -e
 # export CLOUD_IP=""
 # export EDGE_IP=""
 
-CURRENT_DIR=$(pwd)
+CURRENT_DIR=$(pwd)/hong3nguyen
 
 echo "EDGE ROUTER ----------------------------"
+echo $CURRENT_DIR
 # Install dependencies
 #
 # Download Ziti binaries
@@ -51,14 +52,18 @@ echo "$CLOUD_IP ctrl.cloud.hong3nguyen.com" >>/etc/hosts
 echo "$CLOUD_IP router.cloud.hong3nguyen.com" >>/etc/hosts
 echo "$EDGE_IP router.edge.hong3nguyen.com" >>/etc/hosts
 
-export JWT_FILE="${CURRENT_DIR}/router_edge.jwt"
+export ROUTER_NAME="router_edge11"
+
+export JWT_FILE="${CURRENT_DIR}/$ROUTER_NAME.jwt"
 
 # -----------Generate edge router token and config (not enrolled yet) -----------
 ${ZITI_HOME}/bin/ziti edge login https://$ZITI_CTRL_ADVERTISED_ADDRESS:$ZITI_CTRL_ADVERTISED_PORT --yes -u $ZITI_USER -p $ZITI_PWD
 
-${ZITI_HOME}/bin/ziti edge create edge-router router_edge \
+${ZITI_HOME}/bin/ziti edge create edge-router $ROUTER_NAME \
   --jwt-output-file "$JWT_FILE" \
   --tunneler-enabled
+
+${ZITI_HOME}/bin/ziti edge update edge-router $ROUTER_NAME -a 'edge'
 
 # ----------- (Optional) Write router bootstrap.env -----------
 cat <<EOF >${ZITI_HOME}/etc/router/bootstrap.env
@@ -82,4 +87,12 @@ ${ZITI_HOME}/bin/ziti edge create identity "loadbalancer" \
 ${ZITI_HOME}/bin/ziti edge enroll --jwt /tmp/loadbalancer.jwt --out /tmp/loadbalancer.json
 
 # ziti-edge-tunnel run -i /tmp/loadbalancer.json
+#
 nohup ziti-edge-tunnel run -i /tmp/loadbalancer.json >/var/log/ziti-edge-tunnel.log 2>&1 &
+
+# edge router policy
+${ZITI_HOME}/bin/ziti edge create edge-router-policy allow.edge --edge-router-roles '#edge' --identity-roles '#edge'
+
+${ZITI_HOME}/bin/ziti edge create edge-router-policy edge-only-routing \
+  --identity-roles "#edge-only" \
+  --edge-router-roles "#edge"
