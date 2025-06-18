@@ -49,7 +49,6 @@ export ZITI_ROUTER_ADVERTISED_ADDRESS="router.cloud.hong3nguyen.com"
 echo "$CLOUD_IP ctrl.cloud.hong3nguyen.com" >>/etc/hosts
 echo "$CLOUD_IP router.cloud.hong3nguyen.com" >>/etc/hosts
 echo "$EDGE_IP router.edge.hong3nguyen.com" >>/etc/hosts
-
 # -----------Generate edge router token and config (not enrolled yet) -----------
 ${ZITI_HOME}/bin/ziti edge login https://$ZITI_CTRL_ADVERTISED_ADDRESS:$ZITI_CTRL_ADVERTISED_PORT --yes -u $ZITI_USER -p $ZITI_PWD
 

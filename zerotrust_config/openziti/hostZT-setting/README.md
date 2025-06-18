@@ -133,3 +133,26 @@ SENSOR_IP_1=""
 ```bash
 ./script_settup_sensor_edge.sh
 ```
+
+# Sensor 
+```bash
+# 0 copy image
+scp -r image aaltosea@<sensor>:/home/aaltosea/hong3nguyen/loadgen/
+
+# 1 Install uv for hong3nguyen
+curl -Ls https://astral.sh/uv/install.sh | bash
+
+# 2 Setup PATH  shell permanently
+source $HOME/.local/bin/env
+#echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/hong3nguyen/.bashrc
+
+# 3 Use uv as hong3nguyen
+cd /home/hong3nguyen/loadgen && $HOME/.local/bin/uv venv install 
+
+#  set python version
+uv python pin 3.10.12
+
+# 4 run
+uv run python client_processing.py --url http://loadbalancer.ziti-controller.private:5010/preprocessing
+
+```
