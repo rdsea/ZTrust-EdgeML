@@ -156,3 +156,8 @@ uv python pin 3.10.12
 uv run python client_processing.py --url http://loadbalancer.ziti-controller.private:5010/preprocessing
 
 ```
+
+## Debug
+```bash
+tail -f /var/log/ziti-edge-tunnel.log
+```

@@ -148,12 +148,6 @@ ziti edge create service-policy "efficientnetb0-dial-policy" Dial \
   --service-roles '@efficientnetb0-service' --identity-roles '#ensemble' \
   --identity-roles '#edge-only'
 
-ziti edge create edge-router-policy "public-routers" \
-  --edge-router-roles '#public-routers' --identity-roles '#all'
-
-ziti edge create service-edge-router-policy "public-routers" \
-  --edge-router-roles '#public-routers' --service-roles '#all'
-
 # ensemble to messageQ
 ziti edge create config "ensemble-intercept-message-queue-config" intercept.v1 \
   '{"protocols":["tcp"],"addresses":["rabbitmq.ziti-controller.private"], "portRanges":[{"low":5672, "high":5672}]}'
@@ -196,3 +190,9 @@ ziti edge create service-policy "message-queue-dial-policy" Dial \
 #
 # ziti edge create service-edge-router-policy "public-routers" \
 #   --edge-router-roles '#public-routers' --service-roles '#all'
+#   Public routers
+ziti edge create edge-router-policy "public-routers" \
+  --edge-router-roles '#public-routers' --identity-roles '#all'
+
+ziti edge create service-edge-router-policy "public-routers" \
+  --edge-router-roles '#public-routers' --service-roles '#all'
