@@ -3,6 +3,7 @@
 ####################################
 sudo apt-get install gnupg curl
 
+
 curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc |
   sudo gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg \
     --dearmor
@@ -24,15 +25,25 @@ sudo systemctl enable mongod
 #    Config MongoDB
 ####################################
 # Create RabbitMQ config directory
-sudo mkdir -p /etc/rabbitmq
+
+# sudo mkdir -p /etc/rabbitmq
+
+mkdir -p /home/hong3nguyen/data/db
+chown -R mongodb:mongodb /home/hong3nguyen/data/db
+
 
 # Write rabbitmq.conf
 sudo tee /etc/mongod.conf >/dev/null <<EOF
-# BEGIN rabbitmq.conf
-# Paste the content of your rabbitmq.conf here
+# BEGIN mongod.conf
 net:
   bindIp: 0.0.0.0
+
+storage:
+  dbPath: /home/hong3nguyen/data/db
 EOF
+
+# Start or restart mongod with no auth
+sudo systemctl restart mongod
 
 # Variables
 MONGO_ADMIN_USER="guest"
@@ -56,16 +67,11 @@ db.createUser({
 })
 EOF
 
-echo "Admin user created: $MONGO_ADMIN_USER"
-
 # 5. Enable authentication in mongod.conf if not already set
-echo "Enabling authorization..."
 sudo sed -i '/^#*security:/a\  authorization: enabled' /etc/mongod.conf
 
 # 6. Restart mongod to apply changes
 sudo systemctl restart mongod
-
-echo "MongoDB setup complete with authentication enabled!"
 
 
 ####################################

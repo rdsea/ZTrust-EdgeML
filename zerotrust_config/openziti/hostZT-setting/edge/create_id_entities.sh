@@ -168,7 +168,7 @@ ziti edge create service-policy "message-queue-bind-policy" Bind \
   --service-roles '@message-queue-service' --identity-roles '#message-queue' \
   --identity-roles '#cloud-only'
 
-ziti edge create service-policy "ensemble-dial-policy" Dial \
+ziti edge create service-policy "ensemble-dial-policy-cloud" Dial \
   --service-roles '@ensemble-service' --identity-roles '#ensemble' \
   --identity-roles '#cloud-only'
 

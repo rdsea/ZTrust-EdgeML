@@ -55,7 +55,6 @@ sudo mkdir -p /etc/rabbitmq
 # Write rabbitmq.conf
 sudo tee /etc/rabbitmq/rabbitmq.conf >/dev/null <<EOF
 # BEGIN rabbitmq.conf
-# Paste the content of your rabbitmq.conf here
 listeners.tcp.1 = :::5672
 management.listener.port = 15672
 EOF
@@ -63,11 +62,11 @@ EOF
 # Write rabbitmq-env.conf
 sudo tee /etc/rabbitmq/rabbitmq-env.conf >/dev/null <<EOF
 # BEGIN rabbitmq-env.conf
-# Paste the content of your rabbitmq-env.conf here
-
 RABBITMQ_NODE_PORT=5672
 RABBITMQ_NODENAME=rabbitmq@localhost
 EOF
+
+sudo systemctl restart rabbitmq-server
 
 ####################################
 #    add /etc/hosts
@@ -125,6 +124,7 @@ sudo apt install python3 python3-venv python3-pip -y
 #
 
 # 1) Install uv for hong3nguyen
+
 su - hong3nguyen -c 'curl -Ls https://astral.sh/uv/install.sh | bash'
 
 # 2) Setup PATH for hong3nguyen shell permanently
