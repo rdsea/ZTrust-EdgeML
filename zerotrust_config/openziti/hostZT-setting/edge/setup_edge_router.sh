@@ -63,8 +63,6 @@ ${ZITI_HOME}/bin/ziti edge create edge-router $ROUTER_NAME \
   --jwt-output-file "$JWT_FILE" \
   --tunneler-enabled
 
-${ZITI_HOME}/bin/ziti edge update edge-router $ROUTER_NAME -a 'edge'
-
 # ----------- (Optional) Write router bootstrap.env -----------
 cat <<EOF >${ZITI_HOME}/etc/router/bootstrap.env
 ZITI_CTRL_ADVERTISED_ADDRESS='$ZITI_CTRL_ADVERTISED_ADDRESS'
@@ -91,6 +89,8 @@ ${ZITI_HOME}/bin/ziti edge enroll --jwt /tmp/loadbalancer.jwt --out /tmp/loadbal
 nohup ziti-edge-tunnel run -i /tmp/loadbalancer.json >/var/log/ziti-edge-tunnel.log 2>&1 &
 
 # edge router policy
+${ZITI_HOME}/bin/ziti edge update edge-router $ROUTER_NAME -a 'edge'
+
 ${ZITI_HOME}/bin/ziti edge create edge-router-policy allow.edge --edge-router-roles '#edge' --identity-roles '#edge'
 
 ${ZITI_HOME}/bin/ziti edge create edge-router-policy edge-only-routing \

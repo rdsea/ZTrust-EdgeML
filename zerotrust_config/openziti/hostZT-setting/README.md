@@ -160,4 +160,14 @@ uv run python client_processing.py --url http://loadbalancer.ziti-controller.pri
 ## Debug
 ```bash
 tail -f /var/log/ziti-edge-tunnel.log
+
+
+# check nginx works or not 
+# Test config is valid:
+sudo nginx -t
+
+# Restart nginx:
+sudo systemctl restart nginx
+
 ```
+
