@@ -14,8 +14,6 @@ sed -i '/router\.edge\.hong3nguyen\.com/d' /etc/hosts
 
 echo "Removed OpenZiti DNS entries from /etc/hosts"
 
-echo "Shutdown running ziti-edge-tunnel"
-
 SERVICE="ziti-router.service"
 if systemctl list-unit-files | grep -q "^$SERVICE"; then
   echo "$SERVICE unit file exists."
@@ -40,6 +38,7 @@ else
 fi
 
 # Check if ziti-edge-tunnel is running
+echo "Shutdown running ziti-edge-tunnel"
 if pgrep -f ziti-edge-tunnel >/dev/null; then
   echo "ziti-edge-tunnel is running. Killing it now..."
   pkill -f ziti-edge-tunnel
