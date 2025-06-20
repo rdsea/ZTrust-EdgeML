@@ -15,7 +15,8 @@ services:
       - /dev/net/tun:/dev/net/tun
     extra_hosts:
       - "${ZITI_CTRL_ADVERTISED_ADDRESS}:${CLOUD_IP}"
-      - "${ZITI_ROUTER_ADVERTISED_ADDRESS}:${EDGE_IP}"
+      - "${ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS}:${EDGE_IP}"
+      - "${ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS}:${CLOUD_IP}"
     networks:
       - default
     volumes:
@@ -34,7 +35,8 @@ services:
       - /dev/net/tun:/dev/net/tun
     extra_hosts:
       - "${ZITI_CTRL_ADVERTISED_ADDRESS}:${CLOUD_IP}"
-      - "${ZITI_ROUTER_ADVERTISED_ADDRESS}:${EDGE_IP}"
+      - "${ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS}:${EDGE_IP}"
+      - "${ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS}:${CLOUD_IP}"
     networks:
       - default
     volumes:
@@ -55,7 +57,8 @@ services:
       - /dev/net/tun:/dev/net/tun
     extra_hosts:
       - "${ZITI_CTRL_ADVERTISED_ADDRESS}:${CLOUD_IP}"
-      - "${ZITI_ROUTER_ADVERTISED_ADDRESS}:${EDGE_IP}"
+      - "${ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS}:${EDGE_IP}"
+      - "${ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS}:${CLOUD_IP}"
     networks:
       - default
     volumes:
@@ -76,7 +79,8 @@ services:
       - /dev/net/tun:/dev/net/tun
     extra_hosts:
       - "${ZITI_CTRL_ADVERTISED_ADDRESS}:${CLOUD_IP}"
-      - "${ZITI_ROUTER_ADVERTISED_ADDRESS}:${EDGE_IP}"
+      - "${ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS}:${EDGE_IP}"
+      - "${ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS}:${CLOUD_IP}"
     networks:
       - default
     volumes:

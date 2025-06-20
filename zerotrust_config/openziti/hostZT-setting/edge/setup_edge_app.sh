@@ -27,7 +27,8 @@ export ZITI_CTRL_ADVERTISED_PORT="1280"
 export ZITI_USER="admin"
 export ZITI_PWD="admin"
 export ZITI_BOOTSTRAP_CONFIG_ARGS=""
-export ZITI_ROUTER_ADVERTISED_ADDRESS="router.cloud.hong3nguyen.com"
+export ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS="router.cloud.hong3nguyen.com"
+export ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS="router.edge.hong3nguyen.com"
 
 # ----------- Add DNS entry for hostname resolution -----------
 echo "$CLOUD_IP ctrl.cloud.hong3nguyen.com" >>/etc/hosts
