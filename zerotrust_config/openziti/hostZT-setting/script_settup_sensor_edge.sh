@@ -53,7 +53,7 @@ scp sensor/setup_sensor.sh aaltosea@$SENSOR_IP_1:~/hong3nguyen
 
 scp -r ../../../applications/machine_learning/object_classification/src/loadgen/ aaltosea@$SENSOR_IP_1:~/hong3nguyen
 
-scp aaltosea@$SENSOR_IP_1:~/hong3nguyen
+scp cleaning.sh aaltosea@$SENSOR_IP_1:~/hong3nguyen
 
 echo "aaltosea23" | ssh -t aaltosea@$SENSOR_IP_1 "sudo -S bash ~/hong3nguyen/cleaning.sh"
 echo "aaltosea23" | ssh -t aaltosea@$SENSOR_IP_1 \
