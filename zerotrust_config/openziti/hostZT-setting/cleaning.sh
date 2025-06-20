@@ -15,6 +15,7 @@ sed -i '/router\.edge\.hong3nguyen\.com/d' /etc/hosts
 echo "Removed OpenZiti DNS entries from /etc/hosts"
 
 SERVICE="ziti-router.service"
+
 if systemctl list-unit-files | grep -q "^$SERVICE"; then
   echo "$SERVICE unit file exists."
 

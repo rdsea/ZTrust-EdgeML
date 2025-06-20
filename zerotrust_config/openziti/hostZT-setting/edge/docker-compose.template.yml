@@ -22,7 +22,7 @@ services:
     volumes:
       - /tmp/preprocessing.json:/opt/secret.json
 
-  ensemble:
+  ensemble-service:
     image: rdsea/ensemble_ziti:latest
     container_name: ensemble
     ports:

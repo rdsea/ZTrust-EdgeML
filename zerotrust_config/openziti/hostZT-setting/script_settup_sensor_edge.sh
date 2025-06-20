@@ -1,6 +1,7 @@
 #!/bin/bash
 
 CTRL_IP=$(cd cloud-gcp && terraform output -raw controller_ip)
+
 CLOUD_ROUTER_IP=$(cd cloud-gcp && terraform output -raw controller_ip)
 
 MESSAGEQ_IP=$(cd cloud-gcp && terraform output -raw messageq_ip)
