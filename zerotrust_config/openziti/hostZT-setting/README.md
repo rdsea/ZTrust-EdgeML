@@ -153,7 +153,7 @@ cd /home/hong3nguyen/loadgen && $HOME/.local/bin/uv venv install
 uv python pin 3.10.12
 
 # 4 run
-uv run python client_processing.py --url http://loadbalancer.ziti-controller.private:5010/preprocessing
+uv run python client_processing.py --url http://loadbalancer.ziti-controller.private:5009/preprocessing
 
 ```
 

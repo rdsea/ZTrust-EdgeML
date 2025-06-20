@@ -69,12 +69,10 @@ ziti edge create service "loadbalancer-service" \
   --configs client-intercept-config,loadbalancer-host-config
 
 ziti edge create service-policy "loadbalancer-bind-policy" Bind \
-  --service-roles '@loadbalancer-service' --identity-roles '#loadbalancer' \
-  --identity-roles '#edge-only'
+  --service-roles '@loadbalancer-service' --identity-roles '#loadbalancer' #--identity-roles '#edge-only'
 
 ziti edge create service-policy "loadbalancer-dial-policy" Dial \
-  --service-roles '@loadbalancer-service' --identity-roles '#object-detection-client' \
-  --identity-roles '#edge-only'
+  --service-roles '@loadbalancer-service' --identity-roles '#object-detection-client' #  --identity-roles '#edge-only'
 
 # loadbalancer to preprocessing
 ziti edge create config "loadbalancer-intercept-config" intercept.v1 \
@@ -87,12 +85,10 @@ ziti edge create service "preprocessing-service" \
   --configs loadbalancer-intercept-config,preprocessing-host-config
 
 ziti edge create service-policy "preprocessing-bind-policy" Bind \
-  --service-roles '@preprocessing-service' --identity-roles '#preprocessing' \
-  --identity-roles '#edge-only'
+  --service-roles '@preprocessing-service' --identity-roles '#preprocessing' #--identity-roles '#edge-only'
 
 ziti edge create service-policy "preprocessing-dial-policy" Dial \
-  --service-roles '@preprocessing-service' --identity-roles '#loadbalancer' \
-  --identity-roles '#edge-only'
+  --service-roles '@preprocessing-service' --identity-roles '#loadbalancer' #--identity-roles '#edge-only'
 
 # Preprocessing to ensemble
 ziti edge create config "preprocessing-intercept-config" intercept.v1 \
@@ -105,12 +101,10 @@ ziti edge create service "ensemble-service" \
   --configs preprocessing-intercept-config,ensemble-host-config
 
 ziti edge create service-policy "ensemble-bind-policy" Bind \
-  --service-roles '@ensemble-service' --identity-roles '#ensemble' \
-  --identity-roles '#edge-only'
+  --service-roles '@ensemble-service' --identity-roles '#ensemble' #--identity-roles '#edge-only'
 
 ziti edge create service-policy "ensemble-dial-policy" Dial \
-  --service-roles '@ensemble-service' --identity-roles '#preprocessing' \
-  --identity-roles '#edge-only'
+  --service-roles '@ensemble-service' --identity-roles '#preprocessing' #  --identity-roles '#edge-only'
 
 # Ensemble to mobilenetv2
 ziti edge create config "ensemble-intercept-mobilenetv2-config" intercept.v1 \
@@ -123,12 +117,10 @@ ziti edge create service "mobilenetv2-service" \
   --configs ensemble-intercept-mobilenetv2-config,mobilenetv2-host-config
 
 ziti edge create service-policy "mobilenetv2-bind-policy" Bind \
-  --service-roles '@mobilenetv2-service' --identity-roles '#mobilenetv2' \
-  --identity-roles '#edge-only'
+  --service-roles '@mobilenetv2-service' --identity-roles '#mobilenetv2' #--identity-roles '#edge-only'
 
 ziti edge create service-policy "mobilenetv2-dial-policy" Dial \
-  --service-roles '@mobilenetv2-service' --identity-roles '#ensemble' \
-  --identity-roles '#edge-only'
+  --service-roles '@mobilenetv2-service' --identity-roles '#ensemble' # --identity-roles '#edge-only'
 
 # Ensemble to efficientnetb0
 ziti edge create config "ensemble-intercept-efficientnetb0-config" intercept.v1 \
@@ -141,12 +133,10 @@ ziti edge create service "efficientnetb0-service" \
   --configs ensemble-intercept-efficientnetb0-config,efficientnetb0-host-config
 
 ziti edge create service-policy "efficientnetb0-bind-policy" Bind \
-  --service-roles '@efficientnetb0-service' --identity-roles '#efficientnetb0' \
-  --identity-roles '#edge-only'
+  --service-roles '@efficientnetb0-service' --identity-roles '#efficientnetb0' #--identity-roles '#edge-only'
 
 ziti edge create service-policy "efficientnetb0-dial-policy" Dial \
-  --service-roles '@efficientnetb0-service' --identity-roles '#ensemble' \
-  --identity-roles '#edge-only'
+  --service-roles '@efficientnetb0-service' --identity-roles '#ensemble' #  --identity-roles '#edge-only'
 
 # ensemble to messageQ
 ziti edge create config "ensemble-intercept-message-queue-config" intercept.v1 \
@@ -159,12 +149,10 @@ ziti edge create service "message-queue-service" \
   --configs ensemble-intercept-message-queue-config,message-queue-host-config
 
 ziti edge create service-policy "message-queue-bind-policy" Bind \
-  --service-roles '@message-queue-service' --identity-roles '#message-queue' \
-  --identity-roles '#cloud-only'
+  --service-roles '@message-queue-service' --identity-roles '#message-queue' # --identity-roles '#cloud-only'
 
 ziti edge create service-policy "ensemble-dial-policy-cloud" Dial \
-  --service-roles '@ensemble-service' --identity-roles '#ensemble' \
-  --identity-roles '#cloud-only'
+  --service-roles '@ensemble-service' --identity-roles '#ensemble' # --identity-roles '#cloud-only'
 
 # messageQ to database
 ziti edge create config "message-queue-intercept-database-config" intercept.v1 \
@@ -177,12 +165,10 @@ ziti edge create service "database-service" \
   --configs message-queue-intercept-database-config,database-host-config
 
 ziti edge create service-policy "database-bind-policy" Bind \
-  --service-roles '@database-service' --identity-roles '#database' \
-  --identity-roles '#cloud-only'
+  --service-roles '@database-service' --identity-roles '#database' #--identity-roles '#cloud-only'
 
 ziti edge create service-policy "message-queue-dial-policy" Dial \
-  --service-roles '@message-queue-service' --identity-roles '#message-queue' \
-  --identity-roles '#cloud-only'
+  --service-roles '@message-queue-service' --identity-roles '#message-queue' #--identity-roles '#cloud-only'
 
 #### policy
 # ziti edge create edge-router-policy "public-routers" \
@@ -191,8 +177,8 @@ ziti edge create service-policy "message-queue-dial-policy" Dial \
 # ziti edge create service-edge-router-policy "public-routers" \
 #   --edge-router-roles '#public-routers' --service-roles '#all'
 #   Public routers
-ziti edge create edge-router-policy "public-routers" \
-  --edge-router-roles '#public-routers' --identity-roles '#all'
-
-ziti edge create service-edge-router-policy "public-routers" \
-  --edge-router-roles '#public-routers' --service-roles '#all'
+# ziti edge create edge-router-policy "public-routers" \
+#   --edge-router-roles '#public-routers' --identity-roles '#all'
+#
+# ziti edge create service-edge-router-policy "public-routers" \
+#   --edge-router-roles '#public-routers' --service-roles '#all'
