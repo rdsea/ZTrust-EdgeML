@@ -47,6 +47,7 @@ echo "aaltosea" | ssh -t aaltosea@$EDGE_APP_IP "sudo -S bash ~/hong3nguyen/clean
 echo "aaltosea" | ssh -t aaltosea@$EDGE_APP_IP \
   "echo 'aaltosea' | sudo -E -S env CLOUD_IP=${CTRL_IP} EDGE_IP=${EDGE_ROUTER_IP} bash ~/hong3nguyen/setup_edge_app.sh"
 
+# add random
 ############ work with SENSOR_IP_1
 echo "############ work with $SENSOR_IP_1"
 
