@@ -154,7 +154,7 @@ su - hong3nguyen -c 'cd /home/hong3nguyen/app && $HOME/.local/bin/uv venv instal
 # -----------Generate edge router token and config (not enrolled yet) -----------
 $ZITI_HOME/bin/ziti edge login https://$ZITI_CTRL_ADVERTISED_ADDRESS:$ZITI_CTRL_ADVERTISED_PORT --yes -u $ZITI_USER -p $ZITI_PWD
 
-$ZITI_HOME/bin/ziti  edge create identity "message-queue-$(cat /etc/hostname)" \
+$ZITI_HOME/bin/ziti  edge create identity "message-queue" \
   --jwt-output-file /tmp/message-queue.jwt --role-attributes message-queue
 
 $ZITI_HOME/bin/ziti  edge enroll --jwt /tmp/message-queue.jwt --out /tmp/message-queue.json

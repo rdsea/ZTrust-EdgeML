@@ -113,6 +113,16 @@ resource "google_compute_instance" "message_q" {
     destination = "/home/hong3nguyen/app/"
   }
 
+  # provisioner "file" {
+  #   source      = "create_id_cloud_entities.sh"
+  #   destination = "/home/hong3nguyen/create_id_cloud_entities"
+  # }
+  #
+  # provisioner "remote-exec" {
+  #   inline = [
+  #     "chmod +x /home/hong3nguyen/create_id_cloud_entities"
+  #   ]
+  # }
   connection {
     type        = "ssh"
     user        = "hong3nguyen"
@@ -159,7 +169,6 @@ resource "google_compute_instance" "database" {
 # ------------------------------
 # Shared Firewall Rules
 # ------------------------------
-
 resource "google_compute_firewall" "allow-ssh" {
   name    = "allow-ssh"
   network = "default"

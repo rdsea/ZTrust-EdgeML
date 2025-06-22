@@ -177,3 +177,4 @@ sudo systemctl restart nginx
 ziti edge list service-policies 'limit 1000'
 ```
 
+**After changing router attribute, affecting the router policies, need to reload the ziit-edge-tunnel for all services**
