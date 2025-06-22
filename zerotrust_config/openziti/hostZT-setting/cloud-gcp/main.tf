@@ -182,12 +182,12 @@ resource "google_compute_firewall" "allow-ssh" {
 }
 
 resource "google_compute_firewall" "allow-ziti" {
-  name    = "allow-ziti-ports"
+  name    = "allow-ziti-app"
   network = "default"
 
   allow {
     protocol = "tcp"
-    ports    = ["1280", "443",  "6262", "10080", "8440-8443"]
+    ports    = ["1280", "443", "5672", "27017", "6262", "10080", "8440-8443"]
   }
 
   source_ranges = ["0.0.0.0/0"]
@@ -204,6 +204,20 @@ resource "google_compute_firewall" "allow-app" {
 
   source_ranges = ["0.0.0.0/0"]
 }
+
+resource "google_compute_firewall" "allow-internal-services" {
+  name    = "allow-internal-services"
+  network = "default"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["5672", "27017", "443", "6262", "10080", "8440-8443"]
+  }
+
+  source_ranges = ["10.128.0.0/9"]  # internal IP range of your VPC
+  target_tags   = ["ziti-app", "ziti", "controller", "cloud-messageq", "cloud-db"]
+}
+
 # ------------------------------
 # Outputs
 # ------------------------------
@@ -212,6 +226,9 @@ output "controller_ip" {
 }
 output "messageq_ip" {
   value = google_compute_instance.message_q.network_interface[0].access_config[0].nat_ip
+}
+output "database_ip" {
+  value = google_compute_instance.database.network_interface[0].access_config[0].nat_ip
 }
 #
 # output "router_ip" {
