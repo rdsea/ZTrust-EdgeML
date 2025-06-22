@@ -60,7 +60,7 @@ ${ZITI_HOME}/bin/ziti edge create edge-router router_cloud \
 #    Ziti cloud setting
 ####################################
 # assigne atribute to the router
-# ${ZITI_HOME}/bin/ziti edge update edge-router router_cloud -a 'cloud'
+${ZITI_HOME}/bin/ziti edge update edge-router router_cloud -a 'public-routers'
 #
 # # edge router policy
 # ${ZITI_HOME}/bin/ziti edge create edge-router-policy allow.cloud --edge-router-roles '#cloud' --identity-roles '#cloud'

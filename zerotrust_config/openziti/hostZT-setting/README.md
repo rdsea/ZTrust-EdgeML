@@ -171,3 +171,9 @@ sudo systemctl restart nginx
 
 ```
 
+- ziti
+```bash
+
+ziti edge list service-policies 'limit 1000'
+```
+

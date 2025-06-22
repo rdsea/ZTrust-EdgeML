@@ -177,8 +177,8 @@ ziti edge create service-policy "message-queue-dial-policy" Dial \
 # ziti edge create service-edge-router-policy "public-routers" \
 #   --edge-router-roles '#public-routers' --service-roles '#all'
 #   Public routers
-# ziti edge create edge-router-policy "public-routers" \
-#   --edge-router-roles '#public-routers' --identity-roles '#all'
-#
-# ziti edge create service-edge-router-policy "public-routers" \
-#   --edge-router-roles '#public-routers' --service-roles '#all'
+ziti edge create edge-router-policy "public-routers" \
+  --edge-router-roles '#public-routers' --identity-roles '#all'
+
+ziti edge create service-edge-router-policy "public-routers" \
+  --edge-router-roles '#public-routers' --service-roles '#all'
