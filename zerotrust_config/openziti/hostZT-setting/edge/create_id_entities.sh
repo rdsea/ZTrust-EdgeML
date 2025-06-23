@@ -1,19 +1,19 @@
 #!/bin/bash
 
-sudo ziti edge update identity "loadbalancer" \
-  --role-attributes loadbalancer,edge
-
-sudo ziti edge update identity "object-detection-client-$(cat /etc/hostname)" \
-  --role-attributes object-detection-client,edge
-
-sudo ziti edge update identity "preprocessing-$(cat /etc/hostname)" \
-  --role-attributes preprocessing,edge
-
-sudo ziti edge update identity "ensemble-$(cat /etc/hostname)" \
-  --role-attributes ensemble,edge,cloud
-
-sudo ziti edge update identity "mobilenetv2-$(cat /etc/hostname)" \
-  --role-attributes mobilenetv2,edge
+# sudo ziti edge update identity "loadbalancer" \
+#   --role-attributes loadbalancer,edge
+#
+# sudo ziti edge update identity "object-detection-client-$(cat /etc/hostname)" \
+#   --role-attributes object-detection-client,edge
+#
+# sudo ziti edge update identity "preprocessing-$(cat /etc/hostname)" \
+#   --role-attributes preprocessing,edge
+#
+# sudo ziti edge update identity "ensemble-$(cat /etc/hostname)" \
+#   --role-attributes ensemble,edge,cloud
+#
+# sudo ziti edge update identity "mobilenetv2-$(cat /etc/hostname)" \
+#   --role-attributes mobilenetv2,edge
 
 sudo ziti edge update identity "efficientnetb0"-$(cat /etc/hostname) --role-attributes efficientnetb0,edge
 
