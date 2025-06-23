@@ -78,7 +78,6 @@ ZITI_EDGE_ROUTER_IP="${ziti_edge_router_ip}"
 
 echo "$ZITI_EDGE_CONTROLLER_IP ctrl.cloud.hong3nguyen.com" | sudo tee -a /etc/hosts
 echo "$ZITI_EDGE_ROUTER_IP router.cloud.hong3nguyen.com" | sudo tee -a /etc/hosts
-#echo "127.0.0.1 router_cloud_messageq.cloud.hong3nguyen.com" | sudo tee -a /etc/hosts
 
 ####################################
 #    Install ziti-edge-tunnel
@@ -108,41 +107,38 @@ else
   echo "'ziti' CLI is already installed — skipping installation."
 fi
 
+# ----------- Set variables -----------More actions
+
+export ZITI_HOME="/opt/openziti"
+
+export ZITI_CTRL_ADVERTISED_ADDRESS="ctrl.cloud.hong3nguyen.com"
+
+export ZITI_CTRL_ADVERTISED_PORT="1280"
+
+export ZITI_USER="admin"
+
+export ZITI_PWD="admin"
+
+export ZITI_BOOTSTRAP_CONFIG_ARGS=""
+
+export ZITI_ROUTER_ADVERTISED_ADDRESS="router.cloud.hong3nguyen.com"
+
+
 ####################################
 #    setting consumer
 ####################################
 sudo apt install python3 python3-venv python3-pip -y
 
-# python3 -m venv /home/$USER/venv
-#
-
-# 1) Install uv for hong3nguyen
+# 1 Install uv for hong3nguyen
 
 su - hong3nguyen -c 'curl -Ls https://astral.sh/uv/install.sh | bash'
 
-# 2) Setup PATH for hong3nguyen shell permanently
+# 2 Setup PATH for hong3nguyen shell permanently
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/hong3nguyen/.bashrc
 
-# 3) Use uv as hong3nguyen
+# 3 Use uv as hong3nguyen
 su - hong3nguyen -c 'cd /home/hong3nguyen/app && $HOME/.local/bin/uv venv install'
 
-# # 1. Install uv
-# curl -Ls https://astral.sh/uv/install.sh | bash
-# 
-# export PATH="$HOME/.local/bin:$PATH"
-# 
-# source $HOME/.local/bin/env
-# 
-# cd /home/hong3nguyen/app
-# 
-# # 2. Install project env from pyproject.toml
-# uv venv install
-# 
-# # 3. Run your Python script with the env
-# #uv venv run python ml_consumer.py
-# 
-# export OPENZITI="true"
-# # uv run python ml_consumer.py
 
 # -----------Generate edge router token and config (not enrolled yet) -----------
 $ZITI_HOME/bin/ziti edge login https://$ZITI_CTRL_ADVERTISED_ADDRESS:$ZITI_CTRL_ADVERTISED_PORT --yes -u $ZITI_USER -p $ZITI_PWD

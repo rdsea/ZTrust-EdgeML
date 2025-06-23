@@ -6,6 +6,8 @@ CLOUD_ROUTER_IP=$(cd cloud-gcp && terraform output -raw controller_ip)
 
 MESSAGEQ_IP=$(cd cloud-gcp && terraform output -raw messageq_ip)
 
+JAEGER_IP=$(cd cloud-gcp && terraform output -raw database_ip)
+
 # Load .env
 # EDGE_ROUTER_IP=""
 # EDGE_APP_IP=""

@@ -96,6 +96,10 @@ ZITI_ENROLL_TOKEN='/home/hong3nguyen/router_cloud.jwt'
 ZITI_BOOTSTRAP_CONFIG_ARGS=''
 ```
 
+- to run message-queue
+```bash
+export OPENZITI="true"; uv run python ml_consumer.py
+```
 # Edge
 
 ## setting router at the edge

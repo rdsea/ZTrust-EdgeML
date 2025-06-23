@@ -4,6 +4,7 @@ set -e
 
 # export CLOUD_IP=""
 # export EDGE_IP=""
+# export JAEGER_IP=""
 
 CURRENT_DIR=$(pwd)/hong3nguyen
 

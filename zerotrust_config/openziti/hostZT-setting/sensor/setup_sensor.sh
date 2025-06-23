@@ -53,7 +53,7 @@ echo "$EDGE_IP router.edge.hong3nguyen.com" >>/etc/hosts
 ${ZITI_HOME}/bin/ziti edge login https://$ZITI_CTRL_ADVERTISED_ADDRESS:$ZITI_CTRL_ADVERTISED_PORT --yes -u $ZITI_USER -p $ZITI_PWD
 
 ziti edge create identity "object-detection-client-$(cat /etc/hostname)" \
-  --jwt-output-file /tmp/object-detection-client.jwt --role-attributes object-detection-client
+  --jwt-output-file /tmp/object-detection-client.jwt --role-attributes object-detection-client, edge
 
 ziti edge enroll --jwt /tmp/object-detection-client.jwt --out /tmp/object-detection-client.json
 
