@@ -1,0 +1,21 @@
+[project]
+dependencies = [
+    "aio-pika>=9.5.5",
+    "motor>=3.7.1",
+    "pyyaml>=6.0.2",
+    "opentelemetry-exporter-otlp>=1.33.1",
+    "opentelemetry-instrumentation-aio-pika>=0.54b1",
+    "opentelemetry-distro>=0.54b1",
+]
+
+name = "ml_consumer"
+version = "0.1.0"
+requires-python = ">= 3.10.12"
+
+[tool.rye]
+managed = true
+dev-dependencies = []
+virtual = true
+
+[tool.hatch.metadata]
+allow-direct-references = true

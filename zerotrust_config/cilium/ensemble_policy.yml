@@ -1,0 +1,35 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-preprocessing-to-ensemble
+spec:
+  endpointSelector:
+    matchLabels:
+      app: ensemble
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app: preprocessing-service
+    - toPorts:
+        - ports:
+            - port: "5011"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: ensemble-egress
+spec:
+  endpointSelector:
+    matchLabels:
+      app: ensemble-service
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            app: mobilenetv2-service
+        - matchLabels:
+            app: efficientnetb0-service
+    - toPorts:
+        - ports:
+            - port: "5012"
+              protocol: TCP

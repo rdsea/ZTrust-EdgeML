@@ -1,0 +1,32 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-gateway-to-preprocessing
+spec:
+  endpointSelector:
+    matchLabels:
+      app: preprocessing
+  ingress:
+    - fromEntities:
+        - ingress
+    - toPorts:
+        - ports:
+            - port: "5010"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: preprocessing-egress
+spec:
+  endpointSelector:
+    matchLabels:
+      app: preprocessing-service
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            app: ensemble-service
+    - toPorts:
+        - ports:
+            - port: "5011"
+              protocol: TCP

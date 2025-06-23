@@ -1,0 +1,13 @@
+rabbitmq:
+  # Get the username and password using
+  # username:  kubectl get secret rabbit-cluster-default-user -o jsonpath="{.data.username}" | base64 --decode
+  # password: kubectl get secret rabbit-cluster-default-user -o jsonpath="{.data.password}" | base64 --decode
+  url: localhost
+  queue_name: object_detection_result
+  username: guest
+  password: guest
+
+mongodb:
+  url: database
+  username: guest
+  password: guest
