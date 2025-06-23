@@ -100,6 +100,7 @@ ZITI_BOOTSTRAP_CONFIG_ARGS=''
 ```bash
 export OPENZITI="true"; uv run python ml_consumer.py
 ```
+
 # Edge
 
 ## setting router at the edge
