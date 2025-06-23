@@ -178,3 +178,62 @@ ziti edge list service-policies 'limit 1000'
 ```
 
 **After changing router attribute, affecting the router policies, need to reload the ziit-edge-tunnel for all services**
+
+- remove edge services/cloud
+```bash
+#!/bin/bash
+
+# === Service Policies ===
+ziti edge delete service-policy "loadbalancer-bind-policy"
+ziti edge delete service-policy "loadbalancer-dial-policy"
+ziti edge delete service-policy "preprocessing-bind-policy"
+ziti edge delete service-policy "preprocessing-dial-policy"
+ziti edge delete service-policy "ensemble-bind-policy"
+ziti edge delete service-policy "ensemble-dial-policy"
+ziti edge delete service-policy "mobilenetv2-bind-policy"
+ziti edge delete service-policy "mobilenetv2-dial-policy"
+ziti edge delete service-policy "efficientnetb0-bind-policy"
+ziti edge delete service-policy "efficientnetb0-dial-policy"
+ziti edge delete service-policy "message-queue-bind-policy"
+ziti edge delete service-policy "message-queue-dial-policy"
+ziti edge delete service-policy "database-bind-policy"
+ziti edge delete service-policy "database-dial-policy"
+
+# === Services ===
+ziti edge delete service "loadbalancer-service"
+ziti edge delete service "preprocessing-service"
+ziti edge delete service "ensemble-service"
+ziti edge delete service "mobilenetv2-service"
+ziti edge delete service "efficientnetb0-service"
+ziti edge delete service "message-queue-service"
+ziti edge delete service "database-service"
+
+# === Configs ===
+ziti edge delete config "client-intercept-config"
+ziti edge delete config "loadbalancer-host-config"
+ziti edge delete config "loadbalancer-intercept-config"
+ziti edge delete config "preprocessing-host-config"
+ziti edge delete config "preprocessing-intercept-config"
+ziti edge delete config "ensemble-host-config"
+ziti edge delete config "ensemble-intercept-mobilenetv2-config"
+ziti edge delete config "mobilenetv2-host-config"
+ziti edge delete config "ensemble-intercept-efficientnetb0-config"
+ziti edge delete config "efficientnetb0-host-config"
+ziti edge delete config "ensemble-intercept-message-queue-config"
+ziti edge delete config "message-queue-host-config"
+ziti edge delete config "message-queue-intercept-database-config"
+ziti edge delete config "database-host-config"
+
+# === Edge Router Policies ===
+ziti edge delete edge-router-policy "public-routers"
+ziti edge delete service-edge-router-policy "public-routers"
+
+ziti edge delete edge-router-policy "allow.id.router_edge"
+ziti edge delete service-edge-router-policy "allow.svc.router_edge"
+
+ziti edge delete edge-router-policy "allow.id.router_cloud"
+ziti edge delete service-edge-router-policy "allow.svc.router_cloud"
+
+echo "✅ Cleanup completed."
+
+```

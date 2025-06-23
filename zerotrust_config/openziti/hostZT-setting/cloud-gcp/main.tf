@@ -187,7 +187,7 @@ resource "google_compute_firewall" "allow-ziti" {
 
   allow {
     protocol = "tcp"
-    ports    = ["1280", "443", "5672", "27017", "6262", "10080", "8440-8443"]
+    ports    = ["1280", "3022", "443", "5672", "27017", "6262", "10080", "10000", "8440-8443"]
   }
 
   source_ranges = ["0.0.0.0/0"]

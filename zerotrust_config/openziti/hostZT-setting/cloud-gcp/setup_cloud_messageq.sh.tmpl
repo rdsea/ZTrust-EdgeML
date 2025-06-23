@@ -78,7 +78,7 @@ ZITI_EDGE_ROUTER_IP="${ziti_edge_router_ip}"
 
 echo "$ZITI_EDGE_CONTROLLER_IP ctrl.cloud.hong3nguyen.com" | sudo tee -a /etc/hosts
 echo "$ZITI_EDGE_ROUTER_IP router.cloud.hong3nguyen.com" | sudo tee -a /etc/hosts
-echo "127.0.0.1 router_cloud_messageq.cloud.hong3nguyen.com" | sudo tee -a /etc/hosts
+#echo "127.0.0.1 router_cloud_messageq.cloud.hong3nguyen.com" | sudo tee -a /etc/hosts
 
 ####################################
 #    Install ziti-edge-tunnel
@@ -107,46 +107,6 @@ if ! command -v ziti &>/dev/null; then
 else
   echo "'ziti' CLI is already installed — skipping installation."
 fi
-
-# ----------- Set variables -----------
-export ZITI_HOME="/opt/openziti"
-export ZITI_CTRL_ADVERTISED_ADDRESS="ctrl.cloud.hong3nguyen.com"
-export ZITI_CTRL_ADVERTISED_PORT="1280"
-export ZITI_USER="admin"
-export ZITI_PWD="admin"
-export ZITI_BOOTSTRAP_CONFIG_ARGS=""
-export ZITI_ROUTER_ADVERTISED_ADDRESS="router.cloud.hong3nguyen.com"
-
-CURRENT_DIR=$(pwd)
-export JWT_FILE=$CURRENT_DIR/router_cloud_messageq.jwt
-
-# -----------Generate edge router token and config (not enrolled yet) -----------
-$ZITI_HOME/bin/ziti edge login https://$ZITI_CTRL_ADVERTISED_ADDRESS:$ZITI_CTRL_ADVERTISED_PORT --yes -u $ZITI_USER -p $ZITI_PWD
-
-$ZITI_HOME/bin/ziti edge create edge-router router_cloud_messageq \
-  --jwt-output-file "$JWT_FILE" \
-  --tunneler-enabled
-
-####################################
-#    Ziti cloud setting
-####################################
-# assigne atribute to the router
-$ZITI_HOME/bin/ziti edge update edge-router router_cloud_messageq -a 'public-routers'
-
-# ----------- (Optional) Write router bootstrap.env -----------
-cat <<EOF >$ZITI_HOME/etc/router/bootstrap.env
-ZITI_CTRL_ADVERTISED_ADDRESS='$ZITI_CTRL_ADVERTISED_ADDRESS'
-ZITI_CTRL_ADVERTISED_PORT='$ZITI_CTRL_ADVERTISED_PORT'
-ZITI_ROUTER_ADVERTISED_ADDRESS='router_cloud_messageq.cloud.hong3nguyen.com'
-ZITI_ROUTER_PORT='3022'
-ZITI_ENROLL_TOKEN='$JWT_FILE'
-ZITI_BOOTSTRAP_CONFIG_ARGS=''
-EOF
-
-# enroll
-$ZITI_HOME/etc/router/bootstrap.bash
-
-systemctl enable --now ziti-router.service
 
 ####################################
 #    setting consumer
@@ -188,7 +148,7 @@ su - hong3nguyen -c 'cd /home/hong3nguyen/app && $HOME/.local/bin/uv venv instal
 $ZITI_HOME/bin/ziti edge login https://$ZITI_CTRL_ADVERTISED_ADDRESS:$ZITI_CTRL_ADVERTISED_PORT --yes -u $ZITI_USER -p $ZITI_PWD
 
 $ZITI_HOME/bin/ziti  edge create identity "message-queue" \
-  --jwt-output-file /tmp/message-queue.jwt --role-attributes message-queue
+  --jwt-output-file /tmp/message-queue.jwt --role-attributes message-queue,cloud
 
 $ZITI_HOME/bin/ziti  edge enroll --jwt /tmp/message-queue.jwt --out /tmp/message-queue.json
 

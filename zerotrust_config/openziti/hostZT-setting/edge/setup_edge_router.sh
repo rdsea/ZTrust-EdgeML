@@ -80,7 +80,7 @@ systemctl enable --now ziti-router.service
 
 # ---------------register and enroll ZT tunnel for nginx ------------------
 ${ZITI_HOME}/bin/ziti edge create identity "loadbalancer" \
-  --jwt-output-file /tmp/loadbalancer.jwt --role-attributes loadbalancer
+  --jwt-output-file /tmp/loadbalancer.jwt --role-attributes loadbalancer,edge
 
 ${ZITI_HOME}/bin/ziti edge enroll --jwt /tmp/loadbalancer.jwt --out /tmp/loadbalancer.json
 
@@ -89,9 +89,17 @@ ${ZITI_HOME}/bin/ziti edge enroll --jwt /tmp/loadbalancer.jwt --out /tmp/loadbal
 nohup ziti-edge-tunnel run -i /tmp/loadbalancer.json >/var/log/ziti-edge-tunnel.log 2>&1 &
 
 # edge router policy
-${ZITI_HOME}/bin/ziti edge update edge-router $ROUTER_NAME -a 'public-routers'
+${ZITI_HOME}/bin/ziti edge update edge-router $ROUTER_NAME -a 'edge'
 #
 # ${ZITI_HOME}/bin/ziti edge create edge-router-policy allow.edge --edge-router-roles '#edge' --identity-roles '#edge'
+#
+# ${ZITI_HOME}/bin/ziti edge create edge-router-policy edge-only-routing \
+#   --identity-roles "#edge-only" \
+#   --edge-router-roles "#edge"
+#
+# ${ZITI_HOME}/bin/ziti edge create edge-router-policy allow.edge --edge-router-roles '#edge' --identity-roles '#edge'
+#
+# ${ZITI_HOME}/bin/ziti edge create edge-router-policy allow.edge --edge-router-roles '#edge' --identity-roles '#preprocessing'
 #
 # ${ZITI_HOME}/bin/ziti edge create edge-router-policy edge-only-routing \
 #   --identity-roles "#edge-only" \
