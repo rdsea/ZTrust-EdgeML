@@ -1,0 +1,28 @@
+# .env
+
+# Cloud control plane
+CLOUD_CTRL_ADVERTISED_ADDRESS="ctrl.cloud.hong3nguyen.com"
+CLOUD_CTRL_IP=""
+CLOUD_CTRL_IP_INTERNAL=""
+
+CLOUD_ROUTER_ADVERTISED_ADDRESS="router.cloud.hong3nguyen.com"
+CLOUD_ROUTER_IP=""
+CLOUD_ROUTER_IP_INTERNAL=""
+
+# Edge control plane
+EDGE_ROUTER_ADVERTISED_ADDRESS="router.edge.hong3nguyen.com"
+EDGE_ROUTER_IP=""
+
+# Edge app 
+EDGE_APP_IP=""
+
+# list of sensor ips
+SENSOR_IP_S=""
+
+
+# pass for edge devices
+PASS=""
+
+# user and pass for ZT config
+ZT_USER=
+ZT_PASS=
