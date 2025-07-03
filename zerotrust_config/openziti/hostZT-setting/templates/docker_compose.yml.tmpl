@@ -1,0 +1,38 @@
+volumes:
+  artifacts:
+
+services:
+{% for service in docker_compose_services %}
+  {{ service.name }}:
+    image: {{ service.image }}
+    container_name: {{ service.container_name }}
+    {% if service.ports %}
+    ports:
+    {% for port in service.ports %}
+      - {{ port }}
+    {% endfor %}
+    {% endif %}
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    extra_hosts:
+      - "${ZITI_CTRL_ADVERTISED_ADDRESS}:${CLOUD_IP}"
+      - "${ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS}:${EDGE_IP}"
+      - "${ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS}:${CLOUD_IP}"
+    networks:
+      - default
+    {% if service.volumes %}
+    volumes:
+    {% for volume in service.volumes %}
+      - {{ volume }}
+    {% endfor %}
+    {% endif %}
+    {% if service.environment %}
+    environment:
+    {% for key, value in service.environment.items() %}
+      {{ key }}: {{ value }}
+    {% endfor %}
+    {% endif %}
+
+{% endfor %}
