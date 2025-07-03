@@ -54,3 +54,68 @@ ziti_config:
   router_advertised_address: "router.cloud.hong3nguyen.com"
   router_port: "3022"
   router_attribute: "cloud"
+  edge_router_advertised_address: "router.edge.hong3nguyen.com"
+
+edge_deployment:
+  ssh_user: "aaltosea"
+  ssh_pass: "aaltosea"
+  edge_router_ip: "192.168.1.100"
+  edge_app_ip: "192.168.1.101"
+  sensors:
+    - ip: "192.168.1.102"
+      ssh_pass: "aaltosea23"
+    - ip: "192.168.1.103"
+      ssh_pass: "aaltosea23"
+
+edge_applications:
+  - name: "object-detection-client"
+    roles: ["object-detection-client", "edge"]
+  - name: "preprocessing"
+    roles: ["preprocessing", "edge"]
+    port: 5010
+    intercept_address: "preprocessing.ziti-controller.private"
+    host_address: "localhost"
+    dial_identity_roles: ["#loadbalancer"]
+    bind_identity_roles: ["#preprocessing"]
+  - name: "ensemble"
+    roles: ["ensemble", "edge", "cloud"]
+    port: 5011
+    intercept_address: "ensemble.ziti-controller.private"
+    host_address: "localhost"
+    dial_identity_roles: ["#preprocessing"]
+    bind_identity_roles: ["#ensemble"]
+  - name: "mobilenetv2"
+    roles: ["mobilenetv2", "edge"]
+    port: 5012
+    intercept_address: "mobilenetv2.ziti-controller.private"
+    host_address: "localhost"
+    dial_identity_roles: ["#ensemble"]
+    bind_identity_roles: ["#mobilenetv2"]
+  - name: "efficientnetb0"
+    roles: ["efficientnetb0", "edge"]
+    port: 5012
+    intercept_address: "efficientnetb0.ziti-controller.private"
+    host_address: "localhost"
+    dial_identity_roles: ["#ensemble"]
+    bind_identity_roles: ["#efficientnetb0"]
+  - name: "loadbalancer"
+    roles: ["loadbalancer"]
+    port: 5009
+    intercept_address: "loadbalancer.ziti-controller.private"
+    host_address: "localhost"
+    dial_identity_roles: ["#object-detection-client"]
+    bind_identity_roles: ["#loadbalancer"]
+  - name: "message-queue"
+    roles: ["message-queue", "cloud"]
+    port: 5672
+    intercept_address: "rabbitmq.ziti-controller.private"
+    host_address: "localhost"
+    dial_identity_roles: ["#ensemble"]
+    bind_identity_roles: ["#message-queue"]
+  - name: "database"
+    roles: ["database", "cloud"]
+    port: 27017
+    intercept_address: "database.ziti-controller.private"
+    host_address: "localhost"
+    dial_identity_roles: ["#message-queue"]
+    bind_identity_roles: ["#database"]

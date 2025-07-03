@@ -7,9 +7,9 @@ set -euo pipefail
 # ==============================================================================
 
 # Ziti domain names from config
-CTRL_DOMAIN="ctrl.cloud.hong3nguyen.com"
-CLOUD_ROUTER_DOMAIN="router.cloud.hong3nguyen.com"
-EDGE_ROUTER_DOMAIN="router.edge.hong3nguyen.com"
+CTRL_DOMAIN="{{ ziti_config.ctrl_advertised_address }}"
+CLOUD_ROUTER_DOMAIN="{{ ziti_config.router_advertised_address }}"
+EDGE_ROUTER_DOMAIN="{{ ziti_config.edge_router_advertised_address }}"
 
 # ==============================================================================
 # FUNCTIONS

@@ -1,145 +1,122 @@
 #!/bin/bash
 
-####################################
-#    MongoDB
-####################################
-sudo apt-get install gnupg curl -y
+set -euo pipefail
 
-sudo chown -R mongodb:mongodb /home/hong3nguyen/data/db
-sudo chmod 755 /home
-sudo chmod 755 /home/hong3nguyen
-sudo chmod 755 /home/hong3nguyen/data
+# ==============================================================================
+# FUNCTIONS
+# ==============================================================================
 
-curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc |
-  sudo gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg \
-    --dearmor
+# --- Helper function for logging ---
+log() {
+  echo "--- $1 ---"
+}
 
-echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/8.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
+# --- Install MongoDB ---
+install_mongodb() {
+  log "Installing MongoDB"
+  apt-get update -y
+  apt-get install -y gnupg curl
 
-sudo apt-get update
+  curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg --dearmor
+  echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/8.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-8.0.list
+  apt-get update
+  apt-get install -y mongodb-org
+  systemctl enable --now mongod
+}
 
-sudo apt-get install -y mongodb-org
+# --- Configure MongoDB ---
+configure_mongodb() {
+  log "Configuring MongoDB"
+  mkdir -p /home/hong3nguyen/data/db
+  chown -R mongodb:mongodb /home/hong3nguyen/data/db
 
-sudo systemctl start mongod
-
-sudo systemctl daemon-reload
-
-sudo systemctl enable mongod
-
-
-####################################
-#    Config MongoDB
-####################################
-# Create RabbitMQ config directory
-
-# sudo mkdir -p /etc/rabbitmq
-
-mkdir -p /home/hong3nguyen/data/db
-chown -R mongodb:mongodb /home/hong3nguyen/data/db
-
-
-# Write rabbitmq.conf
-sudo tee /etc/mongod.conf >/dev/null <<EOF
-# BEGIN mongod.conf
+  tee /etc/mongod.conf >/dev/null <<EOF
 net:
   bindIp: 0.0.0.0
   port: 27017
-
 storage:
   dbPath: /home/hong3nguyen/data/db
-
 systemLog:
   destination: file
   path: /var/log/mongodb/mongod.log
   logAppend: true
 EOF
 
-# Start or restart mongod with no auth
-sudo systemctl restart mongod
+  systemctl restart mongod
 
-# Variables
-MONGO_ADMIN_USER="guest"
-MONGO_ADMIN_PASS="guest"
-
-
-# 3. Wait until mongod is ready
-# echo "Waiting for MongoDB to start..."
-# until mongosh --eval "print(\"waited for connection\")"; do
-#   sleep 2
-# done
-
-# 4. Create the admin user if it doesn't exist
-echo "Creating admin user..."
-mongosh <<EOF
+  # Create admin user
+  log "Creating MongoDB admin user"
+  mongosh <<EOF
 use admin
 db.createUser({
-  user: "$MONGO_ADMIN_USER",
-  pwd: "$MONGO_ADMIN_PASS",
+  user: "guest",
+  pwd: "guest",
   roles: [ { role: "userAdminAnyDatabase", db: "admin" } ]
 })
 EOF
 
-# 5. Enable authentication in mongod.conf if not already set
-sudo sed -i '/^#*security:/a\  authorization: enabled' /etc/mongod.conf
+  # Enable auth
+  sed -i '/^#*security:/a\  authorization: enabled' /etc/mongod.conf
+  systemctl restart mongod
+}
 
-# 6. Restart mongod to apply changes
-sudo systemctl restart mongod
+# --- Configure local DNS for Ziti ---
+configure_ziti_dns() {
+  log "Configuring Ziti DNS"
+  echo " ctrl.cloud.hong3nguyen.com" | tee -a /etc/hosts
+  echo " router.cloud.hong3nguyen.com" | tee -a /etc/hosts
+}
 
-####################################
-#    add /etc/hosts
-####################################
-# Example using Terraform template vars
-ZITI_EDGE_CONTROLLER_IP="${ziti_edge_controller_ip}"
-ZITI_EDGE_ROUTER_IP="${ziti_edge_router_ip}"
+# --- Install the Ziti Edge Tunnel ---
+install_ziti_tunnel() {
+  log "Installing Ziti Edge Tunnel"
+  curl -sSLf https://get.openziti.io/tun/package-repos.gpg | gpg --dearmor > /usr/share/keyrings/openziti.gpg
+  chmod +r /usr/share/keyrings/openziti.gpg
+  echo "deb [signed-by=/usr/share/keyrings/openziti.gpg] https://packages.openziti.org/zitipax-openziti-deb-stable jammy main" | tee /etc/apt/sources.list.d/openziti.list >/dev/null
+  apt-get update
+  apt-get install -y ziti-edge-tunnel
+}
 
-echo "$ZITI_EDGE_CONTROLLER_IP ctrl.cloud.hong3nguyen.com" | sudo tee -a /etc/hosts
-echo "$ZITI_EDGE_ROUTER_IP router.cloud.hong3nguyen.com" | sudo tee -a /etc/hosts
+# --- Create and enroll the Ziti identity ---
+create_ziti_identity() {
+  log "Creating and enrolling Ziti identity"
+  export ZITI_HOME="/opt/openziti"
+  export ZITI_CTRL_ADVERTISED_ADDRESS="ctrl.cloud.hong3nguyen.com"
+  export ZITI_CTRL_ADVERTISED_PORT="1280"
+  export ZITI_USER="admin"
+  export ZITI_PWD="admin"
 
-####################################
-#    Install ziti-edge-tunnel
-####################################
-curl -sSLf https://get.openziti.io/tun/package-repos.gpg |
-  gpg --dearmor --output /usr/share/keyrings/openziti.gpg
+  # Install Ziti CLI if not present
+  if ! command -v ziti &>/dev/null; then
+    log "Installing Ziti CLI"
+    curl -sS https://get.openziti.io/install.bash | bash -s openziti-router
+  fi
 
-chmod -c +r /usr/share/keyrings/openziti.gpg
+  # Log in and create the identity
+  "$ZITI_HOME/bin/ziti" edge login "https://$ZITI_CTRL_ADVERTISED_ADDRESS:$ZITI_CTRL_ADVERTISED_PORT" --yes -u "$ZITI_USER" -p "$ZITI_PWD"
 
-echo "deb [signed-by=/usr/share/keyrings/openziti.gpg] https://packages.openziti.org/zitipax-openziti-deb-stable jammy main" |
-  tee /etc/apt/sources.list.d/openziti.list >/dev/null
+  "$ZITI_HOME/bin/ziti" edge create identity "database" \
+    --jwt-output-file /tmp/database.jwt \
+    --role-attributes "database,cloud"
 
-apt update
+  "$ZITI_HOME/bin/ziti" edge enroll --jwt /tmp/database.jwt --out /tmp/database.json
 
-apt install -y ziti-edge-tunnel
+  # Run the tunnel in the background
+  nohup ziti-edge-tunnel run -i /tmp/database.json >/var/log/ziti-edge-tunnel.log 2>&1 &
+}
 
-####################################
-#    Install ziti-edge login
-####################################
-apt install curl gpg -y
+# ==============================================================================
+# MAIN EXECUTION
+# ==============================================================================
 
-if ! command -v ziti &>/dev/null; then
-  echo "'ziti' CLI not found — installing..."
-  curl -sS https://get.openziti.io/install.bash | sudo bash -s openziti-router
-else
-  echo "'ziti' CLI is already installed — skipping installation."
-fi
+main() {
+  install_mongodb
+  configure_mongodb
+  configure_ziti_dns
+  install_ziti_tunnel
+  create_ziti_identity
 
-# ----------- Set variables -----------
-export ZITI_HOME="/opt/openziti"
-export ZITI_CTRL_ADVERTISED_ADDRESS="ctrl.cloud.hong3nguyen.com"
-export ZITI_CTRL_ADVERTISED_PORT="1280"
-export ZITI_USER="admin"
-export ZITI_PWD="admin"
-export ZITI_BOOTSTRAP_CONFIG_ARGS=""
-export ZITI_ROUTER_ADVERTISED_ADDRESS="router.cloud.hong3nguyen.com"
+  log "Database setup complete."
+}
 
-export OPENZITI="true"
-
-# -----------Generate edge router token and config (not enrolled yet) -----------
-$ZITI_HOME/bin/ziti edge login https://$ZITI_CTRL_ADVERTISED_ADDRESS:$ZITI_CTRL_ADVERTISED_PORT --yes -u $ZITI_USER -p $ZITI_PWD
-
-$ZITI_HOME/bin/ziti  edge create identity "database" \
-  --jwt-output-file /tmp/database.jwt --role-attributes database,
-
-$ZITI_HOME/bin/ziti  edge enroll --jwt /tmp/database.jwt --out /tmp/database.json
-
-# ziti-edge-tunnel run -i /tmp/database.json
-nohup ziti-edge-tunnel run -i /tmp/database.json >/var/log/ziti-edge-tunnel.log 2>&1 &
+main "$@"

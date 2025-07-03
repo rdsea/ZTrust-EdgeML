@@ -69,94 +69,19 @@ main() {
   log "Creating Ziti Identities, Services, and Policies"
 
   # Create identities and services for each application
-  
-  create_ziti_identity "object-detection-client" "object-detection-client,edge"
-  
-  
-  create_ziti_identity "preprocessing" "preprocessing,edge"
-  
+  {% for app in edge_applications %}
+  create_ziti_identity "{{ app.name }}" "{{ app.roles | join(',') }}"
+  {% if app.port %}
   create_ziti_service \
-    "preprocessing" \
-    "5010" \
-    "preprocessing.ziti-controller.private" \
-    "localhost" \
-    "preprocessing,edge" \
-    "#preprocessing" \
-    "#loadbalancer"
-  
-  
-  create_ziti_identity "ensemble" "ensemble,edge,cloud"
-  
-  create_ziti_service \
-    "ensemble" \
-    "5011" \
-    "ensemble.ziti-controller.private" \
-    "localhost" \
-    "ensemble,edge,cloud" \
-    "#ensemble" \
-    "#preprocessing"
-  
-  
-  create_ziti_identity "mobilenetv2" "mobilenetv2,edge"
-  
-  create_ziti_service \
-    "mobilenetv2" \
-    "5012" \
-    "mobilenetv2.ziti-controller.private" \
-    "localhost" \
-    "mobilenetv2,edge" \
-    "#mobilenetv2" \
-    "#ensemble"
-  
-  
-  create_ziti_identity "efficientnetb0" "efficientnetb0,edge"
-  
-  create_ziti_service \
-    "efficientnetb0" \
-    "5012" \
-    "efficientnetb0.ziti-controller.private" \
-    "localhost" \
-    "efficientnetb0,edge" \
-    "#efficientnetb0" \
-    "#ensemble"
-  
-  
-  create_ziti_identity "loadbalancer" "loadbalancer"
-  
-  create_ziti_service \
-    "loadbalancer" \
-    "5009" \
-    "loadbalancer.ziti-controller.private" \
-    "localhost" \
-    "loadbalancer" \
-    "#loadbalancer" \
-    "#object-detection-client"
-  
-  
-  create_ziti_identity "message-queue" "message-queue,cloud"
-  
-  create_ziti_service \
-    "message-queue" \
-    "5672" \
-    "rabbitmq.ziti-controller.private" \
-    "localhost" \
-    "message-queue,cloud" \
-    "#message-queue" \
-    "#ensemble"
-  
-  
-  create_ziti_identity "database" "database,cloud"
-  
-  create_ziti_service \
-    "database" \
-    "27017" \
-    "database.ziti-controller.private" \
-    "localhost" \
-    "database,cloud" \
-    "#database" \
-    "#message-queue"
-  
-  
+    "{{ app.name }}" \
+    "{{ app.port }}" \
+    "{{ app.intercept_address }}" \
+    "{{ app.host_address }}" \
+    "{{ app.roles | join(',') }}" \
+    "{{ app.bind_identity_roles | join(',') }}" \
+    "{{ app.dial_identity_roles | join(',') }}"
+  {% endif %}
+  {% endfor %}
 
   # Add specific policies that are not tied to a single application
   log "Creating general Ziti policies"
