@@ -1,11 +1,11 @@
-project_name: "aalto-t313-cs-e4640"
-region: "us-central1"
-zone: "us-central1-a"
-machine_type: "e2-medium"
-image: "ubuntu-os-cloud/ubuntu-2204-lts"
-ssh_user: "hong3nguyen"
-ssh_public_key_path: "~/.ssh/id_ed25519.pub"
-ssh_private_key_path: "~/.ssh/id_ed25519"
+project_name: "your-gcp-project-id"
+region: "your-gcp-region"
+zone: "your-gcp-zone"
+machine_type: "e2-medium" # Example: e2-medium, n1-standard-1
+image: "ubuntu-os-cloud/ubuntu-2204-lts" # Example: ubuntu-os-cloud/ubuntu-2204-lts
+ssh_user: "your-ssh-username"
+ssh_public_key_path: "~/.ssh/id_rsa.pub" # Path to your SSH public key
+ssh_private_key_path: "~/.ssh/id_rsa" # Path to your SSH private key
 
 vms:
   - name: "ziti-controller-router"
@@ -14,8 +14,8 @@ vms:
   - name: "cloud-messageq"
     tags: ["cloud-messageq", "ziti-app"]
     provisioner_script: "ziti-mq-init.sh"
-    application_source_path: "../../../../applications/machine_learning/object_classification/src/database/"
-    application_destination_path: "/home/hong3nguyen/app/"
+    application_source_path: "../../../../applications/machine_learning/object_classification/src/database/" # Example path
+    application_destination_path: "/home/{{ssh_user}}/app/"
   - name: "cloud-db"
     tags: ["cloud-db", "ziti-app"]
     provisioner_script: "ziti-db-init.sh"
@@ -47,25 +47,25 @@ firewall_rules:
 
 ziti_config:
   home: "/opt/openziti"
-  user: "admin"
-  password: "admin"
-  ctrl_advertised_address: "ctrl.cloud.hong3nguyen.com"
+  user: "ziti-admin-username"
+  password: "ziti-admin-password"
+  ctrl_advertised_address: "ctrl.yourdomain.com"
   ctrl_advertised_port: "1280"
-  router_advertised_address: "router.cloud.hong3nguyen.com"
+  router_advertised_address: "router.yourdomain.com"
   router_port: "3022"
   router_attribute: "cloud"
-  edge_router_advertised_address: "router.edge.hong3nguyen.com"
+  edge_router_advertised_address: "edge-router.yourdomain.com"
 
 edge_deployment:
-  ssh_user: "aaltosea"
-  ssh_pass: "aaltosea"
-  edge_router_ip: "192.168.1.100"
-  edge_app_ip: "192.168.1.101"
+  ssh_user: "edge-ssh-username"
+  ssh_pass: "edge-ssh-password"
+  edge_router_ip: "192.168.1.100" # Example IP
+  edge_app_ip: "192.168.1.101" # Example IP
   sensors:
-    - ip: "192.168.1.102"
-      ssh_pass: "aaltosea23"
-    - ip: "192.168.1.103"
-      ssh_pass: "aaltosea23"
+    - ip: "192.168.1.102" # Example IP
+      ssh_pass: "sensor-ssh-password-1"
+    - ip: "192.168.1.103" # Example IP
+      ssh_pass: "sensor-ssh-password-2"
 
 edge_applications:
   - name: "object-detection-client"
