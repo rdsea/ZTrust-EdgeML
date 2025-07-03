@@ -76,7 +76,7 @@ main() {
   deploy_script "{{ sensor.ip }}" "$EDGE_SSH_USER" "{{ sensor.ssh_pass }}" \
     "sensor/setup_sensor.sh" \
     "CLOUD_IP=$CTRL_IP EDGE_IP=$EDGE_ROUTER_IP" \
-    "../../../applications/machine_learning/object_classification/src/loadgen/"
+    "../../../../applications/machine_learning/object_classification/src/loadgen/"
   {% endfor %}
 
   log "Edge and Sensor deployment complete."

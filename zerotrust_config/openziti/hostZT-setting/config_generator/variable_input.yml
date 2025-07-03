@@ -1,0 +1,121 @@
+project_name: "YOUR_PROJECT_NAME"
+region: "us-central1"
+zone: "us-central1-a"
+machine_type: "e2-medium"
+image: "ubuntu-os-cloud/ubuntu-2204-lts"
+ssh_user: "YOUR_SSH_USER"
+ssh_public_key_path: "YOUR_SSH_PUBLIC_KEY_PATH"
+ssh_private_key_path: "YOUR_SSH_PRIVATE_KEY_PATH"
+
+vms:
+  - name: "ziti-controller-router"
+    tags: ["ziti", "controller"]
+    provisioner_script: "ziti-cloud-init.sh"
+  - name: "cloud-messageq"
+    tags: ["cloud-messageq", "ziti-app"]
+    provisioner_script: "ziti-mq-init.sh"
+    application_source_path: "../../../../applications/machine_learning/object_classification/src/database/"
+    application_destination_path: "/home/{{ssh_user}}/app/"
+  - name: "cloud-db"
+    tags: ["cloud-db", "ziti-app"]
+    provisioner_script: "ziti-db-init.sh"
+
+firewall_rules:
+  - name: "allow-ssh"
+    protocol: "tcp"
+    ports: ["22"]
+    source_ranges: ["0.0.0.0/0"]
+  - name: "allow-ziti"
+    protocol: "tcp"
+    ports:
+      [
+        "1280",
+        "3022",
+        "443",
+        "5672",
+        "27017",
+        "6262",
+        "10080",
+        "10000",
+        "8440-8443",
+      ]
+    source_ranges: ["0.0.0.0/0"]
+  - name: "allow-app"
+    protocol: "tcp"
+    ports: ["5672"]
+    source_ranges: ["0.0.0.0/0"]
+
+ziti_config:
+  home: "/opt/openziti"
+  user: "YOUR_ZITI_USER"
+  password: "YOUR_ZITI_PASSWORD"
+  ctrl_advertised_address: "YOUR_ZITI_CTRL_ADVERTISED_ADDRESS"
+  ctrl_advertised_port: "1280"
+  router_advertised_address: "YOUR_ZITI_ROUTER_ADVERTISED_ADDRESS"
+  router_port: "3022"
+  router_attribute: "cloud"
+  edge_router_advertised_address: "YOUR_ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS"
+
+edge_deployment:
+  ssh_user: "YOUR_EDGE_SSH_USER"
+  ssh_pass: "YOUR_EDGE_SSH_PASS"
+  edge_router_ip: "YOUR_EDGE_ROUTER_IP"
+  edge_app_ip: "YOUR_EDGE_APP_IP"
+  sensors:
+    - ip: "YOUR_SENSOR_1_IP"
+      ssh_pass: "YOUR_SENSOR_1_SSH_PASS"
+    - ip: "YOUR_SENSOR_2_IP"
+      ssh_pass: "YOUR_SENSOR_2_SSH_PASS"
+
+edge_applications:
+  - name: "object-detection-client"
+    roles: ["object-detection-client", "edge"]
+  - name: "preprocessing"
+    roles: ["preprocessing", "edge"]
+    port: 5010
+    intercept_address: "preprocessing.ziti-controller.private"
+    host_address: "localhost"
+    dial_identity_roles: ["#loadbalancer"]
+    bind_identity_roles: ["#preprocessing"]
+  - name: "ensemble"
+    roles: ["ensemble", "edge", "cloud"]
+    port: 5011
+    intercept_address: "ensemble.ziti-controller.private"
+    host_address: "localhost"
+    dial_identity_roles: ["#preprocessing"]
+    bind_identity_roles: ["#ensemble"]
+  - name: "mobilenetv2"
+    roles: ["mobilenetv2", "edge"]
+    port: 5012
+    intercept_address: "mobilenetv2.ziti-controller.private"
+    host_address: "localhost"
+    dial_identity_roles: ["#ensemble"]
+    bind_identity_roles: ["#mobilenetv2"]
+  - name: "efficientnetb0"
+    roles: ["efficientnetb0", "edge"]
+    port: 5012
+    intercept_address: "efficientnetb0.ziti-controller.private"
+    host_address: "localhost"
+    dial_identity_roles: ["#ensemble"]
+    bind_identity_roles: ["#efficientnetb0"]
+  - name: "loadbalancer"
+    roles: ["loadbalancer"]
+    port: 5009
+    intercept_address: "loadbalancer.ziti-controller.private"
+    host_address: "localhost"
+    dial_identity_roles: ["#object-detection-client"]
+    bind_identity_roles: ["#loadbalancer"]
+  - name: "message-queue"
+    roles: ["message-queue", "cloud"]
+    port: 5672
+    intercept_address: "rabbitmq.ziti-controller.private"
+    host_address: "localhost"
+    dial_identity_roles: ["#ensemble"]
+    bind_identity_roles: ["#message-queue"]
+  - name: "database"
+    roles: ["database", "cloud"]
+    port: 27017
+    intercept_address: "database.ziti-controller.private"
+    host_address: "localhost"
+    dial_identity_roles: ["#message-queue"]
+    bind_identity_roles: ["#database"]
