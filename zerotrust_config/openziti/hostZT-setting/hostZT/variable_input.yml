@@ -1,0 +1,56 @@
+project_name: "aalto-t313-cs-e4640"
+region: "us-central1"
+zone: "us-central1-a"
+machine_type: "e2-medium"
+image: "ubuntu-os-cloud/ubuntu-2204-lts"
+ssh_user: "hong3nguyen"
+ssh_public_key_path: "~/.ssh/id_ed25519.pub"
+ssh_private_key_path: "~/.ssh/id_ed25519"
+
+vms:
+  - name: "ziti-controller-router"
+    tags: ["ziti", "controller"]
+    provisioner_script: "ziti-cloud-init.sh"
+  - name: "cloud-messageq"
+    tags: ["cloud-messageq", "ziti-app"]
+    provisioner_script: "ziti-mq-init.sh"
+    application_source_path: "../../../../applications/machine_learning/object_classification/src/database/"
+    application_destination_path: "/home/hong3nguyen/app/"
+  - name: "cloud-db"
+    tags: ["cloud-db", "ziti-app"]
+    provisioner_script: "ziti-db-init.sh"
+
+firewall_rules:
+  - name: "allow-ssh"
+    protocol: "tcp"
+    ports: ["22"]
+    source_ranges: ["0.0.0.0/0"]
+  - name: "allow-ziti"
+    protocol: "tcp"
+    ports:
+      [
+        "1280",
+        "3022",
+        "443",
+        "5672",
+        "27017",
+        "6262",
+        "10080",
+        "10000",
+        "8440-8443",
+      ]
+    source_ranges: ["0.0.0.0/0"]
+  - name: "allow-app"
+    protocol: "tcp"
+    ports: ["5672"]
+    source_ranges: ["0.0.0.0/0"]
+
+ziti_config:
+  home: "/opt/openziti"
+  user: "admin"
+  password: "admin"
+  ctrl_advertised_address: "ctrl.cloud.hong3nguyen.com"
+  ctrl_advertised_port: "1280"
+  router_advertised_address: "router.cloud.hong3nguyen.com"
+  router_port: "3022"
+  router_attribute: "cloud"

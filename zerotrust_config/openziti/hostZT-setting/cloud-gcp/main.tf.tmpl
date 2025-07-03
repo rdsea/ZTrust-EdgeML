@@ -8,8 +8,8 @@ terraform {
 }
 
 provider "google" {
-  project = "aalto-t313-cs-e4640"
-  region  = "us-central1"
+  project = "{{project_name}}"
+  region  = "{{region}}"
 }
 
 # ------------------------------
@@ -17,12 +17,12 @@ provider "google" {
 # ------------------------------
 resource "google_compute_instance" "ziti_controller_router" {
   name         = "ziti-controller-router"
-  machine_type = "e2-medium"
-  zone         = "us-central1-a"
+  machine_type = "{{machine_type}}"
+  zone         = "{{zone}}"
 
   boot_disk {
     initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2204-lts"
+      image = "{{image}}"
     }
   }
 
@@ -32,13 +32,13 @@ resource "google_compute_instance" "ziti_controller_router" {
   }
 
   metadata = {
-    ssh-keys = "hong3nguyen:${file("~/.ssh/id_ed25519.pub")}"
+    ssh-keys = "{{ssh_user}}:${file("{{ssh_public_key_path}}")}"
   }
 
   connection {
     type        = "ssh"
-    user        = "hong3nguyen"
-    private_key = file("~/.ssh/id_ed25519")
+    user        = "{{ssh_user}}"
+    private_key = file("{{ssh_private_key_path}}")
     host        = self.network_interface[0].access_config[0].nat_ip
     agent       = true
   }
@@ -63,12 +63,12 @@ resource "google_compute_instance" "ziti_controller_router" {
 # ------------------------------
 resource "google_compute_instance" "message_q" {
   name         = "cloud-messageq"
-  machine_type = "e2-medium"
-  zone         = "us-central1-a"
+  machine_type = "{{machine_type}}"
+  zone         = "{{zone}}"
 
   boot_disk {
     initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2204-lts"
+      image = "{{image}}"
     }
   }
 
@@ -78,13 +78,13 @@ resource "google_compute_instance" "message_q" {
   }
 
   metadata = {
-    ssh-keys = "hong3nguyen:${file("~/.ssh/id_ed25519.pub")}"
+    ssh-keys = "{{ssh_user}}:${file("{{ssh_public_key_path}}")}"
   }
 
   connection {
     type        = "ssh"
-    user        = "hong3nguyen"
-    private_key = file("~/.ssh/id_ed25519")
+    user        = "{{ssh_user}}"
+    private_key = file("{{ssh_private_key_path}}")
     host        = self.network_interface[0].access_config[0].nat_ip
     agent       = true
   }
@@ -92,12 +92,12 @@ resource "google_compute_instance" "message_q" {
   # Provision application files first
   provisioner "remote-exec" {
     inline = [
-      "mkdir -p /home/hong3nguyen/app"
+      "mkdir -p /home/{{ssh_user}}/app"
     ]
   }
   provisioner "file" {
     source      = "../../../../applications/machine_learning/object_classification/src/database/"
-    destination = "/home/hong3nguyen/app/"
+    destination = "/home/{{ssh_user}}/app/"
   }
 
   # Provision and run Ziti setup script
@@ -124,12 +124,12 @@ resource "google_compute_instance" "message_q" {
 # ------------------------------
 resource "google_compute_instance" "database" {
   name         = "cloud-db"
-  machine_type = "e2-medium"
-  zone         = "us-central1-a"
+  machine_type = "{{machine_type}}"
+  zone         = "{{zone}}"
 
   boot_disk {
     initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2204-lts"
+      image = "{{image}}"
     }
   }
 
@@ -139,13 +139,13 @@ resource "google_compute_instance" "database" {
   }
 
   metadata = {
-    ssh-keys = "hong3nguyen:${file("~/.ssh/id_ed25519.pub")}"
+    ssh-keys = "{{ssh_user}}:${file("{{ssh_public_key_path}}")}"
   }
 
   connection {
     type        = "ssh"
-    user        = "hong3nguyen"
-    private_key = file("~/.ssh/id_ed25519")
+    user        = "{{ssh_user}}"
+    private_key = file("{{ssh_private_key_path}}")
     host        = self.network_interface[0].access_config[0].nat_ip
     agent       = true
   }

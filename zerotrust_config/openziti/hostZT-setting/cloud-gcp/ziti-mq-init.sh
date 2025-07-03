@@ -1,0 +1,151 @@
+#!/bin/sh
+
+####################################
+#    Install RabbitMQ
+####################################
+sudo apt-get install curl gnupg apt-transport-https -y
+
+## Team RabbitMQ's main signing key
+curl -1sLf "https://keys.openpgp.org/vks/v1/by-fingerprint/0A9AF2115F4687BD29803A206B73A36E6026DFCA" | sudo gpg --dearmor | sudo tee /usr/share/keyrings/com.rabbitmq.team.gpg >/dev/null
+## Community mirror of Cloudsmith: modern Erlang repository
+curl -1sLf https://github.com/rabbitmq/signing-keys/releases/download/3.0/cloudsmith.rabbitmq-erlang.E495BB49CC4BBE5B.key | sudo gpg --dearmor | sudo tee /usr/share/keyrings/rabbitmq.E495BB49CC4BBE5B.gpg >/dev/null
+## Community mirror of Cloudsmith: RabbitMQ repository
+curl -1sLf https://github.com/rabbitmq/signing-keys/releases/download/3.0/cloudsmith.rabbitmq-server.9F4587F226208342.key | sudo gpg --dearmor | sudo tee /usr/share/keyrings/rabbitmq.9F4587F226208342.gpg >/dev/null
+
+## Add apt repositories maintained by Team RabbitMQ
+sudo tee /etc/apt/sources.list.d/rabbitmq.list <<EOF
+## Provides modern Erlang/OTP releases
+##
+deb [arch=amd64 signed-by=/usr/share/keyrings/rabbitmq.E495BB49CC4BBE5B.gpg] https://ppa1.rabbitmq.com/rabbitmq/rabbitmq-erlang/deb/ubuntu jammy main
+deb-src [signed-by=/usr/share/keyrings/rabbitmq.E495BB49CC4BBE5B.gpg] https://ppa1.rabbitmq.com/rabbitmq/rabbitmq-erlang/deb/ubuntu jammy main
+
+# another mirror for redundancy
+deb [arch=amd64 signed-by=/usr/share/keyrings/rabbitmq.E495BB49CC4BBE5B.gpg] https://ppa2.rabbitmq.com/rabbitmq/rabbitmq-erlang/deb/ubuntu jammy main
+deb-src [signed-by=/usr/share/keyrings/rabbitmq.E495BB49CC4BBE5B.gpg] https://ppa2.rabbitmq.com/rabbitmq/rabbitmq-erlang/deb/ubuntu jammy main
+
+## Provides RabbitMQ
+##
+deb [arch=amd64 signed-by=/usr/share/keyrings/rabbitmq.9F4587F226208342.gpg] https://ppa1.rabbitmq.com/rabbitmq/rabbitmq-server/deb/ubuntu jammy main
+deb-src [signed-by=/usr/share/keyrings/rabbitmq.9F4587F226208342.gpg] https://ppa1.rabbitmq.com/rabbitmq/rabbitmq-server/deb/ubuntu jammy main
+
+# another mirror for redundancy
+deb [arch=amd64 signed-by=/usr/share/keyrings/rabbitmq.9F4587F226208342.gpg] https://ppa2.rabbitmq.com/rabbitmq/rabbitmq-server/deb/ubuntu jammy main
+deb-src [signed-by=/usr/share/keyrings/rabbitmq.9F4587F226208342.gpg] https://ppa2.rabbitmq.com/rabbitmq/rabbitmq-server/deb/ubuntu jammy main
+EOF
+
+## Update package indices
+sudo apt-get update -y
+
+## Install Erlang packages
+sudo apt-get install -y erlang-base \
+  erlang-asn1 erlang-crypto erlang-eldap erlang-ftp erlang-inets \
+  erlang-mnesia erlang-os-mon erlang-parsetools erlang-public-key \
+  erlang-runtime-tools erlang-snmp erlang-ssl \
+  erlang-syntax-tools erlang-tftp erlang-tools erlang-xmerl
+
+## Install rabbitmq-server and its dependencies
+sudo apt-get install rabbitmq-server -y --fix-missing
+
+####################################
+#    config RabbitMQ
+####################################
+# Create RabbitMQ config directory
+sudo mkdir -p /etc/rabbitmq
+
+# Write rabbitmq.conf
+sudo tee /etc/rabbitmq/rabbitmq.conf >/dev/null <<EOF
+# BEGIN rabbitmq.conf
+#listeners.tcp.1 = :::5672
+listeners.tcp.default = 0.0.0.0:5672
+management.listener.port = 15672
+EOF
+
+# Write rabbitmq-env.conf
+sudo tee /etc/rabbitmq/rabbitmq-env.conf >/dev/null <<EOF
+# BEGIN rabbitmq-env.conf
+RABBITMQ_NODE_PORT=5672
+RABBITMQ_NODENAME=rabbitmq@localhost
+EOF
+
+sudo systemctl restart rabbitmq-server
+
+####################################
+#    add /etc/hosts
+####################################
+# Example using Terraform template vars
+ZITI_EDGE_CONTROLLER_IP="${ziti_edge_controller_ip}"
+ZITI_EDGE_ROUTER_IP="${ziti_edge_router_ip}"
+
+echo "$ZITI_EDGE_CONTROLLER_IP ctrl.cloud.hong3nguyen.com" | sudo tee -a /etc/hosts
+echo "$ZITI_EDGE_ROUTER_IP router.cloud.hong3nguyen.com" | sudo tee -a /etc/hosts
+
+####################################
+#    Install ziti-edge-tunnel
+####################################
+curl -sSLf https://get.openziti.io/tun/package-repos.gpg |
+  gpg --dearmor --output /usr/share/keyrings/openziti.gpg
+
+chmod -c +r /usr/share/keyrings/openziti.gpg
+
+echo "deb [signed-by=/usr/share/keyrings/openziti.gpg] https://packages.openziti.org/zitipax-openziti-deb-stable jammy main" |
+  tee /etc/apt/sources.list.d/openziti.list >/dev/null
+
+apt update
+
+apt install -y ziti-edge-tunnel
+
+
+####################################
+#    Install ziti-edge login
+####################################
+apt install curl gpg -y
+
+if ! command -v ziti &>/dev/null; then
+  echo "'ziti' CLI not found — installing..."
+  curl -sS https://get.openziti.io/install.bash | sudo bash -s openziti-router
+else
+  echo "'ziti' CLI is already installed — skipping installation."
+fi
+
+# ----------- Set variables -----------
+export ZITI_HOME="/opt/openziti"
+
+export ZITI_CTRL_ADVERTISED_ADDRESS="ctrl.cloud.hong3nguyen.com"
+
+export ZITI_CTRL_ADVERTISED_PORT="1280"
+
+export ZITI_USER="admin"
+
+export ZITI_PWD="admin"
+
+export ZITI_BOOTSTRAP_CONFIG_ARGS=""
+
+export ZITI_ROUTER_ADVERTISED_ADDRESS="router.cloud.hong3nguyen.com"
+
+
+####################################
+#    setting consumer
+####################################
+sudo apt install python3 python3-venv python3-pip -y
+
+# 1 Install uv for hong3nguyen
+
+su - hong3nguyen -c 'curl -Ls https://astral.sh/uv/install.sh | bash'
+
+# 2 Setup PATH for hong3nguyen shell permanently
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/hong3nguyen/.bashrc
+
+# 3 Use uv as hong3nguyen
+su - hong3nguyen -c 'cd /home/hong3nguyen/app && $HOME/.local/bin/uv venv install'
+
+
+# -----------Generate edge router token and config (not enrolled yet) -----------
+$ZITI_HOME/bin/ziti edge login https://$ZITI_CTRL_ADVERTISED_ADDRESS:$ZITI_CTRL_ADVERTISED_PORT --yes -u $ZITI_USER -p $ZITI_PWD
+
+$ZITI_HOME/bin/ziti  edge create identity "message-queue" \
+  --jwt-output-file /tmp/message-queue.jwt --role-attributes message-queue,
+
+$ZITI_HOME/bin/ziti  edge enroll --jwt /tmp/message-queue.jwt --out /tmp/message-queue.json
+
+# ziti-edge-tunnel run -i /tmp/message-queue.json
+nohup ziti-edge-tunnel run -i /tmp/message-queue.json >/var/log/ziti-edge-tunnel.log 2>&1 &
