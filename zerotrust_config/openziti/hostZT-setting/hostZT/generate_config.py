@@ -21,7 +21,10 @@ files_to_generate = {
     "script_settup_sensor_edge.sh.tmpl": "script_settup_sensor_edge.sh",
     "cleaning.sh.tmpl": "cleaning.sh",
     "pkill_all_zt_tunnel.sh.tmpl": "pkill_all_zt_tunnel.sh",
-    "edge/create_id_entities.sh.tmpl": "edge/create_id_entities.sh"
+    "edge/create_id_entities.sh.tmpl": "edge/create_id_entities.sh",
+    "edge/setup_edge_app.sh.tmpl": "edge/setup_edge_app.sh",
+    "edge/setup_edge_router.sh.tmpl": "edge/setup_edge_router.sh",
+    "sensor/setup_sensor.sh.tmpl": "sensor/setup_sensor.sh"
 }
 
 # Generate cloud-gcp and edge sensor scripts

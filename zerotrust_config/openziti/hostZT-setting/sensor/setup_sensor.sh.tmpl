@@ -11,16 +11,14 @@ export CLOUD_IP="$CLOUD_IP"
 export EDGE_IP="$EDGE_IP"
 
 # Ziti configuration from variable_input.yml
-ZITI_HOME="/opt/openziti"
-ZITI_CTRL_ADVERTISED_ADDRESS="ctrl.cloud.hong3nguyen.com"
-ZITI_CTRL_ADVERTISED_PORT="1280"
-ZITI_USER="admin"
-ZITI_PWD="admin"
-ZITI_ROUTER_ADVERTISED_ADDRESS="router.edge.hong3nguyen.com"
-ZITI_ROUTER_PORT="3022"
+ZITI_HOME="{{ ziti_config.home }}"
+ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl_advertised_address }}"
+ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl_advertised_port }}"
+ZITI_USER="{{ ziti_config.user }}"
+ZITI_PWD="{{ ziti_config.password }}"
+ZITI_ROUTER_ADVERTISED_ADDRESS="{{ ziti_config.router_advertised_address }}"
 
-ROUTER_NAME="router_edge"
-CURRENT_DIR="$(pwd)/hong3nguyen"
+CURRENT_DIR="$(pwd)/{{ssh_user}}"
 
 # ==============================================================================
 # FUNCTIONS
@@ -59,46 +57,22 @@ install_ziti_components() {
 # --- Add DNS entries for Ziti controllers/routers ---
 add_dns_entries() {
   log "Adding Ziti DNS entries to /etc/hosts"
-  echo "$CLOUD_IP ctrl.cloud.hong3nguyen.com" >>/etc/hosts
-  echo "$CLOUD_IP router.cloud.hong3nguyen.com" >>/etc/hosts
-  echo "$EDGE_IP router.edge.hong3nguyen.com" >>/etc/hosts
+  echo "$CLOUD_IP {{ ziti_config.ctrl_advertised_address }}" >>/etc/hosts
+  echo "$CLOUD_IP {{ ziti_config.router_advertised_address }}" >>/etc/hosts
+  echo "$EDGE_IP {{ ziti_config.edge_router_advertised_address }}" >>/etc/hosts
 }
 
-# --- Create and enroll the Edge Router ---
-create_and_enroll_edge_router() {
-  log "Creating and enrolling Edge Router: $ROUTER_NAME"
-  local jwt_file="${CURRENT_DIR}/${ROUTER_NAME}.jwt"
-
+# --- Create and enroll Ziti identity for object-detection-client ---
+create_object_detection_identity() {
+  log "Creating and enrolling Ziti identity for object-detection-client"
   "${ZITI_HOME}/bin/ziti" edge login "https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}" --yes -u "${ZITI_USER}" -p "${ZITI_PWD}"
 
-  "${ZITI_HOME}/bin/ziti" edge create edge-router "${ROUTER_NAME}" \
-    --jwt-output-file "${jwt_file}" \
-    --tunneler-enabled
+  "${ZITI_HOME}/bin/ziti" edge create identity "object-detection-client-$(cat /etc/hostname)" \
+    --jwt-output-file /tmp/object-detection-client.jwt --role-attributes object-detection-client,edge
 
-  cat <<EOF >"${ZITI_HOME}/etc/router/bootstrap.env"
-ZITI_CTRL_ADVERTISED_ADDRESS='${ZITI_CTRL_ADVERTISED_ADDRESS}'
-ZITI_CTRL_ADVERTISED_PORT='${ZITI_CTRL_ADVERTISED_PORT}'
-ZITI_ROUTER_ADVERTISED_ADDRESS='${ZITI_ROUTER_ADVERTISED_ADDRESS}'
-ZITI_ROUTER_PORT='${ZITI_ROUTER_PORT}'
-ZITI_ENROLL_TOKEN='${jwt_file}'
-ZITI_BOOTSTRAP_CONFIG_ARGS=''
-EOF
+  "${ZITI_HOME}/bin/ziti" edge enroll --jwt /tmp/object-detection-client.jwt --out /tmp/object-detection-client.json
 
-  "${ZITI_HOME}/etc/router/bootstrap.bash"
-  systemctl enable --now ziti-router.service
-
-  "${ZITI_HOME}/bin/ziti" edge update edge-router "${ROUTER_NAME}" -a 'edge'
-}
-
-# --- Register and enroll Ziti tunnel for loadbalancer ---
-register_loadbalancer_tunnel() {
-  log "Registering and enrolling Ziti tunnel for loadbalancer"
-  "${ZITI_HOME}/bin/ziti" edge create identity "loadbalancer" \
-    --jwt-output-file /tmp/loadbalancer.jwt --role-attributes loadbalancer,edge
-
-  "${ZITI_HOME}/bin/ziti" edge enroll --jwt /tmp/loadbalancer.jwt --out /tmp/loadbalancer.json
-
-  nohup ziti-edge-tunnel run -i /tmp/loadbalancer.json >/var/log/ziti-edge-tunnel.log 2>&1 &
+  nohup ziti-edge-tunnel run -i /tmp/object-detection-client.json >/var/log/ziti-edge-tunnel.log 2>&1 &
 }
 
 # ==============================================================================
@@ -106,12 +80,11 @@ register_loadbalancer_tunnel() {
 # ==============================================================================
 
 main() {
-  log "Starting Edge Router Setup"
+  log "Starting Sensor Setup"
   install_ziti_components
   add_dns_entries
-  create_and_enroll_edge_router
-  register_loadbalancer_tunnel
-  log "Edge Router Setup Complete."
+  create_object_detection_identity
+  log "Sensor Setup Complete."
 }
 
 main "$@"
