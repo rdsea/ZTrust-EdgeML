@@ -74,12 +74,14 @@ if __name__ == "__main__":
         "scripts_setup_sensor_edge.sh.tmpl": "scripts/script_settup_sensor_edge.sh",
         "scripts_cleaning.sh.tmpl": "scripts/cleaning.sh",
         "scripts_pkill_all_zt_tunnel.sh.tmpl": "scripts/pkill_all_zt_tunnel.sh",
-        "edge_create_id_entities.sh.tmpl": "edge/create_id_entities.sh",
         "edge_setup_app.sh.tmpl": "edge/setup_edge_app.sh",
-        "edge_setup_router.sh.tmpl": "edge/setup_edge_router.sh",
         "sensor_setup_sensor.sh.tmpl": "sensor/setup_sensor.sh",
         "docker_compose.yml.tmpl": "edge/docker-compose.yml",
     }
+
+    if config.get('ziti_config', {}).get('edge_router_enabled', False):
+        files_to_generate["edge_create_id_entities.sh.tmpl"] = "edge/create_id_entities.sh"
+        files_to_generate["edge_setup_router.sh.tmpl"] = "edge/setup_edge_router.sh"
 
     for template_name, relative_output_path in files_to_generate.items():
         generate_file(env, config, template_name, relative_output_path, OUTPUT_ROOT_DIR)

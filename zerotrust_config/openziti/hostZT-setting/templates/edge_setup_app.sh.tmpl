@@ -45,7 +45,9 @@ add_dns_entries() {
   log "Adding Ziti DNS entries to /etc/hosts"
   echo "$CLOUD_IP {{ ziti_config.ctrl_advertised_address }}" >>/etc/hosts
   echo "$CLOUD_IP {{ ziti_config.router_advertised_address }}" >>/etc/hosts
+  {% if ziti_config.edge_router_enabled %}
   echo "$EDGE_IP {{ ziti_config.edge_router_advertised_address }}" >>/etc/hosts
+  {% endif %}
 }
 
 # --- Prepare Docker Compose file ---
