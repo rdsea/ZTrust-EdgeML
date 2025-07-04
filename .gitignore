@@ -44,4 +44,4 @@ terraform.rc
 # terraform lock 
 *.lock.hcl
 
-note/*
+note/
