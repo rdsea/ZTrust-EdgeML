@@ -69,6 +69,7 @@ if __name__ == "__main__":
 
     # --- Files to generate and their new output paths ---
     files_to_generate = {
+        "common.sh.tmpl": "scripts/common.sh",
         "cloud_main_tf.tmpl": "cloud/main.tf",
         "scripts_setup_sensor_edge.sh.tmpl": "scripts/script_settup_sensor_edge.sh",
         "scripts_cleaning.sh.tmpl": "scripts/cleaning.sh",

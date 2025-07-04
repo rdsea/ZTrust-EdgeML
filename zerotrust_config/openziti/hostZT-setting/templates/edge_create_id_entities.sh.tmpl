@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Source the common functions
+# shellcheck source=common.sh.tmpl
+source "../scripts/common.sh"
+
 # ==============================================================================
 # VARIABLES
 # ==============================================================================
@@ -12,21 +16,6 @@ ZITI_CLI="/opt/openziti/bin/ziti"
 # ==============================================================================
 # FUNCTIONS
 # ==============================================================================
-
-# --- Helper function for logging ---
-log() {
-  echo "--- $1 ---"
-}
-
-# --- Function to create Ziti identity ---
-create_ziti_identity() {
-  local name="$1"
-  local roles="$2"
-  log "Creating Ziti identity: $name"
-  "$ZITI_CLI" edge create identity "${name}-$(cat /etc/hostname)" \
-    --jwt-output-file "/tmp/${name}.jwt" --role-attributes "$roles"
-  "$ZITI_CLI" edge enroll --jwt "/tmp/${name}.jwt" --out "/tmp/${name}.json"
-}
 
 # --- Function to create Ziti service and policies ---
 create_ziti_service() {
@@ -70,7 +59,7 @@ main() {
 
   # Create identities and services for each application
   {% for app in edge_applications %}
-  create_ziti_identity "{{ app.name }}" "{{ app.roles | join(',') }}"
+  create_and_enroll_identity "{{ app.name }}-$(cat /etc/hostname)" "{{ app.roles | join(',') }}"
   {% if app.port %}
   create_ziti_service \
     "{{ app.name }}" \

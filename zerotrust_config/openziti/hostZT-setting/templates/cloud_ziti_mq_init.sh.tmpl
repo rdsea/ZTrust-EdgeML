@@ -6,12 +6,9 @@ set -euo pipefail
 # FUNCTIONS
 # ==============================================================================
 
-# --- Helper function for logging ---
-log() {
-  echo "--- $1 ---"
-}
-
-# --- Install RabbitMQ and its dependencies ---
+# Source the common functions
+# shellcheck source=common.sh.tmpl
+source "../scripts/common.sh"
 install_rabbitmq() {
   log "Installing RabbitMQ"
   apt-get update -y
@@ -51,63 +48,7 @@ EOF
   systemctl restart rabbitmq-server
 }
 
-# --- Configure local DNS for Ziti ---
-configure_ziti_dns() {
-  log "Configuring Ziti DNS"
-  echo "{{ ziti_config.edge_controller_ip }} {{ ziti_config.ctrl_advertised_address }}" | tee -a /etc/hosts
-  echo "{{ ziti_config.edge_router_ip }} {{ ziti_config.router_advertised_address }}" | tee -a /etc/hosts
-}
 
-# --- Install the Ziti Edge Tunnel ---
-install_ziti_tunnel() {
-  log "Installing Ziti Edge Tunnel"
-  curl -sSLf https://get.openziti.io/tun/package-repos.gpg | gpg --dearmor > /usr/share/keyrings/openziti.gpg
-  chmod +r /usr/share/keyrings/openziti.gpg
-  echo "deb [signed-by=/usr/share/keyrings/openziti.gpg] https://packages.openziti.org/zitipax-openziti-deb-stable jammy main" | tee /etc/apt/sources.list.d/openziti.list >/dev/null
-  apt-get update
-  apt-get install -y ziti-edge-tunnel
-}
-
-# --- Set up the application environment ---
-setup_application() {
-  log "Setting up application environment"
-  apt-get install -y python3 python3-venv python3-pip
-
-  # Install uv for the application user
-  su - {{ssh_user}} -c 'curl -Ls https://astral.sh/uv/install.sh | bash'
-  echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/{{ssh_user}}/.bashrc
-
-  # Install application dependencies
-  su - {{ssh_user}} -c 'cd /home/{{ssh_user}}/app && $HOME/.local/bin/uv venv install'
-}
-
-# --- Create and enroll the Ziti identity ---
-create_ziti_identity() {
-  log "Creating and enrolling Ziti identity"
-  export ZITI_HOME="{{ ziti_config.home }}"
-  export ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl_advertised_address }}"
-  export ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl_advertised_port }}"
-  export ZITI_USER="{{ ziti_config.user }}"
-  export ZITI_PWD="{{ ziti_config.password }}"
-
-  # Install Ziti CLI if not present
-  if ! command -v ziti &>/dev/null; then
-    log "Installing Ziti CLI"
-    curl -sS https://get.openziti.io/install.bash | bash -s openziti-router
-  fi
-
-  # Log in and create the identity
-  "$ZITI_HOME/bin/ziti" edge login "https://$ZITI_CTRL_ADVERTISED_ADDRESS:$ZITI_CTRL_ADVERTISED_PORT" --yes -u "$ZITI_USER" -p "$ZITI_PWD"
-
-  "$ZITI_HOME/bin/ziti" edge create identity "message-queue" \
-    --jwt-output-file /tmp/message-queue.jwt \
-    --role-attributes "message-queue,{{ ziti_config.router_attribute }}"
-
-  "$ZITI_HOME/bin/ziti" edge enroll --jwt /tmp/message-queue.jwt --out /tmp/message-queue.json
-
-  # Run the tunnel in the background
-  nohup ziti-edge-tunnel run -i /tmp/message-queue.json >/var/log/ziti-edge-tunnel.log 2>&1 &
-}
 
 # ==============================================================================
 # MAIN EXECUTION
@@ -116,10 +57,15 @@ create_ziti_identity() {
 main() {
   install_rabbitmq
   configure_rabbitmq
-  configure_ziti_dns
-  install_ziti_tunnel
+  add_ziti_dns_entries "{{ ziti_config.edge_controller_ip }}" "{{ ziti_config.edge_router_ip }}"
+  install_ziti_edge_tunnel
   setup_application
-  create_ziti_identity
+
+  # Create and enroll the Ziti identity
+  json_file=$(create_and_enroll_identity "message-queue" "message-queue,{{ ziti_config.router_attribute }}")
+
+  # Run the tunnel in the background
+  nohup ziti-edge-tunnel run -i "${json_file}" >/var/log/ziti-edge-tunnel.log 2>&1 &
 
   log "Message Queue setup complete."
 }

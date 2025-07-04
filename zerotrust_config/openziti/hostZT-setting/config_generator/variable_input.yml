@@ -55,6 +55,7 @@ ziti_config:
   router_port: "3022"
   router_attribute: "cloud"
   edge_router_advertised_address: "YOUR_ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS"
+  edge_router_attribute: "edge"
 
 edge_deployment:
   ssh_user: "YOUR_EDGE_SSH_USER"

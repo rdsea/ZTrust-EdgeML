@@ -2,14 +2,13 @@
 
 set -euo pipefail
 
+# Source the common functions
+# shellcheck source=common.sh.tmpl
+source "../scripts/common.sh"
+
 # ==============================================================================
 # FUNCTIONS
 # ==============================================================================
-
-# --- Helper function for logging ---
-log() {
-  echo "--- $1 ---"
-}
 
 # --- Install MongoDB ---
 install_mongodb() {
@@ -60,51 +59,6 @@ EOF
   systemctl restart mongod
 }
 
-# --- Configure local DNS for Ziti ---
-configure_ziti_dns() {
-  log "Configuring Ziti DNS"
-  echo "{{ ziti_config.edge_controller_ip }} {{ ziti_config.ctrl_advertised_address }}" | tee -a /etc/hosts
-  echo "{{ ziti_config.edge_router_ip }} {{ ziti_config.router_advertised_address }}" | tee -a /etc/hosts
-}
-
-# --- Install the Ziti Edge Tunnel ---
-install_ziti_tunnel() {
-  log "Installing Ziti Edge Tunnel"
-  curl -sSLf https://get.openziti.io/tun/package-repos.gpg | gpg --dearmor > /usr/share/keyrings/openziti.gpg
-  chmod +r /usr/share/keyrings/openziti.gpg
-  echo "deb [signed-by=/usr/share/keyrings/openziti.gpg] https://packages.openziti.org/zitipax-openziti-deb-stable jammy main" | tee /etc/apt/sources.list.d/openziti.list >/dev/null
-  apt-get update
-  apt-get install -y ziti-edge-tunnel
-}
-
-# --- Create and enroll the Ziti identity ---
-create_ziti_identity() {
-  log "Creating and enrolling Ziti identity"
-  export ZITI_HOME="{{ ziti_config.home }}"
-  export ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl_advertised_address }}"
-  export ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl_advertised_port }}"
-  export ZITI_USER="{{ ziti_config.user }}"
-  export ZITI_PWD="{{ ziti_config.password }}"
-
-  # Install Ziti CLI if not present
-  if ! command -v ziti &>/dev/null; then
-    log "Installing Ziti CLI"
-    curl -sS https://get.openziti.io/install.bash | bash -s openziti-router
-  fi
-
-  # Log in and create the identity
-  "$ZITI_HOME/bin/ziti" edge login "https://$ZITI_CTRL_ADVERTISED_ADDRESS:$ZITI_CTRL_ADVERTISED_PORT" --yes -u "$ZITI_USER" -p "$ZITI_PWD"
-
-  "$ZITI_HOME/bin/ziti" edge create identity "database" \
-    --jwt-output-file /tmp/database.jwt \
-    --role-attributes "database,{{ ziti_config.router_attribute }}"
-
-  "$ZITI_HOME/bin/ziti" edge enroll --jwt /tmp/database.jwt --out /tmp/database.json
-
-  # Run the tunnel in the background
-  nohup ziti-edge-tunnel run -i /tmp/database.json >/var/log/ziti-edge-tunnel.log 2>&1 &
-}
-
 # ==============================================================================
 # MAIN EXECUTION
 # ==============================================================================
@@ -112,9 +66,14 @@ create_ziti_identity() {
 main() {
   install_mongodb
   configure_mongodb
-  configure_ziti_dns
-  install_ziti_tunnel
-  create_ziti_identity
+  add_ziti_dns_entries "{{ ziti_config.edge_controller_ip }}" "{{ ziti_config.edge_router_ip }}"
+  install_ziti_edge_tunnel
+
+  # Create and enroll the Ziti identity
+  json_file=$(create_and_enroll_identity "database" "database,{{ ziti_config.router_attribute }}")
+
+  # Run the tunnel in the background
+  nohup ziti-edge-tunnel run -i "${json_file}" >/var/log/ziti-edge-tunnel.log 2>&1 &
 
   log "Database setup complete."
 }
