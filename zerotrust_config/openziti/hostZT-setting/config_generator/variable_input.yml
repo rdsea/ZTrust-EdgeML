@@ -42,7 +42,11 @@ firewall_rules:
     source_ranges: ["0.0.0.0/0"]
   - name: "allow-app"
     protocol: "tcp"
-    ports: ["5672"]
+    ports: ["5672", "27017"]
+    source_ranges: ["0.0.0.0/0"]
+  - name: "allow-metric"
+    protocol: "tcp"
+    ports: ["4318"]
     source_ranges: ["0.0.0.0/0"]
 
 ziti_config:
@@ -54,7 +58,7 @@ ziti_config:
   router_advertised_address: "YOUR_ZITI_ROUTER_ADVERTISED_ADDRESS"
   router_port: "3022"
   router_attribute: "cloud"
-  edge_router_enabled: true
+  edge_router_enabled: true # true for another router at the edge side
   edge_router_advertised_address: "YOUR_ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS"
   edge_router_attribute: "edge"
 
