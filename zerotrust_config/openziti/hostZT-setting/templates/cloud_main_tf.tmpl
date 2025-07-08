@@ -105,6 +105,35 @@ module "database" {
   ]
 }
 
+module "jaeger" {
+  source = "./modules/gce_instance"
+
+  name                  = "jaeger-db"
+  machine_type          = "{{machine_type}}"
+  zone                  = "{{zone}}"
+  image                 = "{{image}}"
+  ssh_user              = "{{ssh_user}}"
+  ssh_public_key_path   = "{{ssh_public_key_path}}"
+  ssh_private_key_path  = "{{ssh_private_key_path}}"
+  tags                  = ["jaeger-db", "ziti-metric"]
+
+  provisioners = [
+    {
+      content = templatefile("ziti-db-init.sh.tmpl", {
+        ziti_edge_controller_ip = module.ziti_controller_router.network_interface[0].network_ip,
+        ziti_edge_router_ip     = module.ziti_controller_router.network_interface[0].network_ip
+      })
+      destination = "/tmp/ziti-jaeger-init.sh"
+    },
+    {
+      inline = [
+        "chmod +x /tmp/ziti-jaeger-init.sh",
+      ]
+        "sudo /tmp/ziti-jaeger-init.sh"
+    }
+  ]
+}
+
 # ------------------------------
 # Shared Firewall Rules
 # ------------------------------
@@ -126,7 +155,7 @@ resource "google_compute_firewall" "allow-ziti" {
 
   allow {
     protocol = "tcp"
-    ports    = ["1280", "3022", "443", "5672", "27017", "6262", "10080", "10000", "8440-8443"]
+    ports    = ["1280", "3022", "443", "6262", "10080", "10000", "8440-8443"]
   }
 
   source_ranges = ["0.0.0.0/0"]
@@ -138,12 +167,23 @@ resource "google_compute_firewall" "allow-app" {
 
   allow {
     protocol = "tcp"
-    ports    = ["5672"]
+    ports    = ["5672", "27017" ]
   }
 
   source_ranges = ["0.0.0.0/0"]
 }
 
+resource "google_compute_firewall" "allow-jaeger" {
+  name    = "allow-app-messq-ports"
+  network = "default"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["4318" ]
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+}
 # ------------------------------
 # Outputs
 # ------------------------------
@@ -155,4 +195,7 @@ output "messageq_ip" {
 }
 output "database_ip" {
   value = module.database.network_interface[0].access_config[0].nat_ip
+}
+output "jaeger_ip" {
+  value = module.jaeger.network_interface[0].access_config[0].nat_ip
 }
