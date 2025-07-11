@@ -1,0 +1,131 @@
+#!/bin/bash
+
+set -euo pipefail
+
+# ==============================================================================
+# FUNCTIONS
+# ==============================================================================
+
+# --- Helper function for logging ---
+log() {
+  echo "--- $1 ---"
+}
+
+# --- Install prerequisite packages ---
+install_dependencies() {
+  log "Installing dependencies"
+  apt-get update -y
+  apt-get install -y curl unzip jq
+}
+
+# --- Download and install Ziti binaries ---
+download_ziti_binaries() {
+  log "Downloading Ziti binaries"
+  mkdir -p /opt/ziti/bin
+  cd /opt/ziti/bin
+  curl -sS https://get.openziti.io/install.bash | bash -s openziti-controller
+  curl -sS https://get.openziti.io/install.bash | bash -s openziti-router
+  curl -sS https://get.openziti.io/install.bash | bash -s openziti-console
+}
+
+# --- Set up Ziti environment variables ---
+set_ziti_variables() {
+  log "Setting Ziti environment variables"
+  export ZITI_HOME="/opt/openziti"
+  export ZITI_CTRL_ADVERTISED_ADDRESS="ctrl.cloud.hong3nguyen.com"
+  export ZITI_CTRL_ADVERTISED_PORT="1280"
+  export ZITI_USER="admin"
+  export ZITI_PWD="admin"
+}
+
+# --- Bootstrap and start the Ziti Controller ---
+bootstrap_controller() {
+  log "Bootstrapping Ziti Controller"
+  cat <<EOF >"${ZITI_HOME}/etc/controller/bootstrap.env"
+ZITI_CTRL_ADVERTISED_ADDRESS='${ZITI_CTRL_ADVERTISED_ADDRESS}'
+ZITI_CTRL_ADVERTISED_PORT='${ZITI_CTRL_ADVERTISED_PORT}'
+ZITI_USER='${ZITI_USER}'
+ZITI_PWD='${ZITI_PWD}'
+ZITI_BOOTSTRAP_CONFIG_ARGS=''
+EOF
+
+  "${ZITI_HOME}/etc/controller/bootstrap.bash"
+  systemctl enable --now ziti-controller.service
+  log "Waiting for controller to start"
+  sleep 10
+}
+
+# --- Configure local DNS for the controller ---
+configure_dns() {
+  log "Configuring local DNS"
+  local public_ip
+  public_ip=$(curl -s ifconfig.me || curl -s https://ipinfo.io/ip)
+  if [[ -n "$public_ip" ]]; then
+    echo "$public_ip ctrl.cloud.hong3nguyen.com" >>/etc/hosts
+  else
+    log "ERROR: Could not determine public IP address."
+    exit 1
+  fi
+}
+
+# --- Create and configure the Ziti Edge Router ---
+create_edge_router() {
+  log "Creating Edge Router"
+  local jwt_file
+  jwt_file="/opt/ziti/router_cloud.jwt"
+
+  "${ZITI_HOME}/bin/ziti" edge login "https://\$ZITI_CTRL_ADVERTISED_ADDRESS:\$ZITI_CTRL_ADVERTISED_PORT" --yes -u "$ZITI_USER" -p "$ZITI_PWD"
+
+  log "Creating edge router token"
+  "${ZITI_HOME}/bin/ziti" edge create edge-router router_cloud \
+    --jwt-output-file "$jwt_file" \
+    --tunneler-enabled
+
+  log "Assigning attribute 'cloud' to edge router"
+  "${ZITI_HOME}/bin/ziti" edge update edge-router router_cloud -a "cloud"
+
+  # Return the path to the JWT file for the next step
+  echo "$jwt_file"
+}
+
+# --- Bootstrap and start the Ziti Router ---
+bootstrap_router() {
+  local jwt_file="$1"
+  log "Bootstrapping Ziti Router"
+
+  cat <<EOF >"${ZITI_HOME}/etc/router/bootstrap.env"
+ZITI_CTRL_ADVERTISED_ADDRESS='${ZITI_CTRL_ADVERTISED_ADDRESS}'
+ZITI_CTRL_ADVERTISED_PORT='${ZITI_CTRL_ADVERTISED_PORT}'
+ZITI_ROUTER_ADVERTISED_ADDRESS='router.cloud.hong3nguyen.com'
+ZITI_ROUTER_PORT='3022'
+ZITI_ENROLL_TOKEN='${jwt_file}'
+ZITI_BOOTSTRAP_CONFIG_ARGS=''
+EOF
+
+  "${ZITI_HOME}/etc/router/bootstrap.bash"
+  systemctl enable --now ziti-router.service
+}
+
+# ==============================================================================
+# MAIN EXECUTION
+# ==============================================================================
+
+main() {
+  install_dependencies
+  download_ziti_binaries
+  set_ziti_variables
+  bootstrap_controller
+  configure_dns
+  
+  
+  # Create the edge router and capture the JWT file path
+  local router_jwt
+  router_jwt=$(create_edge_router)
+
+  bootstrap_router "$router_jwt"
+  
+
+  log "Ziti Controller and Router setup complete."
+}
+
+main "$@"

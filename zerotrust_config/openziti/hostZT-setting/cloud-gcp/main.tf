@@ -9,7 +9,7 @@ terraform {
 
 provider "google" {
   project = "aalto-t313-cs-e4640"
-  region  = "us-central1"
+  region  = "europe-north1"
 }
 
 # ------------------------------
@@ -18,7 +18,7 @@ provider "google" {
 resource "google_compute_instance" "ziti_controller_router" {
   name         = "ziti-controller-router"
   machine_type = "e2-medium"
-  zone         = "us-central1-a"
+  zone         = "europe-north1-a"
 
   boot_disk {
     initialize_params {
@@ -43,17 +43,18 @@ resource "google_compute_instance" "ziti_controller_router" {
     agent       = true
   }
 
-  provisioner "file" {
-    content = templatefile("ziti-cloud-init.sh.tmpl", {})
-    destination = "/tmp/ziti-cloud-init.sh"
-  }
+  # provisioner "file" {
+  #   content = templatefile("ziti-cloud-init.sh.tmpl", {})
+  #   destination = "/tmp/ziti-cloud-init.sh"
+  # }
+  metadata_startup_script = file("ziti-cloud-init.sh")
 
-  provisioner "remote-exec" {
-    inline = [
-      "chmod +x /tmp/ziti-cloud-init.sh",
-      "sudo /tmp/ziti-cloud-init.sh"
-    ]
-  }
+  # provisioner "remote-exec" {
+  #   inline = [
+  #     "chmod +x /tmp/ziti-cloud-init.sh",
+  #     "sudo /tmp/ziti-cloud-init.sh"
+  #   ]
+  # }
 
   tags = ["ziti", "controller"]
 }
@@ -101,20 +102,22 @@ resource "google_compute_instance" "message_q" {
   }
 
   # Provision and run Ziti setup script
-  provisioner "file" {
-    content = templatefile("ziti-mq-init.sh.tmpl", {
-      ziti_edge_controller_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip,
-      ziti_edge_router_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
-    })
-    destination = "/tmp/ziti-mq-init.sh"
-  }
+  metadata_startup_script = file("ziti-mq-init.sh")
 
-  provisioner "remote-exec" {
-    inline = [
-      "chmod +x /tmp/ziti-mq-init.sh",
-      "sudo /tmp/ziti-mq-init.sh"
-    ]
-  }
+  # provisioner "file" {
+  #   content = templatefile("ziti-mq-init.sh.tmpl", {
+  #     ziti_edge_controller_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip,
+  #     ziti_edge_router_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
+  #   })
+  #   destination = "/tmp/ziti-mq-init.sh"
+  # }
+
+  # provisioner "remote-exec" {
+  #   inline = [
+  #     "chmod +x /tmp/ziti-mq-init.sh",
+  #     "sudo /tmp/ziti-mq-init.sh"
+  #   ]
+  # }
 
   tags = ["cloud-messageq", "ziti-app"]
 }
@@ -150,20 +153,21 @@ resource "google_compute_instance" "database" {
     agent       = true
   }
 
-  provisioner "file" {
-    content = templatefile("ziti-db-init.sh.tmpl", {
-      ziti_edge_controller_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip,
-      ziti_edge_router_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
-    })
-    destination = "/tmp/ziti-db-init.sh"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "chmod +x /tmp/ziti-db-init.sh",
-      "sudo /tmp/ziti-db-init.sh"
-    ]
-  }
+  metadata_startup_script = file("ziti-db-init.sh")
+  # provisioner "file" {
+  #   content = templatefile("ziti-db-init.sh.tmpl", {
+  #     ziti_edge_controller_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip,
+  #     ziti_edge_router_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
+  #   })
+  #   destination = "/tmp/ziti-db-init.sh"
+  # }
+  #
+  # provisioner "remote-exec" {
+  #   inline = [
+  #     "chmod +x /tmp/ziti-db-init.sh",
+  #     "sudo /tmp/ziti-db-init.sh"
+  #   ]
+  # }
 
   tags = ["cloud-db", "ziti-app"]
 }

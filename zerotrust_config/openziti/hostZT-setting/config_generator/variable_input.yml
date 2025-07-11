@@ -1,6 +1,6 @@
 project_name: "YOUR_PROJECT_NAME"
-region: "us-central1"
-zone: "us-central1-a"
+region: "europe-north1"
+zone: "europe-north1-a"
 machine_type: "e2-medium"
 image: "ubuntu-os-cloud/ubuntu-2204-lts"
 ssh_user: "YOUR_SSH_USER"

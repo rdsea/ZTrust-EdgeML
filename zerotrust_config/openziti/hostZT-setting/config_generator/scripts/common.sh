@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# ==============================================================================
+# COMMON FUNCTIONS
+# ==============================================================================
+
+# --- Log a message ---
+log() {
+  echo ">>> $(date '+%Y-%m-%d %H:%M:%S') - $1"
+}
+
+# --- Install Ziti CLI ---
+install_ziti_cli() {
+  log "Installing Ziti CLI"
+  if ! command -v ziti &>/dev/null; then
+    source /etc/os-release
+    curl -sSL "https://get.openziti.io/install-ziti-cli-functions.sh" | bash -s "$ZITI_CLI_VERSION"
+    log "Ziti CLI installed."
+  else
+    log "Ziti CLI is already installed."
+  fi
+}
+
+# --- Install Ziti Edge Tunnel ---
+install_ziti_edge_tunnel() {
+  log "Installing Ziti Edge Tunnel"
+  if ! command -v ziti-edge-tunnel &>/dev/null; then
+    source /etc/os-release
+    curl -sSL "https://get.openziti.io/install-ziti-edge-tunnel-functions.sh" | bash -s "$ZITI_TUNNEL_VERSION"
+    log "Ziti Edge Tunnel installed."
+  else
+    log "Ziti Edge Tunnel is already installed."
+  fi
+}
+
+# --- Add Ziti DNS entries to /etc/hosts ---
+add_ziti_dns_entries() {
+  log "Adding Ziti DNS entries to /etc/hosts"
+  local cloud_ip="$1"
+  local edge_ip="$2"
+  
+  # Ensure the entries are not already present
+  if ! grep -q "ctrl.cloud.hong3nguyen.com" /etc/hosts; then
+    echo "$cloud_ip ctrl.cloud.hong3nguyen.com" | sudo tee -a /etc/hosts
+  fi
+  if ! grep -q "router.edge.hong3nguyen.com" /etc/hosts; then
+    echo "$edge_ip router.edge.hong3nguyen.com" | sudo tee -a /etc/hosts
+  fi
+}
+
+# --- Create and enroll a Ziti identity ---
+create_and_enroll_identity() {
+  local identity_name="$1"
+  local identity_roles="$2"
+  local jwt_file="${CURRENT_DIR}/${identity_name}.jwt"
+  local json_file="${CURRENT_DIR}/${identity_name}.json"
+
+  log "Creating and enrolling identity: $identity_name"
+
+  "${ZITI_HOME}/bin/ziti" edge login "https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}" --yes -u "${ZITI_USER}" -p "${ZITI_PWD}"
+  
+  "${ZITI_HOME}/bin/ziti" edge create identity device "${identity_name}" -a "${identity_roles}" --jwt-output-file "${jwt_file}"
+  
+  "${ZITI_HOME}/bin/ziti" edge enroll --jwt "${jwt_file}" --out "${json_file}"
+  
+  echo "${json_file}"
+}
