@@ -12,126 +12,152 @@ provider "google" {
   region  = "{{region}}"
 }
 
-module "ziti_controller_router" {
-  source = "./modules/gce_instance"
+resource "google_compute_instance" "ziti_controller_router" {
+  name         = "ziti-controller-router"
+  machine_type = "{{machine_type}}"
+  zone         = "{{zone}}"
+  tags         = ["ziti", "controller"]
 
-  name                  = "ziti-controller-router"
-  machine_type          = "{{machine_type}}"
-  zone                  = "{{zone}}"
-  image                 = "{{image}}"
-  ssh_user              = "{{ssh_user}}"
-  ssh_public_key_path   = "{{ssh_public_key_path}}"
-  ssh_private_key_path  = "{{ssh_private_key_path}}"
-  tags                  = ["ziti", "controller"]
-
-  provisioners = [
-    {
-      content     = templatefile("ziti-cloud-init.sh.tmpl", {})
-      destination = "/tmp/ziti-cloud-init.sh"
-    },
-    {
-      inline = [
-        "chmod +x /tmp/ziti-cloud-init.sh",
-        "sudo /tmp/ziti-cloud-init.sh"
-      ]
+  boot_disk {
+    initialize_params {
+      image = "{{image}}"
     }
-  ]
+  }
+
+  network_interface {
+    network       = "default"
+    access_config {}
+  }
+
+  metadata = {
+    ssh-keys = "{{ssh_user}}:${file("{{ssh_public_key_path}}")}"
+  }
+
+  connection {
+    type        = "ssh"
+    user        = "{{ssh_user}}"
+    private_key = file("{{ssh_private_key_path}}")
+    host        = self.network_interface[0].access_config[0].network_ip
+  }
+
+  metadata_startup_script = templatefile("ziti-mq-init.sh.tmpl", {
+    controller_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
+    router_ip     = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
+  })
 }
 
-module "message_q" {
-  source = "./modules/gce_instance"
+resource "google_compute_instance" "message_q" {
+  name         = "cloud-messageq"
+  machine_type = "{{machine_type}}"
+  zone         = "{{zone}}"
+  tags         = ["cloud-messageq", "ziti-app"]
 
-  name                  = "cloud-messageq"
-  machine_type          = "{{machine_type}}"
-  zone                  = "{{zone}}"
-  image                 = "{{image}}"
-  ssh_user              = "{{ssh_user}}"
-  ssh_public_key_path   = "{{ssh_public_key_path}}"
-  ssh_private_key_path  = "{{ssh_private_key_path}}"
-  tags                  = ["cloud-messageq", "ziti-app"]
-
-  provisioners = [
-    {
-      inline = [
-        "mkdir -p /home/{{ssh_user}}/app"
-      ]
-    },
-    {
-      source      = "../../../../applications/machine_learning/object_classification/src/database/"
-      destination = "/home/{{ssh_user}}/app/"
-    },
-    {
-      content = templatefile("ziti-mq-init.sh.tmpl", {
-        ziti_edge_controller_ip = module.ziti_controller_router.network_interface[0].network_ip,
-        ziti_edge_router_ip     = module.ziti_controller_router.network_interface[0].network_ip
-      })
-      destination = "/tmp/ziti-mq-init.sh"
-    },
-    {
-      inline = [
-        "chmod +x /tmp/ziti-mq-init.sh",
-        "sudo /tmp/ziti-mq-init.sh"
-      ]
+  boot_disk {
+    initialize_params {
+      image = "{{image}}"
     }
-  ]
+  }
+
+  network_interface {
+    network       = "default"
+    access_config {}
+  }
+
+  metadata = {
+    ssh-keys = "{{ssh_user}}:${file("{{ssh_public_key_path}}")}"
+  }
+
+  connection {
+    type        = "ssh"
+    user        = "{{ssh_user}}"
+    private_key = file("{{ssh_private_key_path}}")
+    host        = self.network_interface[0].access_config[0].network_ip
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "mkdir -p /home/{{ssh_user}}/app"
+    ]
+  }
+
+  provisioner "file" {
+    source      = "../../../../applications/machine_learning/object_classification/src/database/"
+    destination = "/home/{{ssh_user}}/app/"
+  }
+
+  metadata_startup_script = templatefile("ziti-mq-init.sh.tmpl", {
+    controller_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
+    router_ip     = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
+  })
 }
 
-module "database" {
-  source = "./modules/gce_instance"
+resource "google_compute_instance" "database" {
+  name         = "cloud-db"
+  machine_type = "{{machine_type}}"
+  zone         = "{{zone}}"
+  tags         = ["cloud-db", "ziti-app"]
 
-  name                  = "cloud-db"
-  machine_type          = "{{machine_type}}"
-  zone                  = "{{zone}}"
-  image                 = "{{image}}"
-  ssh_user              = "{{ssh_user}}"
-  ssh_public_key_path   = "{{ssh_public_key_path}}"
-  ssh_private_key_path  = "{{ssh_private_key_path}}"
-  tags                  = ["cloud-db", "ziti-app"]
-
-  provisioners = [
-    {
-      content = templatefile("ziti-db-init.sh.tmpl", {
-        ziti_edge_controller_ip = module.ziti_controller_router.network_interface[0].network_ip,
-        ziti_edge_router_ip     = module.ziti_controller_router.network_interface[0].network_ip
-      })
-      destination = "/tmp/ziti-db-init.sh"
-    },
-    {
-      inline = [
-        "chmod +x /tmp/ziti-db-init.sh",
-        "sudo /tmp/ziti-db-init.sh"
-      ]
+  boot_disk {
+    initialize_params {
+      image = "{{image}}"
     }
-  ]
+  }
+
+  network_interface {
+    network       = "default"
+    access_config {}
+  }
+
+  metadata = {
+    ssh-keys = "{{ssh_user}}:${file("{{ssh_public_key_path}}")}"
+  }
+
+  connection {
+    type        = "ssh"
+    user        = "{{ssh_user}}"
+    private_key = file("{{ssh_private_key_path}}")
+    host        = self.network_interface[0].access_config[0].network_ip
+  }
+
+  metadata_startup_script = templatefile("ziti-db-init.sh.tmpl", {
+    controller_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
+    router_ip     = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
+  })
 }
 
-module "jaeger" {
-  source = "./modules/gce_instance"
+resource "google_compute_instance" "jaeger" {
+  name         = "jaeger-db"
+  machine_type = "{{machine_type}}"
+  zone         = "{{zone}}"
+  tags         = ["jaeger-db", "ziti-metric"]
 
-  name                  = "jaeger-db"
-  machine_type          = "{{machine_type}}"
-  zone                  = "{{zone}}"
-  image                 = "{{image}}"
-  ssh_user              = "{{ssh_user}}"
-  ssh_public_key_path   = "{{ssh_public_key_path}}"
-  ssh_private_key_path  = "{{ssh_private_key_path}}"
-  tags                  = ["jaeger-db", "ziti-metric"]
-
-  provisioners = [
-    {
-      content = templatefile("ziti-db-init.sh.tmpl", {
-        ziti_edge_controller_ip = module.ziti_controller_router.network_interface[0].network_ip,
-        ziti_edge_router_ip     = module.ziti_controller_router.network_interface[0].network_ip
-      })
-      destination = "/tmp/ziti-jaeger-init.sh"
-    },
-    {
-      inline = [
-        "chmod +x /tmp/ziti-jaeger-init.sh",
-      ]
-        "sudo /tmp/ziti-jaeger-init.sh"
+  boot_disk {
+    initialize_params {
+      image = "{{image}}"
     }
-  ]
+  }
+
+  network_interface {
+    network       = "default"
+    access_config {}
+  }
+
+  metadata = {
+    ssh-keys = "{{ssh_user}}:${file("{{ssh_public_key_path}}")}"
+  }
+
+  connection {
+    type        = "ssh"
+    user        = "{{ssh_user}}"
+    private_key = file("{{ssh_private_key_path}}")
+    host        = self.network_interface[0].access_config[0].network_ip
+  }
+
+  metadata_startup_script = templatefile("ziti-db-init.sh.tmpl", {
+    controller_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
+    router_ip     = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
+  })
+
 }
 
 # ------------------------------
@@ -174,7 +200,7 @@ resource "google_compute_firewall" "allow-app" {
 }
 
 resource "google_compute_firewall" "allow-jaeger" {
-  name    = "allow-app-messq-ports"
+  name    = "allow-jaeger-ports"
   network = "default"
 
   allow {
@@ -188,14 +214,14 @@ resource "google_compute_firewall" "allow-jaeger" {
 # Outputs
 # ------------------------------
 output "controller_ip" {
-  value = module.ziti_controller_router.network_interface[0].access_config[0].nat_ip
+  value = google_compute_instance.ziti_controller_router.network_interface[0].access_config[0].network_ip
 }
 output "messageq_ip" {
-  value = module.message_q.network_interface[0].access_config[0].nat_ip
+  value = google_compute_instance.message_q.network_interface[0].access_config[0].network_ip
 }
 output "database_ip" {
-  value = module.database.network_interface[0].access_config[0].nat_ip
+  value = google_compute_instance.database.network_interface[0].access_config[0].network_ip
 }
 output "jaeger_ip" {
-  value = module.jaeger.network_interface[0].access_config[0].nat_ip
+  value = google_compute_instance.jaeger.network_interface[0].access_config[0].network_ip
 }

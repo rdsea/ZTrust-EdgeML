@@ -65,7 +65,7 @@ resource "google_compute_instance" "ziti_controller_router" {
 resource "google_compute_instance" "message_q" {
   name         = "cloud-messageq"
   machine_type = "e2-medium"
-  zone         = "us-central1-a"
+  zone         = "europe-north1-a"
 
   boot_disk {
     initialize_params {
@@ -128,7 +128,7 @@ resource "google_compute_instance" "message_q" {
 resource "google_compute_instance" "database" {
   name         = "cloud-db"
   machine_type = "e2-medium"
-  zone         = "us-central1-a"
+  zone         = "europe-north1-a"
 
   boot_disk {
     initialize_params {

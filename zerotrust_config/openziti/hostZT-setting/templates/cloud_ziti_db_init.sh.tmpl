@@ -66,6 +66,7 @@ EOF
 main() {
   install_mongodb
   configure_mongodb
+  echo "${controller_ip} ctrl.cloud.hong3nguyen.com" | sudo tee -a /etc/hosts
   add_ziti_dns_entries "{{ ziti_config.edge_controller_ip }}" "{{ ziti_config.edge_router_ip }}"
   install_ziti_edge_tunnel
 

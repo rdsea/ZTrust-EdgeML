@@ -58,14 +58,7 @@ EOF
 # --- Configure local DNS for the controller ---
 configure_dns() {
   log "Configuring local DNS"
-  local public_ip
-  public_ip=$(curl -s ifconfig.me || curl -s https://ipinfo.io/ip)
-  if [[ -n "$public_ip" ]]; then
-    echo "$public_ip {{ ziti_config.ctrl_advertised_address }}" >>/etc/hosts
-  else
-    log "ERROR: Could not determine public IP address."
-    exit 1
-  fi
+  echo "${controller_ip} ctrl.cloud.hong3nguyen.com" | sudo tee -a /etc/hosts
 }
 
 # --- Create and configure the Ziti Edge Router ---
