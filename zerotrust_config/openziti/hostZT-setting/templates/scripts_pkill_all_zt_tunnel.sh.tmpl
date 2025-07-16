@@ -9,7 +9,7 @@ set -euo pipefail
 EDGE_SSH_USER="{{ edge_deployment.ssh_user }}"
 EDGE_SSH_PASS="{{ edge_deployment.ssh_pass }}"
 
-EDGE_ROUTER_IP="{{ edge_deployment.edge_router_ip }}"
+EDGE_ROUTER_IP="{{ ziti_config.router.edge_router_ip }}"
 EDGE_APP_IP="{{ edge_deployment.edge_app_ip }}"
 
 # ==============================================================================

@@ -79,6 +79,7 @@ if __name__ == "__main__":
         cloud_router_data = router_data.get('cloud_router', {})
         if cloud_router_data:
             transformed_ziti_config.update(cloud_router_data)
+            transformed_ziti_config['cloud_router_enabled'] = True
 
         edge_router_data = router_data.get('edge_router', {})
         if edge_router_data:
@@ -114,7 +115,7 @@ if __name__ == "__main__":
 
     # Generate shell scripts for VMs (these also go into the new 'cloud' folder)
     vm_script_mapping = {
-        "ziti-cloud-init.sh": "cloud_ziti_cloud_init.sh.tmpl",
+        "ziti-cloud-init.sh": "cloud_ziti_cloud_init.sh.j2",
         "ziti-mq-init.sh.tmpl": "cloud_ziti_mq_init.sh.tmpl",
         "ziti-db-init.sh.tmpl": "cloud_ziti_db_init.sh.tmpl",
     }

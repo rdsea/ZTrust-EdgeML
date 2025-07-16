@@ -11,15 +11,15 @@ export CLOUD_IP="$CLOUD_IP"
 export EDGE_IP="$EDGE_IP"
 
 # Ziti configuration from variable_input.yml
-ZITI_HOME="{{ ziti_config.home }}"
-ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl_advertised_address }}"
-ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl_advertised_port }}"
-ZITI_USER="{{ ziti_config.user }}"
-ZITI_PWD="{{ ziti_config.password }}"
-ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS="{{ ziti_config.router_advertised_address }}"
-ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS="{{ ziti_config.edge_router_advertised_address }}"
+ZITI_HOME="{{ ziti_config.ctrl.cloud_ctrl.home }}"
+ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
+ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_port }}"
+ZITI_USER="{{ ziti_config.ctrl.cloud_ctrl.user }}"
+ZITI_PWD="{{ ziti_config.ctrl.cloud_ctrl.password }}"
+ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS="{{ ziti_config.router.cloud_router.cloud_router_advertised_address }}"
+ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS="{{ ziti_config.router.edge_router.edge_router_advertised_address }}"
 
-CURRENT_DIR="$(pwd)/{{ssh_user}}"
+CURRENT_DIR="{{dir_default}}"
 
 # ==============================================================================
 # FUNCTIONS
@@ -43,10 +43,10 @@ install_ziti_cli() {
 # --- Add DNS entries for Ziti controllers/routers ---
 add_dns_entries() {
   log "Adding Ziti DNS entries to /etc/hosts"
-  echo "$CLOUD_IP {{ ziti_config.ctrl_advertised_address }}" >>/etc/hosts
-  echo "$CLOUD_IP {{ ziti_config.router_advertised_address }}" >>/etc/hosts
+  echo "$CLOUD_IP $ZITI_CTRL_ADVERTISED_ADDRESS" >>/etc/hosts
+  echo "$CLOUD_IP $ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS" >>/etc/hosts
   {% if ziti_config.edge_router_enabled %}
-  echo "$EDGE_IP {{ ziti_config.edge_router_advertised_address }}" >>/etc/hosts
+  echo "$EDGE_IP $ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS" >>/etc/hosts
   {% endif %}
 }
 

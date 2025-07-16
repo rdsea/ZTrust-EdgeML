@@ -16,6 +16,16 @@ log() {
   echo ">>> $(date '+%Y-%m-%d %H:%M:%S') - $1"
 }
 
+set_ziti_variables() {
+  log "Setting Ziti environment variables"
+  export ZITI_HOME="{{ ziti_config.ctrl.cloud_ctrl.home }}"
+  export ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
+  export ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_port }}"
+  export ZITI_USER="{{ ziti_config.ctrl.cloud_ctrl.user }}"
+  export ZITI_PWD="{{ ziti_config.ctrl.cloud_ctrl.password }}"
+  export ZITI_DIR="{{ ziti_config.dir_default }}"
+}
+
 # --- Install Ziti CLI ---
 install_ziti_cli() {
   log "Installing Ziti CLI"
@@ -47,11 +57,12 @@ add_ziti_dns_entries() {
   local edge_ip="$2"
   
   # Ensure the entries are not already present
-  if ! grep -q "{{ ziti_config.ctrl_advertised_address }}" /etc/hosts; then
-    echo "$cloud_ip {{ ziti_config.ctrl_advertised_address }}" | sudo tee -a /etc/hosts
+  if ! grep -q "{{  ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address  }}" /etc/hosts; then
+    echo "$cloud_ip {{  ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address  }}" | sudo tee -a /etc/hosts
+    echo "$cloud_ip {{  ziti_config.router.cloud_router.cloud_router_advertised_address  }}" | sudo tee -a /etc/hosts
   fi
-  if ! grep -q "{{ ziti_config.edge_router_advertised_address }}" /etc/hosts; then
-    echo "$edge_ip {{ ziti_config.edge_router_advertised_address }}" | sudo tee -a /etc/hosts
+  if ! grep -q "{{  ziti_config.router.edge_router.edge_router_advertised_address }}" /etc/hosts; then
+    echo "$edge_ip {{ ziti_config.router.edge_router.edge_router_advertised_address }}" | sudo tee -a /etc/hosts
   fi
 }
 
@@ -59,8 +70,8 @@ add_ziti_dns_entries() {
 create_and_enroll_identity() {
   local identity_name="$1"
   local identity_roles="$2"
-  local jwt_file="${CURRENT_DIR}/${identity_name}.jwt"
-  local json_file="${CURRENT_DIR}/${identity_name}.json"
+  local jwt_file="${ZITI_DIR}/${identity_name}.jwt"
+  local json_file="${ZITI_DIR}/${identity_name}.json"
 
   log "Creating and enrolling identity: $identity_name"
 
@@ -119,10 +130,12 @@ EOF
 # ==============================================================================
 
 main() {
+  set_ziti_variables
   install_rabbitmq
   configure_rabbitmq
-  echo "${controller_ip} ctrl.cloud.hong3nguyen.com" | sudo tee -a /etc/hosts
-  add_ziti_dns_entries "{{ ziti_config.edge_controller_ip }}" "{{ ziti_config.edge_router_ip }}"
+  # echo "${controller_ip} ctrl.cloud.hong3nguyen.com" | sudo tee -a /etc/hosts
+  # add_ziti_dns_entries "{{ ziti_config.edge_controller_ip }}" "{{ ziti_config.edge_router_ip }}"
+  add_ziti_dns_entries "${controller_ip }" "{{ ziti_config.router.edge_router.edge_router_ip }}"
   install_ziti_edge_tunnel
   setup_application
 

@@ -15,16 +15,19 @@ export CLOUD_IP="$CLOUD_IP"
 export EDGE_IP="$EDGE_IP"
 
 # Ziti configuration from variable_input.yml
-ZITI_HOME="{{ ziti_config.home }}"
-ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl_advertised_address }}"
-ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl_advertised_port }}"
-ZITI_USER="{{ ziti_config.user }}"
-ZITI_PWD="{{ ziti_config.password }}"
-ZITI_ROUTER_ADVERTISED_ADDRESS="{{ ziti_config.edge_router_advertised_address }}"
-ZITI_ROUTER_PORT="{{ ziti_config.router_port }}"
+# Ziti configuration from variable_input.yml
+ZITI_HOME="{{ ziti_config.ctrl.cloud_ctrl.home }}"
+ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
+ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_port }}"
+ZITI_USER="{{ ziti_config.ctrl.cloud_ctrl.user }}"
+ZITI_PWD="{{ ziti_config.ctrl.cloud_ctrl.password }}"
+ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS="{{ ziti_config.router.cloud_router.cloud_router_advertised_address }}"
+ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS="{{ ziti_config.router.edge_router.edge_router_advertised_address }}"
+ZITI_ROUTER_PORT="{{ ziti_config.router.edge_router.edge_router_port }}"
+CURRENT_DIR="{{ dir_default }}"
 
-ROUTER_NAME="router_edge"
-CURRENT_DIR="$(pwd)/{{ssh_user}}"
+ROUTER_NAME="{{ ziti_config.router.edge_router.id }}"
+# CURRENT_DIR="$(pwd)/{{ssh_user}}"
 
 # ==============================================================================
 # FUNCTIONS
@@ -44,7 +47,7 @@ create_and_enroll_edge_router() {
   cat <<EOF >"${ZITI_HOME}/etc/router/bootstrap.env"
 ZITI_CTRL_ADVERTISED_ADDRESS='${ZITI_CTRL_ADVERTISED_ADDRESS}'
 ZITI_CTRL_ADVERTISED_PORT='${ZITI_CTRL_ADVERTISED_PORT}'
-ZITI_ROUTER_ADVERTISED_ADDRESS='${ZITI_ROUTER_ADVERTISED_ADDRESS}'
+ZITI_ROUTER_ADVERTISED_ADDRESS='${ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS}'
 ZITI_ROUTER_PORT='${ZITI_ROUTER_PORT}'
 ZITI_ENROLL_TOKEN='${jwt_file}'
 ZITI_BOOTSTRAP_CONFIG_ARGS=''
