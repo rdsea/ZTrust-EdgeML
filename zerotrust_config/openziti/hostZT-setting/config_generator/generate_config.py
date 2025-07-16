@@ -64,6 +64,12 @@ if __name__ == "__main__":
             local_config = yaml.safe_load(f)
         config = deep_merge(config, local_config)
 
+    # public_key_path = config.get("ssh_public_key_path")
+    # if public_key_path and os.path.exists(public_key_path):
+    #     with open(public_key_path, "r") as f:
+    #         config["ssh_public_key"] = f.read().strip()
+    # else:
+    #     config["ssh_public_key"] = ""
     # --- Transform ziti_config for template compatibility ---
     if "ziti_config" in config:
         original_ziti_config = config.get("ziti_config", {})

@@ -1,224 +1,79 @@
-terraform {
-  required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "6.8.0"
-    }
-  }
-}
-
 provider "google" {
-  project = "{{project_name}}"
-  region  = "{{region}}"
+  project = "{{ project_name }}"
+  region  = "{{ region }}"
+  zone    = "{{ zone }}"
 }
 
-resource "google_compute_instance" "ziti_controller_router" {
-  name         = "ziti-controller-router"
-  machine_type = "{{machine_type}}"
-  zone         = "{{zone}}"
-  tags         = ["ziti", "controller"]
+resource "google_compute_network" "default" {
+  name = "default"
+}
+
+# VM Instances
+{% for vm in vms %}
+resource "google_compute_instance" "{{ vm.name | replace('-', '_') }}" {
+  name         = "{{ vm.name }}"
+  machine_type = "{{ machine_type }}"
+  zone         = "{{ zone }}"
+
+  tags = [
+    {% for tag in vm.tags %}
+    "{{ tag }}"{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]
 
   boot_disk {
     initialize_params {
-      image = "{{image}}"
+      image = "{{ image }}"
     }
   }
 
-  network_interface {
-    network       = "default"
-    access_config {}
-  }
+  metadata_startup_script = {% if vm.use_template %}templatefile("{{ vm.provisioner_script }}", {
+    controller_ip = google_compute_instance.{{ vm.ctrl_name }}.network_interface[0].network_ip
+    router_ip     = google_compute_instance.{{ vm.ctrl_name }}.network_interface[0].network_ip
+  }){% else %}file("{{ vm.provisioner_script }}"){% endif %}
 
-  metadata = {
-    ssh-keys = "{{ssh_user}}:${file("{{ssh_public_key_path}}")}"
-  }
-
-  connection {
-    type        = "ssh"
-    user        = "{{ssh_user}}"
-    private_key = file("{{ssh_private_key_path}}")
-    host        = self.network_interface[0].access_config[0].nat_ip
-  }
-
-  metadata_startup_script = file("ziti-cloud-init.sh")
-}
-
-resource "google_compute_instance" "message_q" {
-  name         = "cloud-messageq"
-  machine_type = "{{machine_type}}"
-  zone         = "{{zone}}"
-  tags         = ["cloud-messageq", "ziti-app"]
-
-  boot_disk {
-    initialize_params {
-      image = "{{image}}"
-    }
-  }
-
-  network_interface {
-    network       = "default"
-    access_config {}
-  }
-
-  metadata = {
-    ssh-keys = "{{ssh_user}}:${file("{{ssh_public_key_path}}")}"
-  }
-
-  connection {
-    type        = "ssh"
-    user        = "{{ssh_user}}"
-    private_key = file("{{ssh_private_key_path}}")
-    host        = self.network_interface[0].access_config[0].nat_ip
-  }
-
+  {% if vm.has_provisioner %}
   provisioner "remote-exec" {
     inline = [
-      "mkdir -p /home/{{ssh_user}}/app"
+      "mkdir -p {{ vm.provisioner_destination_path }}"
     ]
   }
 
   provisioner "file" {
-    source      = "../../../../applications/machine_learning/object_classification/src/database/"
-    destination = "/home/{{ssh_user}}/app/"
+    source      = "{{ vm.provisioner_source_path }}"
+    destination = "{{ vm.provisioner_destination_path }}"
   }
-
-  metadata_startup_script = templatefile("ziti-mq-init.sh.tmpl", {
-    controller_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
-    router_ip     = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
-  })
-}
-
-resource "google_compute_instance" "database" {
-  name         = "cloud-db"
-  machine_type = "{{machine_type}}"
-  zone         = "{{zone}}"
-  tags         = ["cloud-db", "ziti-app"]
-
-  boot_disk {
-    initialize_params {
-      image = "{{image}}"
-    }
-  }
-
+  {% endif %}
   network_interface {
-    network       = "default"
+    network = "default"
     access_config {}
   }
 
   metadata = {
-    ssh-keys = "{{ssh_user}}:${file("{{ssh_public_key_path}}")}"
+    ssh-keys = "{{ ssh_user }}:${file("{{ ssh_public_key_path }}")}"
+
   }
-
-  connection {
-    type        = "ssh"
-    user        = "{{ssh_user}}"
-    private_key = file("{{ssh_private_key_path}}")
-    host        = self.network_interface[0].access_config[0].nat_ip
-  }
-
-  metadata_startup_script = templatefile("ziti-db-init.sh.tmpl", {
-    controller_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
-    router_ip     = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
-  })
-}
-
-resource "google_compute_instance" "jaeger" {
-  name         = "jaeger-db"
-  machine_type = "{{machine_type}}"
-  zone         = "{{zone}}"
-  tags         = ["jaeger-db", "ziti-metric"]
-
-  boot_disk {
-    initialize_params {
-      image = "{{image}}"
-    }
-  }
-
-  network_interface {
-    network       = "default"
-    access_config {}
-  }
-
-  metadata = {
-    ssh-keys = "{{ssh_user}}:${file("{{ssh_public_key_path}}")}"
-  }
-
-  connection {
-    type        = "ssh"
-    user        = "{{ssh_user}}"
-    private_key = file("{{ssh_private_key_path}}")
-    host        = self.network_interface[0].access_config[0].nat_ip
-  }
-
-  metadata_startup_script = templatefile("ziti-db-init.sh.tmpl", {
-    controller_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
-    router_ip     = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
-  })
 
 }
+{% endfor %}
 
-# ------------------------------
-# Shared Firewall Rules
-# ------------------------------
-resource "google_compute_firewall" "allow-ssh" {
-  name    = "allow-ssh"
+# Firewall Rules
+{% for rule in firewall_rules %}
+resource "google_compute_firewall" "{{ rule.name | replace('-', '_') }}" {
+  name    = "{{ rule.name }}"
   network = "default"
 
   allow {
-    protocol = "tcp"
-    ports    = ["22"]
+    protocol = "{{ rule.protocol }}"
+    ports    = [{% for port in rule.ports %}"{{ port }}"{% if not loop.last %}, {% endif %}{% endfor %}]
   }
 
-  source_ranges = ["0.0.0.0/0"]
+  source_ranges = [{% for range in rule.source_ranges %}"{{ range }}"{% if not loop.last %}, {% endif %}{% endfor %}]
 }
+{% endfor %}
 
-resource "google_compute_firewall" "allow-ziti" {
-  name    = "allow-ziti-app"
-  network = "default"
-
-  allow {
-    protocol = "tcp"
-    ports    = ["1280", "3022", "443", "6262", "10080", "10000", "8440-8443"]
-  }
-
-  source_ranges = ["0.0.0.0/0"]
+{% for vm in vms %}
+output "{{ vm.name | replace('-', '_') }}_ip" {
+  value = google_compute_instance.{{ vm.name | replace('-', '_') }}.network_interface[0].access_config[0].nat_ip
 }
-
-resource "google_compute_firewall" "allow-app" {
-  name    = "allow-app-messq-ports"
-  network = "default"
-
-  allow {
-    protocol = "tcp"
-    ports    = ["5672", "27017" ]
-  }
-
-  source_ranges = ["0.0.0.0/0"]
-}
-
-resource "google_compute_firewall" "allow-jaeger" {
-  name    = "allow-jaeger-ports"
-  network = "default"
-
-  allow {
-    protocol = "tcp"
-    ports    = ["4318" ]
-  }
-
-  source_ranges = ["0.0.0.0/0"]
-}
-# ------------------------------
-# Outputs
-# ------------------------------
-output "controller_ip" {
-  value = google_compute_instance.ziti_controller_router.network_interface[0].access_config[0].nat_ip
-}
-output "messageq_ip" {
-  value = google_compute_instance.message_q.network_interface[0].access_config[0].nat_ip
-}
-output "database_ip" {
-  value = google_compute_instance.database.network_interface[0].access_config[0].nat_ip
-}
-output "jaeger_ip" {
-  value = google_compute_instance.jaeger.network_interface[0].access_config[0].nat_ip
-}
+{% endfor %}
