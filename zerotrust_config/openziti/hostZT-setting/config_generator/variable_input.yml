@@ -18,13 +18,13 @@ vms:
     provisioner_script: "ziti-mq-init.sh.tmpl"
     provisioner_source_path: "../../../../../applications/machine_learning/object_classification/src/database/"
     provisioner_destination_path: "/home/hong3nguyen/app/"
-    ctrl_name: "ziti-controller-router"
+    ctrl_name: "ziti_controller_router"
     use_template: true
     has_provisioner: true
   - name: "cloud-db"
     tags: ["cloud-db", "ziti-app"]
     provisioner_script: "ziti-db-init.sh.tmpl"
-    ctrl_name: "ziti-controller-router"
+    ctrl_name: "ziti_controller_router"
     use_template: true
 
 firewall_rules:

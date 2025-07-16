@@ -4,9 +4,6 @@ provider "google" {
   zone    = "{{ zone }}"
 }
 
-resource "google_compute_network" "default" {
-  name = "default"
-}
 
 # VM Instances
 {% for vm in vms %}
@@ -43,6 +40,15 @@ resource "google_compute_instance" "{{ vm.name | replace('-', '_') }}" {
     source      = "{{ vm.provisioner_source_path }}"
     destination = "{{ vm.provisioner_destination_path }}"
   }
+
+  connection {
+    type        = "ssh"
+    user        = "{{ ssh_user }}"
+    private_key = file("{{ ssh_private_key_path }}")
+    host        = self.network_interface[0].access_config[0].nat_ip
+    agent = true  
+  }
+
   {% endif %}
   network_interface {
     network = "default"
