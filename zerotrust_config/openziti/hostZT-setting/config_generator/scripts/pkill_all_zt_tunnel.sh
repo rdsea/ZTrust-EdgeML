@@ -6,11 +6,11 @@ set -euo pipefail
 # VARIABLES
 # ==============================================================================
 
-EDGE_SSH_USER="{{ edge_deployment.ssh_user }}"
-EDGE_SSH_PASS="{{ edge_deployment.ssh_pass }}"
+EDGE_SSH_USER="aaltosea"
+EDGE_SSH_PASS="aaltosea"
 
-EDGE_ROUTER_IP="{{ ziti_config.edge_router_ip }}"
-EDGE_APP_IP="{{ edge_deployment.edge_app_ip }}"
+EDGE_ROUTER_IP="192.168.edge.test"
+EDGE_APP_IP="192.168.1.101"
 
 # ==============================================================================
 # FUNCTIONS
@@ -56,9 +56,11 @@ main() {
   kill_remote_ziti_tunnel "$EDGE_APP_IP" "$EDGE_SSH_USER" "$EDGE_SSH_PASS"
 
   # Kill on Sensors
-  {% for sensor in edge_deployment.sensors %}
-  kill_remote_ziti_tunnel "{{ sensor.ip }}" "$EDGE_SSH_USER" "{{ sensor.ssh_pass }}"
-  {% endfor %}
+  
+  kill_remote_ziti_tunnel "192.168.1.102" "$EDGE_SSH_USER" "aaltosea23"
+  
+  kill_remote_ziti_tunnel "192.168.1.103" "$EDGE_SSH_USER" "aaltosea23"
+  
 
   log "Finished attempting to kill ziti-edge-tunnel processes."
 }

@@ -16,19 +16,19 @@ export EDGE_IP="$EDGE_IP"
 
 # Ziti configuration from variable_input.yml
 # Ziti configuration from variable_input.yml
-ZITI_HOME="{{ ziti_config.home }}"
-ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl_advertised_address }}"
-ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl_advertised_port }}"
-ZITI_USER="{{ ziti_config.user }}"
-ZITI_PWD="{{ ziti_config.password }}"
-ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS="{{ ziti_config.cloud_router_advertised_address }}"
-ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS="{{ ziti_config.edge_router_advertised_address }}"
-ZITI_ROUTER_PORT="{{ ziti_config.edge_router_port }}"
-CURRENT_DIR="{{ dir_default }}"
+ZITI_HOME="/opt/openziti"
+ZITI_CTRL_ADVERTISED_ADDRESS="ctrl.cloud.hong3nguyen.com"
+ZITI_CTRL_ADVERTISED_PORT="1280"
+ZITI_USER="admin"
+ZITI_PWD="admin"
+ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS="router.cloud.hong3nguyen.com"
+ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS="router.edge.hong3nguyen.com"
+ZITI_ROUTER_PORT="3022"
+CURRENT_DIR="/home/hong3nguyen"
 
-ROUTER_NAME="{{ ziti_config.id }}"
+ROUTER_NAME="edge_router"
 
-# CURRENT_DIR="$(pwd)/{{ssh_user}}"
+# CURRENT_DIR="$(pwd)/hong3nguyen"
 
 # ==============================================================================
 # FUNCTIONS

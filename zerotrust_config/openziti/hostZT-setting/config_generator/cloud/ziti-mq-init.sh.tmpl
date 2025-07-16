@@ -18,12 +18,12 @@ log() {
 
 set_ziti_variables() {
   log "Setting Ziti environment variables"
-  export ZITI_HOME="{{ ziti_config.home }}"
-  export ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl_advertised_address }}"
-  export ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl_advertised_port }}"
-  export ZITI_USER="{{ ziti_config.user }}"
-  export ZITI_PWD="{{ ziti_config.password }}"
-  export ZITI_DIR="{{ dir_default }}"
+  export ZITI_HOME="/opt/openziti"
+  export ZITI_CTRL_ADVERTISED_ADDRESS="ctrl.cloud.hong3nguyen.com"
+  export ZITI_CTRL_ADVERTISED_PORT="1280"
+  export ZITI_USER="admin"
+  export ZITI_PWD="admin"
+  export ZITI_DIR="/home/hong3nguyen"
 }
 
 # --- Install Ziti CLI ---
@@ -57,12 +57,12 @@ add_ziti_dns_entries() {
   local edge_ip="$2"
   
   # Ensure the entries are not already present
-  if ! grep -q "{{  ziti_config.ctrl_advertised_address  }}" /etc/hosts; then
-    echo "$cloud_ip {{  ziti_config.ctrl_advertised_address  }}" | sudo tee -a /etc/hosts
-    echo "$cloud_ip {{  ziti_config.cloud_router_advertised_address  }}" | sudo tee -a /etc/hosts
+  if ! grep -q "ctrl.cloud.hong3nguyen.com" /etc/hosts; then
+    echo "$cloud_ip ctrl.cloud.hong3nguyen.com" | sudo tee -a /etc/hosts
+    echo "$cloud_ip router.cloud.hong3nguyen.com" | sudo tee -a /etc/hosts
   fi
-    echo "$edge_ip {{ ziti_config.edge_router_advertised_address }}" | sudo tee -a /etc/hosts
-    if ! grep -q "{{  ziti_config.edge_router_advertised_address }}" /etc/hosts; then
+    echo "$edge_ip router.edge.hong3nguyen.com" | sudo tee -a /etc/hosts
+    if ! grep -q "router.edge.hong3nguyen.com" /etc/hosts; then
   fi
 }
 
@@ -70,20 +70,20 @@ add_ziti_dns_entries() {
 create_and_enroll_identity() {
   local identity_name="$1"
   local identity_roles="$2"
-  local jwt_file="{{ dir_default }}/$1.jwt"
-  local json_file="{{ dir_default }}/$1.json"
+  local jwt_file="/home/hong3nguyen/$1.jwt"
+  local json_file="/home/hong3nguyen/$1.json"
 
   log "Creating and enrolling identity: $1"
   
-  export ZITI_HOME="{{ ziti_config.home }}"
+  export ZITI_HOME="/opt/openziti"
 
-  "{{ ziti_config.home }}/bin/ziti" edge login "https://{{ ziti_config.ctrl_advertised_address }}:{{ ziti_config.ctrl_advertised_port }}" --yes -u "{{ ziti_config.user }}" -p "{{ ziti_config.password }}"
+  "/opt/openziti/bin/ziti" edge login "https://ctrl.cloud.hong3nguyen.com:1280" --yes -u "admin" -p "admin"
   
-  "{{ ziti_config.home }}/bin/ziti" edge create identity device "$1" -a "$2" --jwt-output-file "{{ dir_default }}/$1.jwt"
+  "/opt/openziti/bin/ziti" edge create identity device "$1" -a "$2" --jwt-output-file "/home/hong3nguyen/$1.jwt"
   
- "{{ ziti_config.home }}/bin/ziti" edge enroll --jwt "{{ dir_default }}/$1.jwt" --out "{{ dir_default }}/$1.json"
+ "/opt/openziti/bin/ziti" edge enroll --jwt "/home/hong3nguyen/$1.jwt" --out "/home/hong3nguyen/$1.json"
   
-  echo "{{ dir_default }}/$1.json"
+  echo "/home/hong3nguyen/$1.json"
 }
 
 install_rabbitmq() {
@@ -136,16 +136,16 @@ main() {
   install_rabbitmq
   configure_rabbitmq
   # echo "${controller_ip} ctrl.cloud.hong3nguyen.com" | sudo tee -a /etc/hosts
-  # add_ziti_dns_entries "{{ ziti_config.edge_controller_ip }}" "{{ ziti_config.edge_router_ip }}"
-  add_ziti_dns_entries "${controller_ip}" "{{ ziti_config.edge_router_ip }}"
+  # add_ziti_dns_entries "" "192.168.edge.test"
+  add_ziti_dns_entries "${controller_ip}" "192.168.edge.test"
   install_ziti_edge_tunnel
   setup_application
 
   # Create and enroll the Ziti identity
-  json_file=$(create_and_enroll_identity "message-queue" "message-queue,{{ ziti_config.router_attribute }}")
+  json_file=$(create_and_enroll_identity "message-queue" "message-queue,")
 
   # Run the tunnel in the background
-  nohup ziti-edge-tunnel run -i "{{ dir_default }}/$1.json" >/var/log/ziti-edge-tunnel.log 2>&1 &
+  nohup ziti-edge-tunnel run -i "/home/hong3nguyen/$1.json" >/var/log/ziti-edge-tunnel.log 2>&1 &
 
   log "Message Queue setup complete."
 }

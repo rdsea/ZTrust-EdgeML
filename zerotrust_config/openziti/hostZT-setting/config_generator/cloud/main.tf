@@ -8,19 +8,19 @@ terraform {
 }
 
 provider "google" {
-  project = "{{project_name}}"
-  region  = "{{region}}"
+  project = "aalto-t313-cs-e4640"
+  region  = "europe-north1"
 }
 
 resource "google_compute_instance" "ziti_controller_router" {
   name         = "ziti-controller-router"
-  machine_type = "{{machine_type}}"
-  zone         = "{{zone}}"
+  machine_type = "e2-medium"
+  zone         = "europe-north1-a"
   tags         = ["ziti", "controller"]
 
   boot_disk {
     initialize_params {
-      image = "{{image}}"
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
     }
   }
 
@@ -30,13 +30,13 @@ resource "google_compute_instance" "ziti_controller_router" {
   }
 
   metadata = {
-    ssh-keys = "{{ssh_user}}:${file("{{ssh_public_key_path}}")}"
+    ssh-keys = "hong3nguyen:${file("~/.ssh/id_ed25519.pub")}"
   }
 
   connection {
     type        = "ssh"
-    user        = "{{ssh_user}}"
-    private_key = file("{{ssh_private_key_path}}")
+    user        = "hong3nguyen"
+    private_key = file("~/.ssh/id_ed25519")
     host        = self.network_interface[0].access_config[0].nat_ip
   }
 
@@ -45,13 +45,13 @@ resource "google_compute_instance" "ziti_controller_router" {
 
 resource "google_compute_instance" "message_q" {
   name         = "cloud-messageq"
-  machine_type = "{{machine_type}}"
-  zone         = "{{zone}}"
+  machine_type = "e2-medium"
+  zone         = "europe-north1-a"
   tags         = ["cloud-messageq", "ziti-app"]
 
   boot_disk {
     initialize_params {
-      image = "{{image}}"
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
     }
   }
 
@@ -61,25 +61,25 @@ resource "google_compute_instance" "message_q" {
   }
 
   metadata = {
-    ssh-keys = "{{ssh_user}}:${file("{{ssh_public_key_path}}")}"
+    ssh-keys = "hong3nguyen:${file("~/.ssh/id_ed25519.pub")}"
   }
 
   connection {
     type        = "ssh"
-    user        = "{{ssh_user}}"
-    private_key = file("{{ssh_private_key_path}}")
+    user        = "hong3nguyen"
+    private_key = file("~/.ssh/id_ed25519")
     host        = self.network_interface[0].access_config[0].nat_ip
   }
 
   provisioner "remote-exec" {
     inline = [
-      "mkdir -p /home/{{ssh_user}}/app"
+      "mkdir -p /home/hong3nguyen/app"
     ]
   }
 
   provisioner "file" {
     source      = "../../../../applications/machine_learning/object_classification/src/database/"
-    destination = "/home/{{ssh_user}}/app/"
+    destination = "/home/hong3nguyen/app/"
   }
 
   metadata_startup_script = templatefile("ziti-mq-init.sh.tmpl", {
@@ -90,13 +90,13 @@ resource "google_compute_instance" "message_q" {
 
 resource "google_compute_instance" "database" {
   name         = "cloud-db"
-  machine_type = "{{machine_type}}"
-  zone         = "{{zone}}"
+  machine_type = "e2-medium"
+  zone         = "europe-north1-a"
   tags         = ["cloud-db", "ziti-app"]
 
   boot_disk {
     initialize_params {
-      image = "{{image}}"
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
     }
   }
 
@@ -106,13 +106,13 @@ resource "google_compute_instance" "database" {
   }
 
   metadata = {
-    ssh-keys = "{{ssh_user}}:${file("{{ssh_public_key_path}}")}"
+    ssh-keys = "hong3nguyen:${file("~/.ssh/id_ed25519.pub")}"
   }
 
   connection {
     type        = "ssh"
-    user        = "{{ssh_user}}"
-    private_key = file("{{ssh_private_key_path}}")
+    user        = "hong3nguyen"
+    private_key = file("~/.ssh/id_ed25519")
     host        = self.network_interface[0].access_config[0].nat_ip
   }
 
@@ -124,13 +124,13 @@ resource "google_compute_instance" "database" {
 
 resource "google_compute_instance" "jaeger" {
   name         = "jaeger-db"
-  machine_type = "{{machine_type}}"
-  zone         = "{{zone}}"
+  machine_type = "e2-medium"
+  zone         = "europe-north1-a"
   tags         = ["jaeger-db", "ziti-metric"]
 
   boot_disk {
     initialize_params {
-      image = "{{image}}"
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
     }
   }
 
@@ -140,13 +140,13 @@ resource "google_compute_instance" "jaeger" {
   }
 
   metadata = {
-    ssh-keys = "{{ssh_user}}:${file("{{ssh_public_key_path}}")}"
+    ssh-keys = "hong3nguyen:${file("~/.ssh/id_ed25519.pub")}"
   }
 
   connection {
     type        = "ssh"
-    user        = "{{ssh_user}}"
-    private_key = file("{{ssh_private_key_path}}")
+    user        = "hong3nguyen"
+    private_key = file("~/.ssh/id_ed25519")
     host        = self.network_interface[0].access_config[0].nat_ip
   }
 

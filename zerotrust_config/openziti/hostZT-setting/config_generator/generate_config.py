@@ -24,7 +24,7 @@ def deep_merge(base, new):
 def generate_file(env, config, template_name, relative_output_path, output_root_dir):
     try:
         template = env.get_template(template_name)
-        rendered_content = template.render(config)
+        rendered_content = template.render(**config)
         output_file = os.path.join(output_root_dir, relative_output_path)
 
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
@@ -65,28 +65,28 @@ if __name__ == "__main__":
         config = deep_merge(config, local_config)
 
     # --- Transform ziti_config for template compatibility ---
-    if 'ziti_config' in config:
-        original_ziti_config = config.get('ziti_config', {})
+    if "ziti_config" in config:
+        original_ziti_config = config.get("ziti_config", {})
         transformed_ziti_config = {}
 
         # Flatten ctrl config from cloud_ctrl
-        ctrl_data = original_ziti_config.get('ctrl', {}).get('cloud_ctrl', {})
+        ctrl_data = original_ziti_config.get("ctrl", {}).get("cloud_ctrl", {})
         transformed_ziti_config.update(ctrl_data)
 
         # Flatten router config from cloud_router and edge_router
-        router_data = original_ziti_config.get('router', {})
-        
-        cloud_router_data = router_data.get('cloud_router', {})
+        router_data = original_ziti_config.get("router", {})
+
+        cloud_router_data = router_data.get("cloud_router", {})
         if cloud_router_data:
             transformed_ziti_config.update(cloud_router_data)
-            transformed_ziti_config['cloud_router_enabled'] = True
+            transformed_ziti_config["cloud_router_enabled"] = True
 
-        edge_router_data = router_data.get('edge_router', {})
+        edge_router_data = router_data.get("edge_router", {})
         if edge_router_data:
             transformed_ziti_config.update(edge_router_data)
-            transformed_ziti_config['edge_router_enabled'] = True
+            transformed_ziti_config["edge_router_enabled"] = True
 
-        config['ziti_config'] = transformed_ziti_config
+        config["ziti_config"] = transformed_ziti_config
     # --- End Transformation ---
 
     # Set up Jinja2 environment
