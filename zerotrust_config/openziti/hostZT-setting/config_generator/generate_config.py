@@ -64,6 +64,30 @@ if __name__ == "__main__":
             local_config = yaml.safe_load(f)
         config = deep_merge(config, local_config)
 
+    # --- Transform ziti_config for template compatibility ---
+    if 'ziti_config' in config:
+        original_ziti_config = config.get('ziti_config', {})
+        transformed_ziti_config = {}
+
+        # Flatten ctrl config from cloud_ctrl
+        ctrl_data = original_ziti_config.get('ctrl', {}).get('cloud_ctrl', {})
+        transformed_ziti_config.update(ctrl_data)
+
+        # Flatten router config from cloud_router and edge_router
+        router_data = original_ziti_config.get('router', {})
+        
+        cloud_router_data = router_data.get('cloud_router', {})
+        if cloud_router_data:
+            transformed_ziti_config.update(cloud_router_data)
+
+        edge_router_data = router_data.get('edge_router', {})
+        if edge_router_data:
+            transformed_ziti_config.update(edge_router_data)
+            transformed_ziti_config['edge_router_enabled'] = True
+
+        config['ziti_config'] = transformed_ziti_config
+    # --- End Transformation ---
+
     # Set up Jinja2 environment
     env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
 
@@ -79,8 +103,10 @@ if __name__ == "__main__":
         "docker_compose.yml.tmpl": "edge/docker-compose.yml",
     }
 
-    if config.get('ziti_config', {}).get('edge_router_enabled', False):
-        files_to_generate["edge_create_id_entities.sh.tmpl"] = "edge/create_id_entities.sh"
+    if config.get("ziti_config", {}).get("edge_router_enabled", False):
+        files_to_generate["edge_create_id_entities.sh.tmpl"] = (
+            "edge/create_id_entities.sh"
+        )
         files_to_generate["edge_setup_router.sh.tmpl"] = "edge/setup_edge_router.sh"
 
     for template_name, relative_output_path in files_to_generate.items():
@@ -89,8 +115,8 @@ if __name__ == "__main__":
     # Generate shell scripts for VMs (these also go into the new 'cloud' folder)
     vm_script_mapping = {
         "ziti-cloud-init.sh": "cloud_ziti_cloud_init.sh.tmpl",
-        "ziti-mq-init.sh": "cloud_ziti_mq_init.sh.tmpl",
-        "ziti-db-init.sh": "cloud_ziti_db_init.sh.tmpl",
+        "ziti-mq-init.sh.tmpl": "cloud_ziti_mq_init.sh.tmpl",
+        "ziti-db-init.sh.tmpl": "cloud_ziti_db_init.sh.tmpl",
     }
 
     for vm in config.get("vms", []):

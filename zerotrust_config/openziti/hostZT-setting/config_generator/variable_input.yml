@@ -13,12 +13,12 @@ vms:
     provisioner_script: "ziti-cloud-init.sh"
   - name: "cloud-messageq"
     tags: ["cloud-messageq", "ziti-app"]
-    provisioner_script: "ziti-mq-init.sh"
+    provisioner_script: "ziti-mq-init.sh.tmpl"
     application_source_path: "../../../../applications/machine_learning/object_classification/src/database/"
     application_destination_path: "/home/{{ssh_user}}/app/"
   - name: "cloud-db"
     tags: ["cloud-db", "ziti-app"]
-    provisioner_script: "ziti-db-init.sh"
+    provisioner_script: "ziti-db-init.sh.tmpl"
 
 firewall_rules:
   - name: "allow-ssh"
@@ -27,18 +27,7 @@ firewall_rules:
     source_ranges: ["0.0.0.0/0"]
   - name: "allow-ziti"
     protocol: "tcp"
-    ports:
-      [
-        "1280",
-        "3022",
-        "443",
-        "5672",
-        "27017",
-        "6262",
-        "10080",
-        "10000",
-        "8440-8443",
-      ]
+    ports: ["1280", "3022", "443", "6262", "10080", "10000", "8440-8443"]
     source_ranges: ["0.0.0.0/0"]
   - name: "allow-app"
     protocol: "tcp"
@@ -50,22 +39,29 @@ firewall_rules:
     source_ranges: ["0.0.0.0/0"]
 
 ziti_config:
-  home: "/opt/openziti"
-  user: "YOUR_ZITI_USER"
-  password: "YOUR_ZITI_PASSWORD"
-  ctrl_advertised_address: "YOUR_ZITI_CTRL_ADVERTISED_ADDRESS"
-  ctrl_advertised_port: "1280"
-  router_advertised_address: "YOUR_ZITI_ROUTER_ADVERTISED_ADDRESS"
-  router_port: "3022"
-  router_attribute: "cloud"
-  edge_router_enabled: true # true for another router at the edge side
-  edge_router_advertised_address: "YOUR_ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS"
-  edge_router_attribute: "edge"
+  ctrl:
+    cloud_ctrl:
+      home: "/opt/openziti"
+      user: "YOUR_ZITI_USER"
+      password: "YOUR_ZITI_PASSWORD"
+      ctrl_advertised_address: "YOUR_ZITI_CTRL_ADVERTISED_ADDRESS"
+      ctrl_advertised_port: "1280"
+  router:
+    cloud_router: # default setting router with ctrl are the same machine
+      cloud_router_advertised_address: "YOUR_ZITI_ROUTER_ADVERTISED_ADDRESS"
+      cloud_router_port: "3022"
+      cloud_router_attribute: "cloud"
+    edge_router:
+      edge_router_advertised_address: "YOUR_ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS"
+      edge_router_ip: "YOUR_EDGE_ROUTER_IP"
+      edge_router_port: "3022"
+      edge_router_attribute: "edge"
+      ssh_user: "YOUR_EDGE_SSH_USER"
+      ssh_pass: "YOUR_EDGE_SSH_PASS"
 
 edge_deployment:
   ssh_user: "YOUR_EDGE_SSH_USER"
   ssh_pass: "YOUR_EDGE_SSH_PASS"
-  edge_router_ip: "YOUR_EDGE_ROUTER_IP"
   edge_app_ip: "YOUR_EDGE_APP_IP"
   sensors:
     - ip: "YOUR_SENSOR_1_IP"

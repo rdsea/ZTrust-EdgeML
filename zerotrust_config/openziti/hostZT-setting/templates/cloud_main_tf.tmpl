@@ -40,10 +40,7 @@ resource "google_compute_instance" "ziti_controller_router" {
     host        = self.network_interface[0].access_config[0].network_ip
   }
 
-  metadata_startup_script = templatefile("ziti-mq-init.sh.tmpl", {
-    controller_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
-    router_ip     = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
-  })
+  metadata_startup_script = file("ziti-cloud-init.sh")
 }
 
 resource "google_compute_instance" "message_q" {
