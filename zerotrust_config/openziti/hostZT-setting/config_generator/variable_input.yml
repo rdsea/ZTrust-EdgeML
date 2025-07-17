@@ -26,6 +26,9 @@ vms:
     provisioner_script: "ziti-db-init.sh.tmpl"
     ctrl_name: "ziti_controller_router"
     use_template: true
+  - name: "jaeger-db"
+    tags: ["jaeger-db", "ziti-app"]
+    provisioner_script: "ziti-jaeger-init.sh.tmpl"
 
 firewall_rules:
   - name: "allow-ssh"
@@ -48,30 +51,34 @@ firewall_rules:
 ziti_config:
   ctrl:
     cloud_ctrl:
-      home: "/opt/openziti"
-      user: "YOUR_ZITI_USER"
-      password: "YOUR_ZITI_PASSWORD"
-      ctrl_advertised_address: "YOUR_ZITI_CTRL_ADVERTISED_ADDRESS"
-      ctrl_advertised_port: "1280"
+      - home: "/opt/openziti"
+        user: "YOUR_ZITI_USER"
+        password: "YOUR_ZITI_PASSWORD"
+        ctrl_advertised_address: "YOUR_ZITI_CTRL_ADVERTISED_ADDRESS"
+        ctrl_advertised_port: "1280"
   router:
     cloud_router: # default setting router with ctrl are the same machine
-      id: "cloud_router"
-      cloud_router_advertised_address: "YOUR_ZITI_ROUTER_ADVERTISED_ADDRESS"
-      cloud_router_port: "3022"
-      cloud_router_attribute: "cloud"
+      - id: "cloud_router"
+        cloud_router_advertised_address: "YOUR_ZITI_ROUTER_ADVERTISED_ADDRESS"
+        cloud_router_port: "3022"
+        cloud_router_attribute: "cloud"
     edge_router:
-      id: "edge_router"
-      edge_router_advertised_address: "YOUR_ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS"
-      edge_router_ip: "YOUR_EDGE_ROUTER_IP"
-      edge_router_port: "3022"
-      edge_router_attribute: "edge"
-      ssh_user: "YOUR_EDGE_SSH_USER"
-      ssh_pass: "YOUR_EDGE_SSH_PASS"
+      - id: "edge_router"
+        edge_router_advertised_address: "YOUR_ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS"
+        edge_router_ip: "YOUR_EDGE_ROUTER_IP"
+        edge_router_port: "3022"
+        edge_router_attribute: "edge"
+        ssh_user: "YOUR_EDGE_SSH_USER"
+        ssh_pass: "YOUR_EDGE_SSH_PASS"
 
 edge_deployment:
-  ssh_user: "YOUR_EDGE_SSH_USER"
-  ssh_pass: "YOUR_EDGE_SSH_PASS"
-  edge_app_ip: "YOUR_EDGE_APP_IP"
+  edge:
+    - edge_app_ip: "YOUR_EDGE_APP_IP"
+      ssh_user: "YOUR_EDGE_SSH_USER"
+      ssh_pass: "YOUR_EDGE_SSH_PASS"
+    - edge_app_ip: "YOUR_EDGE_APP_IP"
+      ssh_user: "YOUR_EDGE_SSH_USER"
+      ssh_pass: "YOUR_EDGE_SSH_PASS"
   sensors:
     - ip: "YOUR_SENSOR_1_IP"
       ssh_pass: "YOUR_SENSOR_1_SSH_PASS"
