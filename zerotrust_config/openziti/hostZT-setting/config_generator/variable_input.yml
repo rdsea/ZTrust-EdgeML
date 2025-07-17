@@ -50,15 +50,16 @@ firewall_rules:
 
 ziti_config:
   ctrl:
-    cloud_ctrl:
-      - home: "/opt/openziti"
-        user: "YOUR_ZITI_USER"
-        password: "YOUR_ZITI_PASSWORD"
-        ctrl_advertised_address: "YOUR_ZITI_CTRL_ADVERTISED_ADDRESS"
-        ctrl_advertised_port: "1280"
+    cloud_ctrl: # assumption is only a controller
+      home: "/opt/openziti"
+      user: "YOUR_ZITI_USER"
+      password: "YOUR_ZITI_PASSWORD"
+      ctrl_advertised_address: "YOUR_ZITI_CTRL_ADVERTISED_ADDRESS"
+      ctrl_advertised_port: "1280"
   router:
     cloud_router: # default setting router with ctrl are the same machine
       - id: "cloud_router"
+        cloud_router_ip: "onController"
         cloud_router_advertised_address: "YOUR_ZITI_ROUTER_ADVERTISED_ADDRESS"
         cloud_router_port: "3022"
         cloud_router_attribute: "cloud"

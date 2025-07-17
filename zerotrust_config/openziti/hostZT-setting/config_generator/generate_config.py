@@ -134,6 +134,35 @@ if __name__ == "__main__":
                 f"Warning: No template mapping found for {original_script_name}. Skipping."
             )
 
+    # Generate router setup scripts
+    for router in (
+        config.get("ziti_config", {}).get("router", {}).get("cloud_router", [])
+    ):
+        router_id = router["id"]
+        # Prepare router-specific config
+        router_config = deep_merge(config.copy(), {"router": router})
+        script_name = f"setup_cloud_router_{router_id}.sh"
+        generate_file(
+            env,
+            router_config,
+            "cloud_router_setup.sh.tmpl",
+            f"cloud/{script_name}",
+            OUTPUT_ROOT_DIR,
+        )
+
+    for router in (
+        config.get("ziti_config", {}).get("router", {}).get("edge_router", [])
+    ):
+        router_id = router["id"]
+        router_config = deep_merge(config.copy(), {"router": router})
+        script_name = f"setup_edge_router_{router_id}.sh"
+        generate_file(
+            env,
+            router_config,
+            "edge_router_setup.sh.tmpl",
+            f"edge/{script_name}",
+            OUTPUT_ROOT_DIR,
+        )
     # --- Copy docker-compose.template.yml ---
     docker_compose_template_source = os.path.join(
         SCRIPT_DIR, "..", "edge", "docker-compose.template.yml"

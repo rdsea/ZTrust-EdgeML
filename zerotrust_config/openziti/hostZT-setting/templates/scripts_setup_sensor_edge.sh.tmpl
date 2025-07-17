@@ -7,10 +7,15 @@ set -euo pipefail
 # ==============================================================================
 
 # --- Fetch values from Terraform outputs ---
-CTRL_IP=$(cd cloud-gcp && terraform output -raw controller_ip)
-CLOUD_ROUTER_IP=$(cd cloud-gcp && terraform output -raw controller_ip)
-MESSAGEQ_IP=$(cd cloud-gcp && terraform output -raw messageq_ip)
-JAEGER_IP=$(cd cloud-gcp && terraform output -raw database_ip)
+# CTRL_IP=$(cd cloud && terraform output -raw controller_ip)
+# CLOUD_ROUTER_IP=$(cd cloud && terraform output -raw controller_ip)
+# MESSAGEQ_IP=$(cd cloud && terraform output -raw messageq_ip)
+# JAEGER_IP=$(cd cloud && terraform output -raw database_ip)
+
+{% for vm in vms %}
+{{ vm.name | replace('-', '_') | upper }}=$(cd ../cloud/ && terraform output -raw {{ vm.name | replace('-', '_') }}_ip)
+{% if not loop.last %}
+{% endif %}{% endfor %}
 
 # --- Load values from the YAML config ---
 EDGE_SSH_USER="{{ edge_deployment.ssh_user }}"
@@ -40,18 +45,18 @@ deploy_script() {
   log "Deploying to $target_ip"
 
   # Copy necessary files
-  scp "$setup_script" "$ssh_user@$target_ip:~/hong3nguyen/"
-  scp "cleaning.sh" "$ssh_user@$target_ip:~/hong3nguyen/"
+  scp "$setup_script" "$ssh_user@$target_ip:~/{{ ssh_user }}/"
+  scp "cleaning.sh" "$ssh_user@$target_ip:~/{{ ssh_user }}/"
   if [[ -n "$local_files" ]]; then
-    scp -r "$local_files" "$ssh_user@$target_ip:~/hong3nguyen/"
+    scp -r "$local_files" "$ssh_user@$target_ip:~/{{ ssh_user }}/"
   fi
 
   # Run cleaning script
-  ssh "$ssh_user@$target_ip" "echo '$ssh_pass' | sudo -S bash ~/hong3nguyen/cleaning.sh"
+  ssh "$ssh_user@$target_ip" "echo '$ssh_pass' | sudo -S bash ~/{{ ssh_user }}/cleaning.sh"
 
   # Run setup script
   ssh "$ssh_user@$target_ip" \
-    "echo '$ssh_pass' | sudo -E -S env $script_args bash ~/hong3nguyen/$(basename "$setup_script")"
+    "echo '$ssh_pass' | sudo -E -S env $script_args bash ~/{{ ssh_user }}/$(basename "$setup_script")"
 }
 
 # ==============================================================================
@@ -59,12 +64,15 @@ deploy_script() {
 # ==============================================================================
 
 main() {
+  # --- Deploy to Edge Router ---
   {% if ziti_config.edge_router_enabled %}
+  {% for router in ziti_config.edge_router %}
   # --- Deploy to Edge Router ---
   deploy_script "$EDGE_ROUTER_IP" "$EDGE_SSH_USER" "$EDGE_SSH_PASS" \
     "edge/setup_edge_router.sh" \
     "CLOUD_IP=$CTRL_IP EDGE_IP=$EDGE_ROUTER_IP" \
     ""
+  {% endfor %}
   {% endif %}
 
   # --- Deploy to Edge App ---
