@@ -64,12 +64,6 @@ if __name__ == "__main__":
             local_config = yaml.safe_load(f)
         config = deep_merge(config, local_config)
 
-    # public_key_path = config.get("ssh_public_key_path")
-    # if public_key_path and os.path.exists(public_key_path):
-    #     with open(public_key_path, "r") as f:
-    #         config["ssh_public_key"] = f.read().strip()
-    # else:
-    #     config["ssh_public_key"] = ""
     # --- Transform ziti_config for template compatibility ---
     if "ziti_config" in config:
         original_ziti_config = config.get("ziti_config", {})
@@ -121,7 +115,7 @@ if __name__ == "__main__":
 
     # Generate shell scripts for VMs (these also go into the new 'cloud' folder)
     vm_script_mapping = {
-        "ziti-cloud-init.sh": "cloud_ziti_cloud_init.sh.j2",
+        "ziti-cloud-init.sh": "cloud_ziti_cloud_init.sh.tmpl",
         "ziti-mq-init.sh.tmpl": "cloud_ziti_mq_init.sh.tmpl",
         "ziti-db-init.sh.tmpl": "cloud_ziti_db_init.sh.tmpl",
     }
