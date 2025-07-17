@@ -8,18 +8,17 @@ set -euo pipefail
 
 # Passed as environment variables from the calling script
 export CLOUD_IP="$CLOUD_IP"
-export EDGE_IP="$EDGE_IP"
 
 # Ziti configuration from variable_input.yml
-ZITI_HOME="{{ ziti_config.home }}"
-ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl_advertised_address }}"
-ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl_advertised_port }}"
-ZITI_USER="{{ ziti_config.user }}"
-ZITI_PWD="{{ ziti_config.password }}"
-ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS="{{ ziti_config.cloud_router_advertised_address }}"
-ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS="{{ ziti_config.edge_router_advertised_address }}"
-
+ZITI_HOME="{{ ziti_config.ctrl.cloud_ctrl.home }}"
+ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
+ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_port }}"
+ZITI_USER="{{ ziti_config.ctrl.cloud_ctrl.user }}"
+ZITI_PWD="{{ ziti_config.ctrl.cloud_ctrl.password }}"
+ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS="{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}"
 CURRENT_DIR="{{dir_default}}"
+
+
 
 # ==============================================================================
 # FUNCTIONS
@@ -45,9 +44,12 @@ add_dns_entries() {
   log "Adding Ziti DNS entries to /etc/hosts"
   echo "$CLOUD_IP $ZITI_CTRL_ADVERTISED_ADDRESS" >>/etc/hosts
   echo "$CLOUD_IP $ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS" >>/etc/hosts
-  {% if ziti_config.edge_router_enabled %}
-  echo "$EDGE_IP $ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS" >>/etc/hosts
-  {% endif %}
+
+  {% for edge in ziti_config.router.edge_router %}
+  if ! grep -q "{{  edge.edge_router_advertised_address }}" /etc/hosts; then
+    echo "{{ edge.edge_router_ip }} {{ edge.edge_router_advertised_address }}" | sudo tee -a /etc/hosts
+  fi
+  {% endfor %}
 }
 
 # --- Prepare Docker Compose file ---
@@ -57,7 +59,12 @@ prepare_docker_compose() {
   apt-get update -y && apt-get install -y gettext-base
 
   # Pass JAEGER_IP from the calling script (script_settup_sensor_edge.sh)
-  export JAEGER_IP="$(cd ../cloud-gcp && terraform output -raw database_ip)"
+  # export JAEGER_IP=$(cd ../cloud/ && terraform output -raw jaeger_db_ip)
+  
+  {% for vm in vms %}
+  export {{ vm.name | replace('-', '_') | upper }}_IP=$(cd ../cloud/ && terraform output -raw {{ vm.name | replace('-', '_') }}_ip)
+  {% if not loop.last %}
+  {% endif %}{% endfor %}
 
   envsubst <"${CURRENT_DIR}/docker-compose.template.yml" >"${CURRENT_DIR}/docker-compose.yml"
   docker compose -f "${CURRENT_DIR}/docker-compose.yml" down --volumes || true

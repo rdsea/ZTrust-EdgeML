@@ -13,20 +13,10 @@ set -euo pipefail
 # JAEGER_IP=$(cd cloud && terraform output -raw database_ip)
 
 {% for vm in vms %}
-{{ vm.name | replace('-', '_') | upper }}=$(cd ../cloud/ && terraform output -raw {{ vm.name | replace('-', '_') }}_ip)
+{{ vm.name | replace('-', '_') | upper }}_IP=$(cd ../cloud/ && terraform output -raw {{ vm.name | replace('-', '_') }}_ip)
 {% if not loop.last %}
 {% endif %}{% endfor %}
 
-# --- Load values from the YAML config ---
-{% for router in ziti_config.edge_router %}
-{{ router.id }}_IP="{{ router.edge_router_ip }}"
-{% endfor %}
-
-EDGE_SSH_USER="{{ edge_deployment.ssh_user }}"
-EDGE_SSH_PASS="{{ edge_deployment.ssh_pass }}"
-
-EDGE_ROUTER_IP="{{ edge_deployment.edge_router_ip }}"
-EDGE_APP_IP="{{ edge_deployment.edge_app_ip }}"
 
 # ==============================================================================
 # FUNCTIONS
@@ -51,6 +41,7 @@ deploy_script() {
   # Copy necessary files
   scp "$setup_script" "$ssh_user@$target_ip:~/{{ ssh_user }}/"
   scp "cleaning.sh" "$ssh_user@$target_ip:~/{{ ssh_user }}/"
+  scp "common.sh" "$ssh_user@$target_ip:~/{{ ssh_user }}/"
   if [[ -n "$local_files" ]]; then
     scp -r "$local_files" "$ssh_user@$target_ip:~/{{ ssh_user }}/"
   fi
@@ -69,21 +60,18 @@ deploy_script() {
 
 main() {
   # --- Deploy to Edge Router ---
-  {% if ziti_config.edge_router_enabled %}
-  {% for router in ziti_config.edge_router %}
-  # --- Deploy to Edge Router ---
-  deploy_script "$EDGE_ROUTER_IP" "$EDGE_SSH_USER" "$EDGE_SSH_PASS" \
-    "edge/setup_edge_router.sh" \
-    "CLOUD_IP=$CTRL_IP EDGE_IP=$EDGE_ROUTER_IP" \
+  {% for edge_r in ziti_config.router.edge_router %}
+  deploy_script "{{ edge_r.edge_router_ip }}" "{{ edge_r.ssh_user }}" "{{ edge_r.ssh_pass }}" \
+    "edge/setup_{{ edge_r.id }}.sh" \
+    "CLOUD_IP=$CTRL_IP" \
     ""
   {% endfor %}
-  {% endif %}
 
   # --- Deploy to Edge App ---
   {% for edge_ in edge_deployment.edge %}
   deploy_script "{{ edge_.edge_app_ip }}" "{{ edge_.ssh_user }}" "{{ edge_.ssh_pass }}" \
     "edge/setup_edge_app.sh" \
-    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER EDGE_IP=$EDGE_ROUTER_IP" \
+    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER" \
     "edge/docker-compose.template.yml edge/create_id_entities.sh"
   {% endfor %}
 
@@ -91,7 +79,7 @@ main() {
   {% for sensor_ in edge_deployment.sensor %}
   deploy_script "{{ sensor_.ip }}" "{{ sensor_.ssh_user }}" "{{ sensor_.ssh_pass }}" \
     "sensor/setup_sensor.sh" \
-    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER EDGE_IP=$EDGE_ROUTER_IP" \
+    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER" \
     "{{ sensor_.loadgen }}"
   {% endfor %}
 

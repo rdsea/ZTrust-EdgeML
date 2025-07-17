@@ -7,9 +7,9 @@ set -euo pipefail
 # ==============================================================================
 
 # Ziti domain names from config
-CTRL_DOMAIN="{{ ziti_config.ctrl_advertised_address }}"
-CLOUD_ROUTER_DOMAIN="{{ ziti_config.cloud_router_advertised_address }}"
-EDGE_ROUTER_DOMAIN="{{ ziti_config.edge_router_advertised_address }}"
+CTRL_DOMAIN="{{ ziti_config.ctrl.cloud_ctrl.home }}"
+CLOUD_ROUTER_DOMAIN="{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}"
+
 
 # ==============================================================================
 # FUNCTIONS
@@ -26,7 +26,8 @@ clean_hosts_file() {
   cp /etc/hosts /etc/hosts.bak
   sed -i "/${CTRL_DOMAIN}/d" /etc/hosts
   sed -i "/${CLOUD_ROUTER_DOMAIN}/d" /etc/hosts
-  sed -i "/${EDGE_ROUTER_DOMAIN}/d" /etc/hosts
+  {% for edge_ in ziti_config.router.edge_router %} 
+  sed -i "/{{ edge_.edge_router_advertised_address }}/d" /etc/hosts{% endfor %}
 }
 
 # --- Clean up Ziti Router service ---

@@ -4,7 +4,7 @@ set -euo pipefail
 
 # Source the common functions
 # shellcheck source=common.sh.tmpl
-source "../scripts/common.sh"
+source "common.sh"
 
 # ==============================================================================
 # VARIABLES
@@ -12,17 +12,16 @@ source "../scripts/common.sh"
 
 # Passed as environment variables from the calling script
 export CLOUD_IP="$CLOUD_IP"
-export EDGE_IP="$EDGE_IP"
 
 # Ziti configuration from variable_input.yml
-ZITI_HOME="{{ ziti_config.home }}"
-ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl_advertised_address }}"
-ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl_advertised_port }}"
-ZITI_USER="{{ ziti_config.user }}"
-ZITI_PWD="{{ ziti_config.password }}"
-ZITI_ROUTER_ADVERTISED_ADDRESS="{{ ziti_config.router_advertised_address }}"
 
-CURRENT_DIR="$(pwd)/{{ssh_user}}"
+ZITI_HOME="{{ ziti_config.ctrl.cloud_ctrl.home }}"
+ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
+ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_port }}"
+ZITI_USER="{{ ziti_config.ctrl.cloud_ctrl.user }}"
+ZITI_PWD="{{ ziti_config.ctrl.cloud_ctrl.password }}"
+
+CURRENT_DIR="{{ dir_default }}"
 
 # ==============================================================================
 # MAIN EXECUTION
@@ -32,7 +31,7 @@ main() {
   log "Starting Sensor Setup"
   install_ziti_cli
   install_ziti_edge_tunnel
-  add_ziti_dns_entries "$CLOUD_IP" "$EDGE_IP"
+  add_ziti_dns_entries "$CLOUD_IP" 
 
   # Create and enroll the Ziti identity
   json_file=$(create_and_enroll_identity "object-detection-client-$(cat /etc/hostname)" "object-detection-client,edge")

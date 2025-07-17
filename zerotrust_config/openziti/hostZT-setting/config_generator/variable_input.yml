@@ -26,7 +26,7 @@ vms:
     provisioner_script: "ziti-db-init.sh.tmpl"
     ctrl_name: "ziti_controller_router"
     use_template: true
-  - name: "jaeger-db"
+  - name: "jaeger"
     tags: ["jaeger-db", "ziti-app"]
     provisioner_script: "ziti-jaeger-init.sh.tmpl"
 
@@ -68,7 +68,7 @@ ziti_config:
       #   cloud_router_advertised_address: "YOUR_ZITI_ROUTER_ADVERTISED_ADDRESS"
       #   cloud_router_port: "3022"
       #   cloud_router_attribute: "cloud"
-    edge_router:
+    edge_router: # now working router with loadbalancer, so there is a function in edge router to register for loadbalancer
       - id: "edge_router"
         edge_router_advertised_address: "YOUR_ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS"
         edge_router_ip: "YOUR_EDGE_ROUTER_IP"

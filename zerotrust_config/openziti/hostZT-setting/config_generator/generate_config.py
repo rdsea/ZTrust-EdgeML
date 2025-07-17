@@ -165,12 +165,11 @@ if __name__ == "__main__":
 
     for router in edge_routers:
         router_id = router["id"]
-        # router_config = deep_merge(config.copy(), {"router": router})
+        router_config = deep_merge(config.copy(), {"router": router})
         script_name = f"setup_{router_id}.sh"
-        print("router config", router)
         generate_file(
             env,
-            config,
+            router_config,
             "edge_setup_router.sh.tmpl",
             f"edge/{script_name}",
             OUTPUT_ROOT_DIR,
