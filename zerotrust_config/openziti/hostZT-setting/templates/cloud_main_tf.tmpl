@@ -12,11 +12,7 @@ resource "google_compute_instance" "{{ vm.name | replace('-', '_') }}" {
   machine_type = "{{ machine_type }}"
   zone         = "{{ zone }}"
 
-  tags = [
-    {% for tag in vm.tags %}
-    "{{ tag }}"{% if not loop.last %},{% endif %}
-    {% endfor %}
-  ]
+  tags = [{% for tag in vm.tags %}"{{ tag }}"{% if not loop.last %}, {% endif %}{% endfor %}]
 
   boot_disk {
     initialize_params {
@@ -57,9 +53,7 @@ resource "google_compute_instance" "{{ vm.name | replace('-', '_') }}" {
 
   metadata = {
     ssh-keys = "{{ ssh_user }}:${file("{{ ssh_public_key_path }}")}"
-
   }
-
 }
 {% endfor %}
 
