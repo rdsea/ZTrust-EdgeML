@@ -18,6 +18,10 @@ set -euo pipefail
 {% endif %}{% endfor %}
 
 # --- Load values from the YAML config ---
+{% for router in ziti_config.edge_router %}
+{{ router.id }}_IP="{{ router.edge_router_ip }}"
+{% endfor %}
+
 EDGE_SSH_USER="{{ edge_deployment.ssh_user }}"
 EDGE_SSH_PASS="{{ edge_deployment.ssh_pass }}"
 
@@ -76,17 +80,19 @@ main() {
   {% endif %}
 
   # --- Deploy to Edge App ---
-  deploy_script "$EDGE_APP_IP" "$EDGE_SSH_USER" "$EDGE_SSH_PASS" \
+  {% for edge_ in edge_deployment.edge %}
+  deploy_script "{{ edge_.edge_app_ip }}" "{{ edge_.ssh_user }}" "{{ edge_.ssh_pass }}" \
     "edge/setup_edge_app.sh" \
-    "CLOUD_IP=$CTRL_IP EDGE_IP=$EDGE_ROUTER_IP" \
+    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER EDGE_IP=$EDGE_ROUTER_IP" \
     "edge/docker-compose.template.yml edge/create_id_entities.sh"
+  {% endfor %}
 
   # --- Deploy to Sensors ---
-  {% for sensor in edge_deployment.sensors %}
-  deploy_script "{{ sensor.ip }}" "$EDGE_SSH_USER" "{{ sensor.ssh_pass }}" \
+  {% for sensor_ in edge_deployment.sensor %}
+  deploy_script "{{ sensor_.ip }}" "{{ sensor_.ssh_user }}" "{{ sensor_.ssh_pass }}" \
     "sensor/setup_sensor.sh" \
-    "CLOUD_IP=$CTRL_IP EDGE_IP=$EDGE_ROUTER_IP" \
-    "../../../../applications/machine_learning/object_classification/src/loadgen/"
+    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER EDGE_IP=$EDGE_ROUTER_IP" \
+    "{{ sensor_.loadgen }}"
   {% endfor %}
 
   log "Edge and Sensor deployment complete."

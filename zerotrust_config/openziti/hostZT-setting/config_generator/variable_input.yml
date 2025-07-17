@@ -50,21 +50,33 @@ firewall_rules:
 
 ziti_config:
   ctrl:
-    cloud_ctrl: # assumption is only a controller
+    cloud_ctrl: # assumption is only a controller paring with a router
       home: "/opt/openziti"
       user: "YOUR_ZITI_USER"
       password: "YOUR_ZITI_PASSWORD"
       ctrl_advertised_address: "YOUR_ZITI_CTRL_ADVERTISED_ADDRESS"
       ctrl_advertised_port: "1280"
-  router:
-    cloud_router: # default setting router with ctrl are the same machine
-      - id: "cloud_router"
-        cloud_router_ip: "onController"
+      router:
+        id: "cloud_router"
         cloud_router_advertised_address: "YOUR_ZITI_ROUTER_ADVERTISED_ADDRESS"
         cloud_router_port: "3022"
         cloud_router_attribute: "cloud"
+  router:
+    cloud_router: # default setting router with ctrl are the same machine
+      # - id: "cloud_router"
+      #   cloud_router_ip: "onController"
+      #   cloud_router_advertised_address: "YOUR_ZITI_ROUTER_ADVERTISED_ADDRESS"
+      #   cloud_router_port: "3022"
+      #   cloud_router_attribute: "cloud"
     edge_router:
       - id: "edge_router"
+        edge_router_advertised_address: "YOUR_ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS"
+        edge_router_ip: "YOUR_EDGE_ROUTER_IP"
+        edge_router_port: "3022"
+        edge_router_attribute: "edge"
+        ssh_user: "YOUR_EDGE_SSH_USER"
+        ssh_pass: "YOUR_EDGE_SSH_PASS"
+      - id: "edge_router2"
         edge_router_advertised_address: "YOUR_ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS"
         edge_router_ip: "YOUR_EDGE_ROUTER_IP"
         edge_router_port: "3022"
@@ -80,11 +92,15 @@ edge_deployment:
     - edge_app_ip: "YOUR_EDGE_APP_IP"
       ssh_user: "YOUR_EDGE_SSH_USER"
       ssh_pass: "YOUR_EDGE_SSH_PASS"
-  sensors:
+  sensor:
     - ip: "YOUR_SENSOR_1_IP"
+      ssh_user: "YOUR_SENSOR_SSH_USER"
       ssh_pass: "YOUR_SENSOR_1_SSH_PASS"
+      loadgen: "../../../../applications/machine_learning/object_classification/src/loadgen/"
     - ip: "YOUR_SENSOR_2_IP"
+      ssh_user: "YOUR_SENSOR_SSH_USER"
       ssh_pass: "YOUR_SENSOR_2_SSH_PASS"
+      loadgen: "../../../../applications/machine_learning/object_classification/src/loadgen/"
 
 edge_applications:
   - name: "object-detection-client"

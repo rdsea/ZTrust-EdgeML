@@ -65,28 +65,37 @@ if __name__ == "__main__":
         config = deep_merge(config, local_config)
 
     # --- Transform ziti_config for template compatibility ---
-    if "ziti_config" in config:
-        original_ziti_config = config.get("ziti_config", {})
-        transformed_ziti_config = {}
-
-        # Flatten ctrl config from cloud_ctrl
-        ctrl_data = original_ziti_config.get("ctrl", {}).get("cloud_ctrl", {})
-        transformed_ziti_config.update(ctrl_data)
-
-        # Flatten router config from cloud_router and edge_router
-        router_data = original_ziti_config.get("router", {})
-
-        cloud_router_data = router_data.get("cloud_router", {})
-        if cloud_router_data:
-            transformed_ziti_config.update(cloud_router_data)
-            transformed_ziti_config["cloud_router_enabled"] = True
-
-        edge_router_data = router_data.get("edge_router", {})
-        if edge_router_data:
-            transformed_ziti_config.update(edge_router_data)
-            transformed_ziti_config["edge_router_enabled"] = True
-
-        config["ziti_config"] = transformed_ziti_config
+    # if "ziti_config" in config:
+    #     original_ziti_config = config.get("ziti_config", {})
+    #     transformed_ziti_config = {}
+    #
+    #     # Flatten ctrl config from cloud_ctrl
+    #     ctrl_data = original_ziti_config.get("ctrl", {}).get("cloud_ctrl", {})
+    #     transformed_ziti_config.update(ctrl_data)
+    #
+    #     # Flatten router config from cloud_router and edge_router
+    #     router_data = original_ziti_config.get("router", {})
+    #
+    #     # Preserve lists for cloud_router and edge_router
+    #     router_data = original_ziti_config.get("router", {})
+    #     cloud_routers = router_data.get("cloud_router", [])
+    #     edge_routers = router_data.get("edge_router", [])
+    #
+    #     # Assign these as-is (do not flatten)
+    #     transformed_ziti_config["cloud_routers"] = cloud_routers
+    #     transformed_ziti_config["edge_routers"] = edge_routers
+    #
+    #     # cloud_router_data = router_data.get("cloud_router", {})
+    #     # if cloud_router_data:
+    #     #     transformed_ziti_config.update(cloud_router_data)
+    #     #     transformed_ziti_config["cloud_router_enabled"] = True
+    #
+    #     # edge_router_data = router_data.get("edge_router", {})
+    #     # if edge_router_data:
+    #     #     transformed_ziti_config.update(edge_router_data)
+    #     #     transformed_ziti_config["edge_router_enabled"] = True
+    #
+    #     config["ziti_config"] = transformed_ziti_config
     # --- End Transformation ---
 
     # Set up Jinja2 environment
@@ -104,11 +113,11 @@ if __name__ == "__main__":
         "docker_compose.yml.tmpl": "edge/docker-compose.yml",
     }
 
-    if config.get("ziti_config", {}).get("edge_router_enabled", False):
-        files_to_generate["edge_create_id_entities.sh.tmpl"] = (
-            "edge/create_id_entities.sh"
-        )
-        files_to_generate["edge_setup_router.sh.tmpl"] = "edge/setup_edge_router.sh"
+    # if config.get("ziti_config", {}).get("edge_router_enabled", False):
+    #     files_to_generate["edge_create_id_entities.sh.tmpl"] = (
+    #         "edge/create_id_entities.sh"
+    #     )
+    #     files_to_generate["edge_setup_router.sh.tmpl"] = "edge/setup_edge_router.sh"
 
     for template_name, relative_output_path in files_to_generate.items():
         generate_file(env, config, template_name, relative_output_path, OUTPUT_ROOT_DIR)
@@ -135,34 +144,38 @@ if __name__ == "__main__":
             )
 
     # Generate router setup scripts
-    for router in (
-        config.get("ziti_config", {}).get("router", {}).get("cloud_router", [])
-    ):
-        router_id = router["id"]
-        # Prepare router-specific config
-        router_config = deep_merge(config.copy(), {"router": router})
-        script_name = f"setup_cloud_router_{router_id}.sh"
-        generate_file(
-            env,
-            router_config,
-            "cloud_router_setup.sh.tmpl",
-            f"cloud/{script_name}",
-            OUTPUT_ROOT_DIR,
-        )
+    # for router in (
+    #     config.get("ziti_config", {}).get("router", {}).get("cloud_router", [])
+    # ):
+    #     router_id = router["id"]
+    #     # Prepare router-specific config
+    #     router_config = deep_merge(config.copy(), {"router": router})
+    #     script_name = f"setup_cloud_router_{router_id}.sh"
+    #     generate_file(
+    #         env,
+    #         router_config,
+    #         "cloud_router_setup.sh.tmpl",
+    #         f"cloud/{script_name}",
+    #         OUTPUT_ROOT_DIR,
+    #     )
 
-    for router in (
-        config.get("ziti_config", {}).get("router", {}).get("edge_router", [])
-    ):
+    edge_routers = (
+        config.get("ziti_config", {}).get("router", []).get("edge_router", {})
+    )
+
+    for router in edge_routers:
         router_id = router["id"]
-        router_config = deep_merge(config.copy(), {"router": router})
-        script_name = f"setup_edge_router_{router_id}.sh"
+        # router_config = deep_merge(config.copy(), {"router": router})
+        script_name = f"setup_{router_id}.sh"
+        print("router config", router)
         generate_file(
             env,
-            router_config,
-            "edge_router_setup.sh.tmpl",
+            config,
+            "edge_setup_router.sh.tmpl",
             f"edge/{script_name}",
             OUTPUT_ROOT_DIR,
         )
+
     # --- Copy docker-compose.template.yml ---
     docker_compose_template_source = os.path.join(
         SCRIPT_DIR, "..", "edge", "docker-compose.template.yml"

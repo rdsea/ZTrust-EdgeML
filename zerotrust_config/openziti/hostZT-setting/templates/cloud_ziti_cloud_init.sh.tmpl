@@ -31,11 +31,11 @@ download_ziti_binaries() {
 # --- Set up Ziti environment variables ---
 set_ziti_variables() {
   log "Setting Ziti environment variables"
-  export ZITI_HOME="{{ ziti_config.home }}"
-  export ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl_advertised_address }}"
-  export ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl_advertised_port }}"
-  export ZITI_USER="{{ ziti_config.user }}"
-  export ZITI_PWD="{{ ziti_config.password }}"
+  export ZITI_HOME="{{ ziti_config.ctrl.cloud_ctrl.home }}"
+  export ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
+  export ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_port }}"
+  export ZITI_USER="{{ ziti_config.ctrl.cloud_ctrl.user }}"
+  export ZITI_PWD="{{ ziti_config.ctrl.cloud_ctrl.password }}"
   export ZITI_DIR="{{ dir_default }}"
 }
 
@@ -60,24 +60,25 @@ EOF
 configure_dns() {
   log "Configuring local DNS"
   PUBLIC_IP=$(curl -s ifconfig.me || curl -s https://ipinfo.io/ip)
-  echo "$PUBLIC_IP {{ ziti_config.ctrl_advertised_address }}" | sudo tee -a /etc/hosts
+  echo "$PUBLIC_IP {{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}" | sudo tee -a /etc/hosts
 }
 
 # --- Create and configure the Ziti Edge Router ---
+{% if ziti_config.ctrl.cloud_ctrl.router is defined %}
 create_edge_router() {
   log "Creating Edge Router"
   local jwt_file
-  jwt_file="{{ dir_default }}/{{ ziti_config.id }}.jwt"
+  jwt_file="{{ dir_default }}/{{ ziti_config.ctrl.cloud_ctrl.router.id }}.jwt"
 
   "${ZITI_HOME}/bin/ziti" edge login "https://\$ZITI_CTRL_ADVERTISED_ADDRESS:\$ZITI_CTRL_ADVERTISED_PORT" --yes -u "$ZITI_USER" -p "$ZITI_PWD"
 
   log "Creating edge router token"
-  "${ZITI_HOME}/bin/ziti" edge create edge-router {{ ziti_config.id }} \
+  "${ZITI_HOME}/bin/ziti" edge create edge-router {{ ziti_config.ctrl.cloud_ctrl.router.id }} \
     --jwt-output-file "$jwt_file" \
     --tunneler-enabled
 
-  log "Assigning attribute '{{ ziti_config.cloud_router_attribute }}' to edge router"
-  "${ZITI_HOME}/bin/ziti" edge update edge-router {{ ziti_config.id }} -a "{{ ziti_config.cloud_router_attribute }}"
+  log "Assigning attribute '{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_attribute }}' to edge router"
+  "${ZITI_HOME}/bin/ziti" edge update edge-router {{ ziti_config.ctrl.cloud_ctrl.router.id }} -a "{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_attribute }}"
 
   # Return the path to the JWT file for the next step
   echo "$jwt_file"
@@ -91,8 +92,8 @@ bootstrap_router() {
   cat <<EOF >"${ZITI_HOME}/etc/router/bootstrap.env"
 ZITI_CTRL_ADVERTISED_ADDRESS='${ZITI_CTRL_ADVERTISED_ADDRESS}'
 ZITI_CTRL_ADVERTISED_PORT='${ZITI_CTRL_ADVERTISED_PORT}'
-ZITI_ROUTER_ADVERTISED_ADDRESS='{{ ziti_config.cloud_router_advertised_address }}'
-ZITI_ROUTER_PORT='{{ ziti_config.cloud_router_port }}'
+ZITI_ROUTER_ADVERTISED_ADDRESS='{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}'
+ZITI_ROUTER_PORT='{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_port }}'
 ZITI_ENROLL_TOKEN='${jwt_file}'
 ZITI_BOOTSTRAP_CONFIG_ARGS=''
 EOF
@@ -100,6 +101,7 @@ EOF
   "${ZITI_HOME}/etc/router/bootstrap.bash"
   systemctl enable --now ziti-router.service
 }
+{% endif %}
 
 # ==============================================================================
 # MAIN EXECUTION

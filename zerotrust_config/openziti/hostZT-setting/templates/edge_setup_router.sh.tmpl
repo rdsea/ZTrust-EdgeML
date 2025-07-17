@@ -15,13 +15,12 @@ export CLOUD_IP="$CLOUD_IP"
 export EDGE_IP="$EDGE_IP"
 
 # Ziti configuration from variable_input.yml
-# Ziti configuration from variable_input.yml
 ZITI_HOME="{{ ziti_config.home }}"
 ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl_advertised_address }}"
 ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl_advertised_port }}"
 ZITI_USER="{{ ziti_config.user }}"
 ZITI_PWD="{{ ziti_config.password }}"
-ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS="{{ ziti_config.cloud_router_advertised_address }}"
+ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS="{{ ziti_config.cloud_router.cloud_router_advertised_address }}"
 ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS="{{ ziti_config.edge_router_advertised_address }}"
 ZITI_ROUTER_PORT="{{ ziti_config.edge_router_port }}"
 CURRENT_DIR="{{ dir_default }}"
