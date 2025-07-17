@@ -147,8 +147,6 @@ main() {
   set_ziti_variables
   install_mongodb
   configure_mongodb
-  # echo "${controller_ip} {{ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address}}" | sudo tee -a /etc/hosts
-  # echo "${controller_ip} {{ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address}}" | sudo tee -a /etc/hosts
   add_ziti_dns_entries "${controller_ip}" 
   install_ziti_edge_tunnel
 

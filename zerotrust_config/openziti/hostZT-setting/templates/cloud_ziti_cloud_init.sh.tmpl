@@ -114,7 +114,7 @@ main() {
   bootstrap_controller
   configure_dns
   
-  {% if ziti_config.edge_router_enabled %}
+  {% if ziti_config.ctrl.cloud_ctrl.router.id is defined  %}
   # Create the edge router and capture the JWT file path
   local router_jwt
   router_jwt=$(create_edge_router)
