@@ -150,27 +150,25 @@ if __name__ == "__main__":
                 f"Warning: No template mapping found for {original_script_name}. Skipping."
             )
 
-    # Generate router setup scripts
-    # for router in (
-    #     config.get("ziti_config", {}).get("router", {}).get("cloud_router", [])
-    # ):
-    #     router_id = router["id"]
-    #     # Prepare router-specific config
-    #     router_config = deep_merge(config.copy(), {"router": router})
-    #     script_name = f"setup_cloud_router_{router_id}.sh"
-    #     generate_file(
-    #         env,
-    #         router_config,
-    #         "cloud_router_setup.sh.tmpl",
-    #         f"cloud/{script_name}",
-    #         OUTPUT_ROOT_DIR,
-    #     )
+    # --- cloud router generation, but require specific IP ---
+    for router_cloud in (
+        config.get("ziti_config", {}).get("router", []).get("cloud_router", {})
+    ):
+        router_id = router_cloud["id"]
+        router_config = deep_merge(config.copy(), {"router": router_cloud})
+        script_name = f"setup_{router_id}.sh"
+        generate_file(
+            env,
+            router_config,
+            "edge_setup_router.sh.tmpl",
+            f"cloud/{script_name}",
+            OUTPUT_ROOT_DIR,
+        )
 
-    edge_routers = (
+    # --- edge router generation, but require specific IP ---
+    for router in (
         config.get("ziti_config", {}).get("router", []).get("edge_router", {})
-    )
-
-    for router in edge_routers:
+    ):
         router_id = router["id"]
         router_config = deep_merge(config.copy(), {"router": router})
         script_name = f"setup_{router_id}.sh"
