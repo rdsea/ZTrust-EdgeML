@@ -158,3 +158,29 @@ edge_applications:
     host_address: "localhost"
     dial_identity_roles: ["#message-queue"]
     bind_identity_roles: ["#database"]
+
+policies:
+  - name: public-routers
+    type: edge-router-policy
+    edge_router_roles: "#public-routers"
+    identity_roles: "#all"
+  - name: public-routers
+    type: service-edge-router-policy
+    edge_router_roles: "#public-routers"
+    service_roles: "#all"
+  - name: allow.id.router_edge
+    type: edge-router-policy
+    edge_router_roles: "#edge"
+    identity_roles: "#edge"
+  - name: allow.svc.router_edge
+    type: service-edge-router-policy
+    edge_router_roles: "#edge"
+    service_roles: "#edge"
+  - name: allow.id.router_cloud
+    type: edge-router-policy
+    edge_router_roles: "#cloud"
+    identity_roles: "#cloud"
+  - name: allow.svc.router_cloud
+    type: service-edge-router-policy
+    edge_router_roles: "#cloud"
+    service_roles: "#cloud"

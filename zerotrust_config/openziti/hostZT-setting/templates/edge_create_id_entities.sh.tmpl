@@ -74,17 +74,25 @@ main() {
 
   # Add specific policies that are not tied to a single application
   log "Creating general Ziti policies"
-  "$ZITI_CLI" edge create edge-router-policy "public-routers" \
-    --edge-router-roles '#public-routers' --identity-roles '#all'
 
-  "$ZITI_CLI" edge create service-edge-router-policy "public-routers" \
-    --edge-router-roles '#public-routers' --service-roles '#all'
+  {% for policy in policies %}
+  "$ZITI_CLI" edge create {% if policy.type == "edge-router-policy" %}{{ policy.type }} "{{ policy.name }}" \
+    --edge-router-roles '{{ policy.edge_router_roles }}' --identity-roles '{{ policy.identity_roles }}'
+  {% else %}{{ policy.type }} "{{ policy.name }}" \
+    --edge-router-roles '{{ policy.edge_router_roles }}' --service-roles '{{ policy.service_roles }}'
+  {% endif %}
+  {% endfor %}
+ #  "$ZITI_CLI" edge create edge-router-policy "public-routers" \
+ #    --edge-router-roles '#public-routers' --identity-roles '#all'
 
-  "$ZITI_CLI" edge create edge-router-policy allow.id.router_edge --edge-router-roles '#edge' --identity-roles '#edge'
-  "$ZITI_CLI" edge create service-edge-router-policy allow.svc.router_edge --edge-router-roles '#edge' --service-roles '#edge'
+ #  "$ZITI_CLI" edge create service-edge-router-policy "public-routers" \
+ #    --edge-router-roles '#public-routers' --service-roles '#all'
 
-  "$ZITI_CLI" edge create edge-router-policy allow.id.router_cloud --edge-router-roles '#cloud' --identity-roles '#cloud'
-  "$ZITI_CLI" edge create service-edge-router-policy allow.svc.router_cloud --edge-router-roles '#cloud' --service-roles '#cloud'
+ #  "$ZITI_CLI" edge create edge-router-policy allow.id.router_edge --edge-router-roles '#edge' --identity-roles '#edge'
+ #  "$ZITI_CLI" edge create service-edge-router-policy allow.svc.router_edge --edge-router-roles '#edge' --service-roles '#edge'
+
+ #  "$ZITI_CLI" edge create edge-router-policy allow.id.router_cloud --edge-router-roles '#cloud' --identity-roles '#cloud'
+ #  "$ZITI_CLI" edge create service-edge-router-policy allow.svc.router_cloud --edge-router-roles '#cloud' --service-roles '#cloud'
 
   log "Ziti identity and service creation complete."
 }

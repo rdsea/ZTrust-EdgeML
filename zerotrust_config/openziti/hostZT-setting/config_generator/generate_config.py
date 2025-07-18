@@ -118,6 +118,34 @@ if __name__ == "__main__":
     #         "edge/create_id_entities.sh"
     #     )
     #     files_to_generate["edge_setup_router.sh.tmpl"] = "edge/setup_edge_router.sh"
+    #
+    ziti_config = config.get("ziti_config", {})
+    ctrls = ziti_config.get("ctrl", {})
+    routers = ziti_config.get("router", {})
+
+    for ctrl_name, ctrl_data in ctrls.items():
+        router_info = ctrl_data.get("router")
+        if not router_info:
+            continue  # skip if controller doesn't have router info
+
+        router_id = router_info.get("id")
+        if not router_id:
+            continue  # malformed router entry
+
+        # Now check if router with that ID exists in router config
+        router_exists = any(
+            r.get("id") == router_id
+            for rlist in routers.values()
+            for r in (rlist if isinstance(rlist, list) else [rlist])
+        )
+
+        if router_exists:
+            # ✅ Both controller and its router exist, so populate the files
+            files_to_generate["edge_create_id_entities.sh.tmpl"] = (
+                "edge/create_id_entities.sh"
+            )
+            # files_to_generate["edge_setup_router.sh.tmpl"] = "edge/setup_edge_router.sh"
+            break  # or continue if you want to allow multiple pairs
 
     for template_name, relative_output_path in files_to_generate.items():
         generate_file(env, config, template_name, relative_output_path, OUTPUT_ROOT_DIR)
