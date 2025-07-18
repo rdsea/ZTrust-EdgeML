@@ -66,11 +66,11 @@ create_and_enroll_identity() {
 
   log "Creating and enrolling identity: $identity_name"
 
-  "${ZITI_HOME}/bin/ziti" edge login "https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}" --yes -u "${ZITI_USER}" -p "${ZITI_PWD}"
+  ${ZITI_HOME}/bin/ziti edge login https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT} --yes -u ${ZITI_USER} -p ${ZITI_PWD}
   
-  "${ZITI_HOME}/bin/ziti" edge create identity device "${identity_name}" -a "${identity_roles}" --jwt-output-file "${jwt_file}"
+  ${ZITI_HOME}/bin/ziti edge create identity device ${identity_name} -a ${identity_roles} --jwt-output-file ${jwt_file}
   
-  "${ZITI_HOME}/bin/ziti" edge enroll --jwt "${jwt_file}" --out "${json_file}"
+  ${ZITI_HOME}/bin/ziti edge enroll --jwt ${jwt_file} --out ${json_file}
   
-  echo "${json_file}"
+  echo ${json_file}
 }

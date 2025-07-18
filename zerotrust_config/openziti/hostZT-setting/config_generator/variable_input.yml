@@ -25,10 +25,13 @@ vms:
     tags: ["cloud-db", "ziti-app"]
     provisioner_script: "ziti-db-init.sh.tmpl"
     ctrl_name: "ziti_controller_router"
+    mongo_user: "hong3nguyen"
+    mongo_pass: "guest"
     use_template: true
   - name: "jaeger"
     tags: ["jaeger-db", "ziti-app"]
-    provisioner_script: "ziti-jaeger-init.sh.tmpl"
+    provisioner_script: "ziti-jaeger-init.sh"
+    use_template: false
 
 firewall_rules:
   - name: "allow-ssh"
@@ -37,7 +40,8 @@ firewall_rules:
     source_ranges: ["0.0.0.0/0"]
   - name: "allow-ziti"
     protocol: "tcp"
-    ports: ["1280", "3022", "443", "6262", "10080", "10000", "8440-8443"]
+    ports:
+      ["1280", "3022", "443", "27017", "6262", "10080", "10000", "8440-8443"]
     source_ranges: ["0.0.0.0/0"]
   - name: "allow-app"
     protocol: "tcp"
@@ -45,7 +49,7 @@ firewall_rules:
     source_ranges: ["0.0.0.0/0"]
   - name: "allow-metric"
     protocol: "tcp"
-    ports: ["4318"]
+    ports: ["4317", "4318"]
     source_ranges: ["0.0.0.0/0"]
 
 ziti_config:

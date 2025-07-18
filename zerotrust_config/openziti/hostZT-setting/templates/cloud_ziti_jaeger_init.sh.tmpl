@@ -1,0 +1,47 @@
+#!/bin/bash
+set -euo pipefail
+log() {
+  echo ">>> $(date '+%Y-%m-%d %H:%M:%S') - $1"
+}
+
+
+# --- Install Jaeger ---
+run_jaeger() {
+# Add Docker's official GPG key:
+  sudo apt-get update
+  sudo apt-get install ca-certificates curl
+  sudo install -m 0755 -d /etc/apt/keyrings
+  sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+# Add the repository to Apt sources:
+  echo \
+    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+    $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
+    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  sudo apt-get update
+
+ sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+
+  docker run --rm --name jaeger \
+  -p 5778:5778 \
+  -p 16686:16686 \
+  -p 4317:4317 \
+  -p 4318:4318 \
+  -p 14250:14250 \
+  -p 14268:14268 \
+  -p 9411:9411 \
+  jaegertracing/jaeger:2.0.0 \
+  --set receivers.otlp.protocols.http.endpoint=0.0.0.0:4318 \
+  --set receivers.otlp.protocols.grpc.endpoint=0.0.0.0:4317
+}
+
+# ==============================================================================
+# MAIN EXECUTION
+# ==============================================================================
+
+main() {
+  run_jaeger
+}
+
+main "$@"

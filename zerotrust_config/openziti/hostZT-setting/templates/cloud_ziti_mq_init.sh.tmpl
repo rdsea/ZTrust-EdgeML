@@ -79,13 +79,13 @@ create_and_enroll_identity() {
   
   export ZITI_HOME="{{ ziti_config.ctrl.cloud_ctrl.home }}"
 
-  "$ZITI_HOME/bin/ziti" edge login "https://{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}:{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_port }}" --yes -u "{{ ziti_config.ctrl.cloud_ctrl.user }}" -p "{{ ziti_config.ctrl.cloud_ctrl.password }}"
+  $ZITI_HOME/bin/ziti edge login https://{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}:{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_port }} --yes -u {{ ziti_config.ctrl.cloud_ctrl.user }} -p {{ ziti_config.ctrl.cloud_ctrl.password }}
   
-  "$ZITI_HOME/bin/ziti" edge create identity device "$identity_name" -a "$identity_roles" --jwt-output-file "$jwt_file"
+  $ZITI_HOME/bin/ziti edge create identity device $identity_name -a $identity_roles --jwt-output-file $jwt_file
   
-  "$ZITI_HOME/bin/ziti" edge enroll --jwt "$jwt_file" --out "$json_file"
+  $ZITI_HOME/bin/ziti edge enroll --jwt $jwt_file --out $json_file
   
-  echo "$json_file"
+  echo $json_file
 }
 
 
@@ -138,8 +138,6 @@ main() {
   set_ziti_variables
   install_rabbitmq
   configure_rabbitmq
-  # echo "${controller_ip} ctrl.cloud.hong3nguyen.com" | sudo tee -a /etc/hosts
-  # add_ziti_dns_entries "{{ ziti_config.edge_controller_ip }}" "{{ ziti_config.edge_router_ip }}"
   add_ziti_dns_entries "${controller_ip}"
   install_ziti_edge_tunnel
   setup_application

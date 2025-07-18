@@ -68,20 +68,20 @@ configure_dns() {
 create_edge_router() {
   log "Creating Edge Router"
   local jwt_file
-  jwt_file="{{ dir_default }}/{{ ziti_config.ctrl.cloud_ctrl.router.id }}.jwt"
+  jwt_file="{{ dir_default }}/$1.jwt"
 
-  "${ZITI_HOME}/bin/ziti" edge login "https://\$ZITI_CTRL_ADVERTISED_ADDRESS:\$ZITI_CTRL_ADVERTISED_PORT" --yes -u "$ZITI_USER" -p "$ZITI_PWD"
+  ${ZITI_HOME}/bin/ziti edge login https://$ZITI_CTRL_ADVERTISED_ADDRESS:$ZITI_CTRL_ADVERTISED_PORT --yes -u $ZITI_USER -p $ZITI_PWD
 
   log "Creating edge router token"
-  "${ZITI_HOME}/bin/ziti" edge create edge-router {{ ziti_config.ctrl.cloud_ctrl.router.id }} \
-    --jwt-output-file "$jwt_file" \
+  ${ZITI_HOME}/bin/ziti edge create edge-router {{ ziti_config.ctrl.cloud_ctrl.router.id }} \
+    --jwt-output-file $jwt_file \
     --tunneler-enabled
 
   log "Assigning attribute '{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_attribute }}' to edge router"
-  "${ZITI_HOME}/bin/ziti" edge update edge-router {{ ziti_config.ctrl.cloud_ctrl.router.id }} -a "{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_attribute }}"
+  ${ZITI_HOME}/bin/ziti edge update edge-router {{ ziti_config.ctrl.cloud_ctrl.router.id }} -a {{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_attribute }}
 
   # Return the path to the JWT file for the next step
-  echo "$jwt_file"
+  echo $jwt_file
 }
 
 # --- Bootstrap and start the Ziti Router ---
@@ -116,10 +116,9 @@ main() {
   
   {% if ziti_config.ctrl.cloud_ctrl.router.id is defined  %}
   # Create the edge router and capture the JWT file path
-  local router_jwt
-  router_jwt=$(create_edge_router)
+  create_edge_router "{{ ziti_config.ctrl.cloud_ctrl.router.id }}"
 
-  bootstrap_router "$router_jwt"
+  bootstrap_router "{{ dir_default }}/{{ ziti_config.ctrl.cloud_ctrl.router.id }}.jwt"
   {% endif %}
 
   log "Ziti Controller and Router setup complete."

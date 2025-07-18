@@ -1,7 +1,5 @@
 #!/bin/bash
 
-#!/bin/bash
-
 set -euo pipefail
 
 # Source the common functions
@@ -25,6 +23,7 @@ set_ziti_variables() {
   export ZITI_USER="{{ ziti_config.ctrl.cloud_ctrl.user }}"
   export ZITI_PWD="{{ ziti_config.ctrl.cloud_ctrl.password }}"
   export ZITI_DIR="{{ dir_default }}"
+  export OPENZITI="true"
 }
 
 # --- Install Ziti CLI ---
@@ -55,7 +54,6 @@ install_ziti_edge_tunnel() {
 add_ziti_dns_entries() {
   log "Adding Ziti DNS entries to /etc/hosts"
   local cloud_ip="$1"
-  #local edge_ip="$2"
   
   # Ensure the entries are not already present
   if ! grep -q "{{  ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address  }}" /etc/hosts; then
@@ -80,11 +78,11 @@ create_and_enroll_identity() {
   
   export ZITI_HOME="{{ ziti_config.ctrl.cloud_ctrl.home }}"
 
-  "$ZITI_HOME/bin/ziti" edge login "https://{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}:{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_port }}" --yes -u "{{ ziti_config.ctrl.cloud_ctrl.user }}" -p "{{ ziti_config.ctrl.cloud_ctrl.password }}"
+  $ZITI_HOME/bin/ziti edge login https://{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}:{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_port }} --yes -u {{ ziti_config.ctrl.cloud_ctrl.user }} -p {{ ziti_config.ctrl.cloud_ctrl.password }}
   
-  "$ZITI_HOME/bin/ziti" edge create identity device "$identity_name" -a "$identity_roles" --jwt-output-file "$jwt_file"
+  $ZITI_HOME/bin/ziti edge create identity device $identity_name -a $identity_roles --jwt-output-file $jwt_file
   
-  "$ZITI_HOME/bin/ziti" edge enroll --jwt "$jwt_file" --out "$json_file"
+  $ZITI_HOME/bin/ziti edge enroll --jwt $jwt_file --out $json_file
   
   echo "$json_file"
 }
@@ -93,23 +91,34 @@ create_and_enroll_identity() {
 # --- Install MongoDB ---
 install_mongodb() {
   log "Installing MongoDB"
-  apt-get update -y
-  apt-get install -y gnupg curl
+  sudo apt-get update -y
+  sudo apt-get install -y gnupg curl
 
-  curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg --dearmor
-  echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/8.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-8.0.list
-  apt-get update
-  apt-get install -y mongodb-org
-  systemctl enable --now mongod
+
+  curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc |
+    sudo gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg \
+      --dearmor
+
+  echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/8.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
+
+  sudo apt-get update -y 
+  sudo apt-get install -y mongodb-org
+  sudo systemctl start mongod
+  sudo systemctl daemon-reload
+  sudo systemctl enable mongod
+
 }
 
 # --- Configure MongoDB ---
 configure_mongodb() {
   log "Configuring MongoDB"
   mkdir -p /home/{{ssh_user}}/data/db
-  chown -R mongodb:mongodb /home/{{ssh_user}}/data/db
+  sudo chown -R mongodb:mongodb /home/{{ssh_user}}/data/db
+  sudo chmod 755 /home
+  sudo chmod 755 /home/{{ssh_user}}
+  sudo chmod 755 /home/{{ssh_user}}/data
 
-  tee /etc/mongod.conf >/dev/null <<EOF
+  sudo tee /etc/mongod.conf >/dev/null <<EOF
 net:
   bindIp: 0.0.0.0
   port: 27017
@@ -121,22 +130,23 @@ systemLog:
   logAppend: true
 EOF
 
-  systemctl restart mongod
+  sudo systemctl restart mongod
 
   # Create admin user
   log "Creating MongoDB admin user"
   mongosh <<EOF
 use admin
 db.createUser({
-  user: "guest",
-  pwd: "guest",
+  user: "{{ vm.mongo_user }}",
+  pwd: "{{ vm.mongo_pass }}",
   roles: [ { role: "userAdminAnyDatabase", db: "admin" } ]
 })
 EOF
 
   # Enable auth
-  sed -i '/^#*security:/a\  authorization: enabled' /etc/mongod.conf
-  systemctl restart mongod
+  sudo sed -i '/^#*security:/a\  authorization: enabled' /etc/mongod.conf
+
+  sudo systemctl restart mongod
 }
 
 # ==============================================================================

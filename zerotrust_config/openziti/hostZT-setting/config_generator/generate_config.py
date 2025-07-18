@@ -127,16 +127,23 @@ if __name__ == "__main__":
         "ziti-cloud-init.sh": "cloud_ziti_cloud_init.sh.tmpl",
         "ziti-mq-init.sh.tmpl": "cloud_ziti_mq_init.sh.tmpl",
         "ziti-db-init.sh.tmpl": "cloud_ziti_db_init.sh.tmpl",
+        "ziti-jaeger-init.sh": "cloud_ziti_jaeger_init.sh.tmpl",
     }
 
     for vm in config.get("vms", []):
         original_script_name = vm.get("provisioner_script")
         script_template_name = vm_script_mapping.get(original_script_name)
 
+        vm_config = deep_merge(config.copy(), {"vm": vm})
+
         if script_template_name:
             relative_output_path = os.path.join("cloud/", original_script_name)
             generate_file(
-                env, config, script_template_name, relative_output_path, OUTPUT_ROOT_DIR
+                env,
+                vm_config,
+                script_template_name,
+                relative_output_path,
+                OUTPUT_ROOT_DIR,
             )
         else:
             print(

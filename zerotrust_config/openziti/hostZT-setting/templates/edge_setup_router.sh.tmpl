@@ -39,10 +39,10 @@ create_and_enroll_edge_router() {
   log "Creating and enrolling Edge Router: $ROUTER_NAME"
   local jwt_file="${CURRENT_DIR}/${ROUTER_NAME}.jwt"
 
-  "${ZITI_HOME}/bin/ziti" edge login "https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}" --yes -u "${ZITI_USER}" -p "${ZITI_PWD}"
+  ${ZITI_HOME}/bin/ziti edge login https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT} --yes -u ${ZITI_USER} -p ${ZITI_PWD}
 
-  "${ZITI_HOME}/bin/ziti" edge create edge-router "${ROUTER_NAME}" \
-    --jwt-output-file "${jwt_file}" \
+  ${ZITI_HOME}/bin/ziti edge create edge-router ${ROUTER_NAME} \
+    --jwt-output-file ${jwt_file} \
     --tunneler-enabled
 
   cat <<EOF >"${ZITI_HOME}/etc/router/bootstrap.env"
