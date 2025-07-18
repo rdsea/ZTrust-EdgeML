@@ -8,6 +8,7 @@ set -euo pipefail
 
 # Passed as environment variables from the calling script
 export CLOUD_IP="$CLOUD_IP"
+export JAEGER_IP="$JAEGER_IP"
 
 # Ziti configuration from variable_input.yml
 ZITI_HOME="{{ ziti_config.ctrl.cloud_ctrl.home }}"

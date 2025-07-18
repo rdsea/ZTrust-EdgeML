@@ -71,7 +71,7 @@ main() {
   {% for edge_ in edge_deployment.edge %}
   deploy_script "{{ edge_.edge_app_ip }}" "{{ edge_.ssh_user }}" "{{ edge_.ssh_pass }}" \
     "edge/setup_edge_app.sh" \
-    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER" \
+    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER" "JAEGER_IP=$JAEGER_IP"\
     "edge/docker-compose.template.yml edge/create_id_entities.sh"
   {% endfor %}
 
