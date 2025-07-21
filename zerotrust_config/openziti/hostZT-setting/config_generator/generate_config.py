@@ -110,7 +110,7 @@ if __name__ == "__main__":
         "scripts_pkill_all_zt_tunnel.sh.tmpl": "scripts/pkill_all_zt_tunnel.sh",
         "edge_setup_app.sh.tmpl": "edge/setup_edge_app.sh",
         "sensor_setup_sensor.sh.tmpl": "sensor/setup_sensor.sh",
-        "docker_compose.yml.tmpl": "edge/docker-compose.yml",
+        # "docker_compose.yml.tmpl": "edge/docker-compose.yml",
     }
 
     ziti_config = config.get("ziti_config", {})
