@@ -114,7 +114,7 @@ edge_applications:
   - name: "preprocessing-service"
     roles: ["preprocessing", "edge"]
     image: hongtringuyen/preprocessing_ziti:latest
-    volume: "/tmp/preprocessing.json:/opt/secret.json"
+    volume: "preprocessing.json:/opt/secret.json"
     docker_compose: true
     port: 5010
     environment:
@@ -131,7 +131,7 @@ edge_applications:
   - name: "ensemble-service"
     roles: ["ensemble", "edge", "cloud"]
     image: hongtringuyen/ensemble_ziti:latest
-    volume: "/tmp/ensemble.json:/opt/secret.json"
+    volume: "ensemble.json:/opt/secret.json"
     docker_compose: true
     port: 5011
     environment:
@@ -147,7 +147,7 @@ edge_applications:
   - name: "mobilenetv2-service"
     roles: ["mobilenetv2", "edge"]
     image: hongtringuyen/inference_ziti:latest
-    volume: "/tmp/mobilenetv2.json:/opt/secret.json"
+    volume: "mobilenetv2.json:/opt/secret.json"
     docker_compose: true
     port: 5012
     environment:
@@ -164,7 +164,7 @@ edge_applications:
   - name: "efficientnetb0-service"
     roles: ["efficientnetb0", "edge"]
     image: hongtringuyen/inference_ziti:latest
-    volume: "/tmp/efficientnetb0.json:/opt/secret.json"
+    volume: "efficientnetb0.json:/opt/secret.json"
     docker_compose: true
     port: 5012
     environment:

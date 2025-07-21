@@ -73,15 +73,18 @@ add_ziti_dns_entries() {
 create_and_enroll_identity() {
   local identity_name="$1"
   local identity_roles="$2"
+  local machine_name="$3"
   local jwt_file="${ZITI_DIR}/${identity_name}.jwt"
   local json_file="${ZITI_DIR}/${identity_name}.json"
 
-  log "Creating and enrolling identity: $identity_name"
+  log "Creating and enrolling identity: $identity_name  $machine_name"
+
+  full_identity="${identity_name}+${machine_name}"
 
   ${ZITI_HOME}/bin/ziti edge login https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT} --yes -u ${ZITI_USER} -p ${ZITI_PWD}
   
-  ${ZITI_HOME}/bin/ziti edge create identity device ${identity_name} -a ${identity_roles} --jwt-output-file ${jwt_file}
-  
+  ${ZITI_HOME}/bin/ziti edge create identity device "$full_identity" -a "$identity_roles" --jwt-output-file "$jwt_file"
+
   ${ZITI_HOME}/bin/ziti edge enroll --jwt ${jwt_file} --out ${json_file}
   
   echo ${json_file}

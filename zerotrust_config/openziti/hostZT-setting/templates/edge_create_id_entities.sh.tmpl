@@ -58,7 +58,7 @@ main() {
 
   # Create identities and services for each application
   {% for app in edge_applications %}
-  create_and_enroll_identity "{{ app.name }}-$(cat /etc/hostname)" "{{ app.roles | join(',') }}"
+  create_and_enroll_identity "{{ app.name }}" "{{ app.roles | join(',') }}" "$(cat /etc/hostname)"
   {% if app.port %}
   create_ziti_service \
     "{{ app.name }}" \
