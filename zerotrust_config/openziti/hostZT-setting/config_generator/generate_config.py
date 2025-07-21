@@ -202,7 +202,7 @@ if __name__ == "__main__":
 
     # --- Copy docker-compose.template.yml ---
     docker_compose_template_source = os.path.join(
-        SCRIPT_DIR, "..", "edge", "docker-compose.template.yml"
+        SCRIPT_DIR, config.get("edge_deployment", {}).get("dockercompose_app", {})
     )
     docker_compose_template_destination = os.path.join(
         OUTPUT_ROOT_DIR, "edge", "docker-compose.template.yml"

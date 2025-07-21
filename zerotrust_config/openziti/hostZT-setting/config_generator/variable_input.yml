@@ -89,6 +89,7 @@ ziti_config:
         ssh_pass: "YOUR_EDGE_SSH_PASS"
 
 edge_deployment:
+  dockercompose_app: "docker-compose.template.yml"
   edge:
     - edge_app_ip: "YOUR_EDGE_APP_IP"
       ssh_user: "YOUR_EDGE_SSH_USER"
@@ -96,6 +97,7 @@ edge_deployment:
     - edge_app_ip: "YOUR_EDGE_APP_IP"
       ssh_user: "YOUR_EDGE_SSH_USER"
       ssh_pass: "YOUR_EDGE_SSH_PASS"
+      dockercompose: "docker-compose.template.yml"
   sensor:
     - ip: "YOUR_SENSOR_1_IP"
       ssh_user: "YOUR_SENSOR_SSH_USER"
