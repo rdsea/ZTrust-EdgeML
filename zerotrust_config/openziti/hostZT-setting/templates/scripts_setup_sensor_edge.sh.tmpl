@@ -34,26 +34,26 @@ deploy_script() {
   local ssh_pass="$3"
   local setup_script="$4"
   local script_args="$5"
-  local local_files="$6"
+  shift 5
 
   log "Deploying to $target_ip"
 
-  # Copy necessary files
   scp "$setup_script" "$ssh_user@$target_ip:~/{{ ssh_user }}/"
   scp "cleaning.sh" "$ssh_user@$target_ip:~/{{ ssh_user }}/"
   scp "common.sh" "$ssh_user@$target_ip:~/{{ ssh_user }}/"
-  if [[ -n "$local_files" ]]; then
-    scp -r "$local_files" "$ssh_user@$target_ip:~/{{ ssh_user }}/"
+
+  # Now "$@" contains only the optional files
+  if [[ "$#" -ge 1 ]]; then
+    scp -r "$@" "$ssh_user@$target_ip:~/{{ ssh_user }}/"
+  else
+    echo "No extra local files to copy."
   fi
 
-  # Run cleaning script
   ssh "$ssh_user@$target_ip" "echo '$ssh_pass' | sudo -S bash ~/{{ ssh_user }}/cleaning.sh"
 
-  # Run setup script
   ssh "$ssh_user@$target_ip" \
     "echo '$ssh_pass' | sudo -E -S env $script_args bash ~/{{ ssh_user }}/$(basename "$setup_script")"
 }
-
 # ==============================================================================
 # MAIN EXECUTION
 # ==============================================================================
@@ -63,16 +63,16 @@ main() {
   {% for edge_r in ziti_config.router.edge_router %}
   deploy_script "{{ edge_r.edge_router_ip }}" "{{ edge_r.ssh_user }}" "{{ edge_r.ssh_pass }}" \
     "../edge/setup_{{ edge_r.id }}.sh" \
-    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER_IP" \
-    ""
+    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER_IP" 
   {% endfor %}
 
   # --- Deploy to Edge App ---
   {% for edge_ in edge_deployment.edge %}
   deploy_script "{{ edge_.edge_app_ip }}" "{{ edge_.ssh_user }}" "{{ edge_.ssh_pass }}" \
     "../edge/setup_edge_app.sh" \
-    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER_IP" "JAEGER_IP=$JAEGER_IP" \
-    "../edge/docker-compose.template.yml ../edge/create_id_entities.sh"
+    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER_IP JAEGER_IP=$JAEGER_IP" \
+    "../edge/docker-compose.yml.tmpl" \
+    "../edge/create_id_entities.sh"
   {% endfor %}
 
   # --- Deploy to Sensors ---
@@ -80,7 +80,7 @@ main() {
   deploy_script "{{ sensor_.ip }}" "{{ sensor_.ssh_user }}" "{{ sensor_.ssh_pass }}" \
     "../sensor/setup_sensor.sh" \
     "{{ sensor_.loadgen }}"
-    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER_IP" \
+    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER_IP" 
   {% endfor %}
 
   log "Edge and Sensor deployment complete."
