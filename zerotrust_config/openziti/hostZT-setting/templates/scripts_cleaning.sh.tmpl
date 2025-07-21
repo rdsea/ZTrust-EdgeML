@@ -3,15 +3,6 @@
 set -euo pipefail
 
 # ==============================================================================
-# VARIABLES
-# ==============================================================================
-
-# Ziti domain names from config
-CTRL_DOMAIN="{{ ziti_config.ctrl.cloud_ctrl.home }}"
-CLOUD_ROUTER_DOMAIN="{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}"
-
-
-# ==============================================================================
 # FUNCTIONS
 # ==============================================================================
 
@@ -23,9 +14,8 @@ log() {
 # --- Remove Ziti DNS entries from /etc/hosts ---
 clean_hosts_file() {
   log "Removing OpenZiti DNS entries from /etc/hosts"
-  cp /etc/hosts /etc/hosts.bak
-  sed -i "/${CTRL_DOMAIN}/d" /etc/hosts
-  sed -i "/${CLOUD_ROUTER_DOMAIN}/d" /etc/hosts
+  sed -i "/{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}/d" /etc/hosts
+  sed -i "/{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}/d" /etc/hosts
   {% for edge_ in ziti_config.router.edge_router %} 
   sed -i "/{{ edge_.edge_router_advertised_address }}/d" /etc/hosts{% endfor %}
 }

@@ -4,7 +4,7 @@ set -euo pipefail
 
 # Source the common functions
 # shellcheck source=common.sh.tmpl
-source "common.sh"
+source "$(dirname "$0")/common.sh"
 
 # ==============================================================================
 # VARIABLES

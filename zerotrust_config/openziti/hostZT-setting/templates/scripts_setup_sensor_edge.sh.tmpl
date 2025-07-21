@@ -62,8 +62,8 @@ main() {
   # --- Deploy to Edge Router ---
   {% for edge_r in ziti_config.router.edge_router %}
   deploy_script "{{ edge_r.edge_router_ip }}" "{{ edge_r.ssh_user }}" "{{ edge_r.ssh_pass }}" \
-    "edge/setup_{{ edge_r.id }}.sh" \
-    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER" \
+    "../edge/setup_{{ edge_r.id }}.sh" \
+    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER_IP" \
     ""
   {% endfor %}
 
@@ -71,16 +71,16 @@ main() {
   {% for edge_ in edge_deployment.edge %}
   deploy_script "{{ edge_.edge_app_ip }}" "{{ edge_.ssh_user }}" "{{ edge_.ssh_pass }}" \
     "edge/setup_edge_app.sh" \
-    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER" "JAEGER_IP=$JAEGER_IP"\
-    "edge/docker-compose.template.yml edge/create_id_entities.sh"
+    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER_IP" "JAEGER_IP=$JAEGER_IP"\
+    "../edge/docker-compose.template.yml ../edge/create_id_entities.sh"
   {% endfor %}
 
   # --- Deploy to Sensors ---
   {% for sensor_ in edge_deployment.sensor %}
   deploy_script "{{ sensor_.ip }}" "{{ sensor_.ssh_user }}" "{{ sensor_.ssh_pass }}" \
-    "sensor/setup_sensor.sh" \
-    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER" \
+    "../sensor/setup_sensor.sh" \
     "{{ sensor_.loadgen }}"
+    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER_IP" \
   {% endfor %}
 
   log "Edge and Sensor deployment complete."

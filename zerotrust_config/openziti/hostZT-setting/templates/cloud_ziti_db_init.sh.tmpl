@@ -31,7 +31,7 @@ install_ziti_cli() {
   log "Installing Ziti CLI"
   if ! command -v ziti &>/dev/null; then
     source /etc/os-release
-    curl -sSL "https://get.openziti.io/install-ziti-cli-functions.sh" | bash -s "$ZITI_CLI_VERSION"
+    curl -sSL "https://get.openziti.io/install-ziti-cli-functions.sh" | bash -s latest
     log "Ziti CLI installed."
   else
     log "Ziti CLI is already installed."
