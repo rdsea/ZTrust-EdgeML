@@ -90,6 +90,7 @@ services:
       - default
     volumes:
       - /tmp/efficientnetb0.json:/opt/secret.json
+    #entrypoint: ["/bin/bash", "-c", "/usr/local/bin/install-ziti-edge-tunnel.sh"]
     environment:
       OPENZITI: "true"
       #DOCKER: "true"

@@ -110,36 +110,77 @@ edge_deployment:
 edge_applications:
   - name: "object-detection-client"
     roles: ["object-detection-client", "edge"]
-  - name: "preprocessing"
+    docker_compose: false
+  - name: "preprocessing-service"
     roles: ["preprocessing", "edge"]
+    image: hongtringuyen/preprocessing_ziti:latest
+    volume: "/tmp/preprocessing.json:/opt/secret.json"
+    docker_compose: true
     port: 5010
+    environment:
+      OPENZITI: "true"
+      #DOCKER: "true"
+      SEND_TO_QUEUE: true
+      MANUAL_TRACING: true
+      OTEL_ENDPOINT: "http://{$JAEGER_IP}:4318/v1/traces"
+      cpus: 0.5
     intercept_address: "preprocessing.ziti-controller.private"
     host_address: "localhost"
     dial_identity_roles: ["#loadbalancer"]
     bind_identity_roles: ["#preprocessing"]
-  - name: "ensemble"
+  - name: "ensemble-service"
     roles: ["ensemble", "edge", "cloud"]
+    image: hongtringuyen/ensemble_ziti:latest
+    volume: "/tmp/ensemble.json:/opt/secret.json"
+    docker_compose: true
     port: 5011
+    environment:
+      OPENZITI: "true"
+      #DOCKER: "true"
+      MANUAL_TRACING: true
+      OTEL_ENDPOINT: "http://{$JAEGER_IP}:4318/v1/traces"
+      cpus: 0.5
     intercept_address: "ensemble.ziti-controller.private"
     host_address: "localhost"
     dial_identity_roles: ["#preprocessing"]
     bind_identity_roles: ["#ensemble"]
-  - name: "mobilenetv2"
+  - name: "mobilenetv2-service"
     roles: ["mobilenetv2", "edge"]
+    image: hongtringuyen/inference_ziti:latest
+    volume: "/tmp/mobilenetv2.json:/opt/secret.json"
+    docker_compose: true
     port: 5012
+    environment:
+      OPENZITI: "true"
+      #DOCKER: "true"
+      SEND_TO_QUEUE: true
+      MANUAL_TRACING: true
+      OTEL_ENDPOINT: "http://{$JAEGER_IP}:4318/v1/traces"
+      cpus: 0.5
     intercept_address: "mobilenetv2.ziti-controller.private"
     host_address: "localhost"
     dial_identity_roles: ["#ensemble"]
     bind_identity_roles: ["#mobilenetv2"]
-  - name: "efficientnetb0"
+  - name: "efficientnetb0-service"
     roles: ["efficientnetb0", "edge"]
+    image: hongtringuyen/inference_ziti:latest
+    volume: "/tmp/efficientnetb0.json:/opt/secret.json"
+    docker_compose: true
     port: 5012
+    environment:
+      OPENZITI: "true"
+      #DOCKER: "true"
+      SEND_TO_QUEUE: true
+      MANUAL_TRACING: true
+      OTEL_ENDPOINT: "http://{$JAEGER_IP}:4318/v1/traces"
+      cpus: 0.5
     intercept_address: "efficientnetb0.ziti-controller.private"
     host_address: "localhost"
     dial_identity_roles: ["#ensemble"]
     bind_identity_roles: ["#efficientnetb0"]
   - name: "loadbalancer"
     roles: ["loadbalancer"]
+    docker_compose: false
     port: 5009
     intercept_address: "loadbalancer.ziti-controller.private"
     host_address: "localhost"
@@ -147,6 +188,7 @@ edge_applications:
     bind_identity_roles: ["#loadbalancer"]
   - name: "message-queue"
     roles: ["message-queue", "cloud"]
+    docker_compose: false
     port: 5672
     intercept_address: "rabbitmq.ziti-controller.private"
     host_address: "localhost"
@@ -154,6 +196,7 @@ edge_applications:
     bind_identity_roles: ["#message-queue"]
   - name: "database"
     roles: ["database", "cloud"]
+    docker_compose: false
     port: 27017
     intercept_address: "database.ziti-controller.private"
     host_address: "localhost"

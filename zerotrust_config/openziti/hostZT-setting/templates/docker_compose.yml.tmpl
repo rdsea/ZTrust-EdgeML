@@ -2,37 +2,36 @@ volumes:
   artifacts:
 
 services:
-{% for service in docker_compose_services %}
+{%- for service in edge_applications %}
+  {%- if service.docker_compose  %}
   {{ service.name }}:
     image: {{ service.image }}
-    container_name: {{ service.container_name }}
-    {% if service.ports %}
+    container_name: {{ service.name }}
+    {%- if service.port %}
     ports:
-    {% for port in service.ports %}
-      - {{ port }}
-    {% endfor %}
-    {% endif %}
+      - {{ service.port }}:{{ service.port }}
+    {%- endif %}
     cap_add:
       - NET_ADMIN
     devices:
       - /dev/net/tun:/dev/net/tun
     extra_hosts:
-      - "${ZITI_CTRL_ADVERTISED_ADDRESS}:${CLOUD_IP}"
-      - "${ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS}:${EDGE_IP}"
-      - "${ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS}:${CLOUD_IP}"
+      - "{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}:${CLOUD_IP}"
+      - "{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}:${CLOUD_IP}"
+        {%- for r in ziti_config.router.edge_router %}
+      - "{{ r.edge_router_advertised_address }}:{{ r.edge_router_ip }}"
+        {%- endfor %}
     networks:
       - default
-    {% if service.volumes %}
+    {%- if service.volume %}
     volumes:
-    {% for volume in service.volumes %}
-      - {{ volume }}
-    {% endfor %}
-    {% endif %}
-    {% if service.environment %}
+      - {{ service.volume }}
+    {%- endif %}
+    {%- if service.environment %}
     environment:
-    {% for key, value in service.environment.items() %}
+    {%- for key, value in service.environment.items() %}
       {{ key }}: {{ value }}
-    {% endfor %}
-    {% endif %}
-
-{% endfor %}
+    {%- endfor %}
+    {%- endif %}
+  {%- endif %}
+{%- endfor %}

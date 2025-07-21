@@ -110,7 +110,7 @@ if __name__ == "__main__":
         "scripts_pkill_all_zt_tunnel.sh.tmpl": "scripts/pkill_all_zt_tunnel.sh",
         "edge_setup_app.sh.tmpl": "edge/setup_edge_app.sh",
         "sensor_setup_sensor.sh.tmpl": "sensor/setup_sensor.sh",
-        # "docker_compose.yml.tmpl": "edge/docker-compose.yml",
+        "docker_compose.yml.tmpl": "edge/docker-compose.yml.tmpl",
     }
 
     ziti_config = config.get("ziti_config", {})
@@ -201,28 +201,28 @@ if __name__ == "__main__":
         )
 
     # --- Copy docker-compose.template.yml ---
-    docker_compose_template_source = os.path.join(
-        SCRIPT_DIR, config.get("edge_deployment", {}).get("dockercompose_app", {})
-    )
-    docker_compose_template_destination = os.path.join(
-        OUTPUT_ROOT_DIR, "edge", "docker-compose.template.yml"
-    )
-
-    if os.path.exists(docker_compose_template_source):
-        try:
-            with open(docker_compose_template_source, "r") as src_file:
-                content = src_file.read()
-            os.makedirs(
-                os.path.dirname(docker_compose_template_destination), exist_ok=True
-            )
-            with open(docker_compose_template_destination, "w") as dest_file:
-                dest_file.write(content)
-            print(
-                f"Successfully copied {docker_compose_template_source} to {docker_compose_template_destination}"
-            )
-        except Exception as e:
-            print(f"Error copying {docker_compose_template_source}: {e}")
-    else:
-        print(
-            f"Warning: Source file not found: {docker_compose_template_source}. Skipping copy."
-        )
+    # docker_compose_template_source = os.path.join(
+    #     SCRIPT_DIR, config.get("edge_deployment", {}).get("dockercompose_app", {})
+    # )
+    # docker_compose_template_destination = os.path.join(
+    #     OUTPUT_ROOT_DIR, "edge", "docker-compose.template.yml"
+    # )
+    #
+    # if os.path.exists(docker_compose_template_source):
+    #     try:
+    #         with open(docker_compose_template_source, "r") as src_file:
+    #             content = src_file.read()
+    #         os.makedirs(
+    #             os.path.dirname(docker_compose_template_destination), exist_ok=True
+    #         )
+    #         with open(docker_compose_template_destination, "w") as dest_file:
+    #             dest_file.write(content)
+    #         print(
+    #             f"Successfully copied {docker_compose_template_source} to {docker_compose_template_destination}"
+    #         )
+    #     except Exception as e:
+    #         print(f"Error copying {docker_compose_template_source}: {e}")
+    # else:
+    #     print(
+    #         f"Warning: Source file not found: {docker_compose_template_source}. Skipping copy."
+    #     )
