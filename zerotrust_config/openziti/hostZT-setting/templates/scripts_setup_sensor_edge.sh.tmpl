@@ -63,7 +63,7 @@ main() {
   {% for edge_r in ziti_config.router.edge_router %}
   deploy_script "{{ edge_r.edge_router_ip }}" "{{ edge_r.ssh_user }}" "{{ edge_r.ssh_pass }}" \
     "edge/setup_{{ edge_r.id }}.sh" \
-    "CLOUD_IP=$CTRL_IP" \
+    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER" \
     ""
   {% endfor %}
 
