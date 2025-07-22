@@ -170,13 +170,15 @@ main() {
   install_mongodb
   configure_mongodb
   add_ziti_dns_entries "${controller_ip}" 
+
   install_ziti_edge_tunnel
+  install_ziti_cli
 
   # Create and enroll the Ziti identity
   json_file=$(create_and_enroll_identity "database" "database,{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_attribute }}")
 
   # Run the tunnel in the background
-  nohup ziti-edge-tunnel run -i "{{ dir_default }}/$1.json" >/var/log/ziti-edge-tunnel.log 2>&1 &
+  nohup ziti-edge-tunnel run -i $json_file  >/var/log/ziti-edge-tunnel.log 2>&1 &
 
   log "Database setup complete."
 }

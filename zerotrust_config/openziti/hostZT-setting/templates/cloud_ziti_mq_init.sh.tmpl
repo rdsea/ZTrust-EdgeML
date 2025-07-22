@@ -141,21 +141,23 @@ EOF
 }
 
 # --- Configure uv ---
-setup_application(){
+setup_application() {
+  log "Installing uv and setting up app environment for user hong3nguyen"
 
-curl -Ls https://astral.sh/uv/install.sh | bash
+  sudo -u hong3nguyen bash -c '
+    export PATH="$HOME/.local/bin:$PATH"
 
-source $HOME/.local/bin/env
-#echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/hong3nguyen/.bashrc
+    # Install uv
+    curl -Ls https://astral.sh/uv/install.sh | bash
 
-# 3 Use uv as hong3nguyen
-cd /home/hong3nguyen/app && $HOME/.local/bin/uv venv install 
+    # Use uv to set up the virtual environment
+    cd /home/hong3nguyen/app
+    $HOME/.local/bin/uv venv install
+    $HOME/.local/bin/uv python pin 3.10.12
 
-#  set python version
-uv python pin 3.10.12
-
-# 4 run
-uv run python /home/{{ ssh_user }}/app/ml_consumer.py
+    # Optionally: install dependencies
+    $HOME/.local/bin/uv pip install -r requirements.txt
+  '
 }
 
 # ==============================================================================
@@ -167,14 +169,19 @@ main() {
   install_rabbitmq
   configure_rabbitmq
   add_ziti_dns_entries "${controller_ip}"
+
   install_ziti_edge_tunnel
-  setup_application
+  install_ziti_cli
 
   # Create and enroll the Ziti identity
   json_file=$(create_and_enroll_identity "message-queue" "message-queue,{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_attribute }}")
 
   # Run the tunnel in the background
-  nohup ziti-edge-tunnel run -i "{{ dir_default }}/$1.json" >/var/log/ziti-edge-tunnel.log 2>&1 &
+  nohup ziti-edge-tunnel run -i $json_file  >/var/log/ziti-edge-tunnel.log 2>&1 &
+
+  setup_application
+
+  nohup uv run python /home/{{ ssh_user }}/app/ml_consumer.py > /var/log/ml_consumer.log 2>&1 &
 
   log "Message Queue setup complete."
 }
