@@ -24,6 +24,18 @@ ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_port }
 ZITI_USER="{{ ziti_config.ctrl.cloud_ctrl.user }}"
 ZITI_PWD="{{ ziti_config.ctrl.cloud_ctrl.password }}"
 
+setup_experiment(){
+
+  curl -Ls https://astral.sh/uv/install.sh | bash
+
+  source $HOME/.local/bin/env
+
+  #echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/hong3nguyen/.bashrc
+
+  cd /home/$SSH_USER/{{ ssh_user }}/loadgen && $HOME/.local/bin/uv venv install &&  uv python pin 3.10.12
+
+  sudo apt install python3-locust
+  }
 
 # ==============================================================================
 # MAIN EXECUTION
@@ -34,6 +46,7 @@ main() {
   install_ziti_cli
   install_ziti_edge_tunnel
   add_ziti_dns_entries "$CLOUD_IP" 
+  setup_experiment
 
   # Create and enroll the Ziti identity
   json_file=$(create_and_enroll_identity "object-detection-client"  "object-detection-client,edge" "$(cat /etc/hostname)" "/home/${SSH_USER}/{{ ssh_user }}")
