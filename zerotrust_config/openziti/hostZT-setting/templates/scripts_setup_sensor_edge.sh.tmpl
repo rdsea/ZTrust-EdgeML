@@ -77,10 +77,10 @@ main() {
 
   # --- Deploy to Sensors ---
   {% for sensor_ in edge_deployment.sensor %}
-  deploy_script "{{ sensor_.ip }}" "{{ sensor_.ssh_user }}" "{{ sensor_.ssh_pass }} SSH_USER={{ sensor_.ssh_user }}" \
+  deploy_script "{{ sensor_.ip }}" "{{ sensor_.ssh_user }}" "{{ sensor_.ssh_pass }}" \
     "../sensor/setup_sensor.sh" \
+    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER_IP SSH_USER={{ sensor_.ssh_user }}" \
     "{{ sensor_.loadgen }}"
-    "CLOUD_IP=$ZITI_CONTROLLER_ROUTER_IP" 
   {% endfor %}
 
   log "Edge and Sensor deployment complete."
