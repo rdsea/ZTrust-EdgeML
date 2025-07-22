@@ -23,13 +23,12 @@ ZITI_USER="{{ ziti_config.ctrl.cloud_ctrl.user }}"
 ZITI_PWD="{{ ziti_config.ctrl.cloud_ctrl.password }}"
 ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS="{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}"
 
-CURRENT_DIR="/home/{{ edge_deploymen.edge.ssh_user }}/{{ ssh_user }}"
+CURRENT_DIR="/home/${SSH_USER}/{{ ssh_user }}"
 
 ROUTER_NAME="{{ router.id }}"
 ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS="{{ router.edge_router_advertised_address }}"
 ZITI_ROUTER_PORT="{{ router.edge_router_port }}"
 
-# CURRENT_DIR="$(pwd)/{{ssh_user}}"
 
 # ==============================================================================
 # FUNCTIONS
