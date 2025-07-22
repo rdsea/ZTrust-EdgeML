@@ -4,9 +4,15 @@ volumes:
 services:
 {%- for service in edge_applications %}
   {%- if service.docker_compose  %}
-  {{ service.name }}:
-    image: {{ service.image }}
-    container_name: {{ service.name }}
+  {{ service.name}}:
+    container_name: {{ service.name }}-service
+    image: {% if service.environment.DOCKER == "true" -%}
+           {{ ssh_user }}/{{ service.name }}:docker
+         {%- elif service.environment.OPENZITI == "true" -%}
+           {{ ssh_user }}/{{ service.name }}_ziti:latest
+         {%- else %}
+           {{ ssh_user }}/{{ service.name }}:default
+        {%- endif %}
     {%- if service.port %}
     ports:
       - {{ service.port }}:{{ service.port }}
