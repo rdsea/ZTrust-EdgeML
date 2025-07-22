@@ -11,20 +11,16 @@ resource "google_compute_instance" "{{ vm.name | replace('-', '_') }}" {
   name         = "{{ vm.name }}"
   machine_type = "{{ machine_type }}"
   zone         = "{{ zone }}"
-
   tags = [{% for tag in vm.tags %}"{{ tag }}"{% if not loop.last %}, {% endif %}{% endfor %}]
-
   boot_disk {
     initialize_params {
       image = "{{ image }}"
     }
   }
-
   metadata_startup_script = {% if vm.use_template %}templatefile("{{ vm.provisioner_script }}", {
     controller_ip = google_compute_instance.{{ vm.ctrl_name }}.network_interface[0].network_ip
     router_ip     = google_compute_instance.{{ vm.ctrl_name }}.network_interface[0].network_ip
   }){% else %}file("{{ vm.provisioner_script }}"){% endif %}
-
 
   {% if vm.has_provisioner %}
   provisioner "remote-exec" {
@@ -32,12 +28,10 @@ resource "google_compute_instance" "{{ vm.name | replace('-', '_') }}" {
       "mkdir -p {{ vm.provisioner_destination_path }}"
     ]
   }
-
   provisioner "file" {
     source      = "{{ vm.provisioner_source_path }}"
     destination = "{{ vm.provisioner_destination_path }}"
   }
-
   connection {
     type        = "ssh"
     user        = "{{ ssh_user }}"
@@ -45,13 +39,11 @@ resource "google_compute_instance" "{{ vm.name | replace('-', '_') }}" {
     host        = self.network_interface[0].access_config[0].nat_ip
     agent = true  
   }
-
   {% endif %}
   network_interface {
     network = "default"
     access_config {}
   }
-
   metadata = {
     ssh-keys = "{{ ssh_user }}:${file("{{ ssh_public_key_path }}")}"
   }

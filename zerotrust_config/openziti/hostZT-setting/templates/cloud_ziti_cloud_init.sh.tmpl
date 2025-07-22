@@ -68,7 +68,7 @@ configure_dns() {
 create_edge_router() {
   log "Creating Edge Router"
   local jwt_file
-  jwt_file="${ZITI_DIR}/$1.jwt"
+  jwt_file="/home/{{ ssh_user }}/$1.jwt"
 
   ${ZITI_HOME}/bin/ziti edge login https://$ZITI_CTRL_ADVERTISED_ADDRESS:$ZITI_CTRL_ADVERTISED_PORT --yes -u $ZITI_USER -p $ZITI_PWD
 
