@@ -25,12 +25,12 @@ services:
       - default
     {%- if service.volume %}
     volumes:
-      - {{ dir_default }}/{{ service.volume }}
+      - /home/$SSH_USER/{{ ssh_user }}/{{ service.volume }}
     {%- endif %}
     {%- if service.environment %}
     environment:
     {%- for key, value in service.environment.items() %}
-      {{ key }}: {{ value }}
+      {{ key }}: "{{ value }}"
     {%- endfor %}
     {%- endif %}
   {%- endif %}
