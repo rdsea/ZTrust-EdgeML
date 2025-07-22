@@ -140,7 +140,23 @@ EOF
   systemctl restart rabbitmq-server
 }
 
+# --- Configure uv ---
+setup_application(){
 
+curl -Ls https://astral.sh/uv/install.sh | bash
+
+source $HOME/.local/bin/env
+#echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/hong3nguyen/.bashrc
+
+# 3 Use uv as hong3nguyen
+cd /home/hong3nguyen/app && $HOME/.local/bin/uv venv install 
+
+#  set python version
+uv python pin 3.10.12
+
+# 4 run
+uv run python /home/{{ ssh_user }}/app/ml_consumer.py
+}
 
 # ==============================================================================
 # MAIN EXECUTION
