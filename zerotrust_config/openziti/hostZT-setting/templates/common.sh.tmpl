@@ -10,7 +10,6 @@ ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_add
 ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_port }}"
 ZITI_USER="{{ ziti_config.ctrl.cloud_ctrl.user }}"
 ZITI_PWD="{{ ziti_config.ctrl.cloud_ctrl.password }}"
-ZITI_DIR="{{ dir_default }}"
 # --- Log a message ---
 log() {
   echo ">>> $(date '+%Y-%m-%d %H:%M:%S') - $1"
@@ -74,12 +73,13 @@ create_and_enroll_identity() {
   local identity_name="$1"
   local identity_roles="$2"
   local machine_name="$3"
-  local jwt_file="${ZITI_DIR}/${identity_name}.jwt"
-  local json_file="${ZITI_DIR}/${identity_name}.json"
+  local path="$4"
+  local jwt_file="${path}/${identity_name}.jwt"
+  local json_file="${path}/${identity_name}.json"
 
   log "Creating and enrolling identity: $identity_name  $machine_name"
 
-  full_identity="${identity_name}+${machine_name}"
+  full_identity="${identity_name}-${machine_name}"
 
   ${ZITI_HOME}/bin/ziti edge login https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT} --yes -u ${ZITI_USER} -p ${ZITI_PWD}
   

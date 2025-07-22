@@ -6,6 +6,9 @@ set -euo pipefail
 # shellcheck source=common.sh.tmpl
 source "$(dirname "$0")/common.sh"
 
+export SSH_USER="$SSH_USER"
+
+
 # ==============================================================================
 # VARIABLES
 # ==============================================================================
@@ -21,7 +24,6 @@ ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_port }
 ZITI_USER="{{ ziti_config.ctrl.cloud_ctrl.user }}"
 ZITI_PWD="{{ ziti_config.ctrl.cloud_ctrl.password }}"
 
-CURRENT_DIR="{{ dir_default }}"
 
 # ==============================================================================
 # MAIN EXECUTION
@@ -34,7 +36,7 @@ main() {
   add_ziti_dns_entries "$CLOUD_IP" 
 
   # Create and enroll the Ziti identity
-  json_file=$(create_and_enroll_identity "object-detection-client-$(cat /etc/hostname)" "object-detection-client,edge")
+  json_file=$(create_and_enroll_identity "object-detection-client"  "object-detection-client,edge" "$(cat /etc/hostname)" "/home/${SSH_USER}/{{ ssh_user }}")
 
   # Run the tunnel in the background
   nohup ziti-edge-tunnel run -i "${json_file}" >/var/log/ziti-edge-tunnel.log 2>&1 &

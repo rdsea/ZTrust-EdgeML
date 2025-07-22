@@ -9,6 +9,7 @@ set -euo pipefail
 # Passed as environment variables from the calling script
 export CLOUD_IP="$CLOUD_IP"
 export JAEGER_IP="$JAEGER_IP"
+export SSH_USER="$SSH_USER"
 
 # Ziti configuration from variable_input.yml
 ZITI_HOME="{{ ziti_config.ctrl.cloud_ctrl.home }}"
@@ -17,7 +18,7 @@ ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_port }
 ZITI_USER="{{ ziti_config.ctrl.cloud_ctrl.user }}"
 ZITI_PWD="{{ ziti_config.ctrl.cloud_ctrl.password }}"
 ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS="{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}"
-CURRENT_DIR="{{dir_default}}"
+CURRENT_DIR="/home/${SSH_USER}/{{ ssh_user }}"
 
 
 

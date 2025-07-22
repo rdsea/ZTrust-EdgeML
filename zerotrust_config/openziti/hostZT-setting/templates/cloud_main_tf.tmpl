@@ -25,6 +25,7 @@ resource "google_compute_instance" "{{ vm.name | replace('-', '_') }}" {
     router_ip     = google_compute_instance.{{ vm.ctrl_name }}.network_interface[0].network_ip
   }){% else %}file("{{ vm.provisioner_script }}"){% endif %}
 
+
   {% if vm.has_provisioner %}
   provisioner "remote-exec" {
     inline = [

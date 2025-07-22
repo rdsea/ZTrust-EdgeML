@@ -36,7 +36,7 @@ set_ziti_variables() {
   export ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_port }}"
   export ZITI_USER="{{ ziti_config.ctrl.cloud_ctrl.user }}"
   export ZITI_PWD="{{ ziti_config.ctrl.cloud_ctrl.password }}"
-  export ZITI_DIR="{{ dir_default }}"
+  export ZITI_DIR="/home/{{ ssh_user }}"
 }
 
 # --- Bootstrap and start the Ziti Controller ---
@@ -68,7 +68,7 @@ configure_dns() {
 create_edge_router() {
   log "Creating Edge Router"
   local jwt_file
-  jwt_file="{{ dir_default }}/$1.jwt"
+  jwt_file="${ZITI_DIR}/$1.jwt"
 
   ${ZITI_HOME}/bin/ziti edge login https://$ZITI_CTRL_ADVERTISED_ADDRESS:$ZITI_CTRL_ADVERTISED_PORT --yes -u $ZITI_USER -p $ZITI_PWD
 

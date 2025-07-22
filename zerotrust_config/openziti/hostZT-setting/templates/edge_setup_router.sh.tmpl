@@ -13,6 +13,7 @@ source "$(dirname "$0")/common.sh"
 
 # Passed as environment variables from the calling script
 export CLOUD_IP="$CLOUD_IP"
+export SSH_USER="$SSH_USER"
 
 # Ziti configuration from variable_input.yml
 ZITI_HOME="{{ ziti_config.ctrl.cloud_ctrl.home }}"
@@ -22,7 +23,7 @@ ZITI_USER="{{ ziti_config.ctrl.cloud_ctrl.user }}"
 ZITI_PWD="{{ ziti_config.ctrl.cloud_ctrl.password }}"
 ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS="{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}"
 
-CURRENT_DIR="{{ dir_default }}"
+CURRENT_DIR="/home/{{ edge_deploymen.edge.ssh_user }}/{{ ssh_user }}"
 
 ROUTER_NAME="{{ router.id }}"
 ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS="{{ router.edge_router_advertised_address }}"
@@ -63,7 +64,7 @@ EOF
 # --- Register and enroll Ziti tunnel for loadbalancer ---
 register_loadbalancer_tunnel() {
   log "Registering and enrolling Ziti tunnel for loadbalancer"
-  json_file=$(create_and_enroll_identity "loadbalancer" "loadbalancer,edge")
+  json_file=$(create_and_enroll_identity "loadbalancer" "loadbalancer,edge" "" "/home/${SSH_USER}/{{ ssh_user }}")
   nohup ziti-edge-tunnel run -i "${json_file}" >/var/log/ziti-edge-tunnel.log 2>&1 &
 }
 
