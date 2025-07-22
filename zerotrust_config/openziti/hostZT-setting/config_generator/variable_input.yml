@@ -111,9 +111,9 @@ edge_applications:
   - name: "object-detection-client"
     roles: ["object-detection-client", "edge"]
     docker_compose: false
-  - name: "preprocessing-service"
+  - name: "preprocessing"
     roles: ["preprocessing", "edge"]
-    image: hongtringuyen/preprocessing_ziti:latest
+    image: hongtringuyen/preprocessing
     volume: "preprocessing.json:/opt/secret.json"
     docker_compose: true
     port: 5010
@@ -128,9 +128,9 @@ edge_applications:
     host_address: "localhost"
     dial_identity_roles: ["#loadbalancer"]
     bind_identity_roles: ["#preprocessing"]
-  - name: "ensemble-service"
+  - name: "ensemble"
     roles: ["ensemble", "edge", "cloud"]
-    image: hongtringuyen/ensemble_ziti:latest
+    image: hongtringuyen/ensemble
     volume: "ensemble.json:/opt/secret.json"
     docker_compose: true
     port: 5011
@@ -144,9 +144,9 @@ edge_applications:
     host_address: "localhost"
     dial_identity_roles: ["#preprocessing"]
     bind_identity_roles: ["#ensemble"]
-  - name: "mobilenetv2-service"
+  - name: "mobilenetv2"
     roles: ["mobilenetv2", "edge"]
-    image: hongtringuyen/inference_ziti:latest
+    image: hongtringuyen/inference
     volume: "mobilenetv2.json:/opt/secret.json"
     docker_compose: true
     #port: 5012
@@ -161,9 +161,9 @@ edge_applications:
     host_address: "localhost"
     dial_identity_roles: ["#ensemble"]
     bind_identity_roles: ["#mobilenetv2"]
-  - name: "efficientnetb0-service"
+  - name: "efficientnetb0"
     roles: ["efficientnetb0", "edge"]
-    image: hongtringuyen/inference_ziti:latest
+    image: hongtringuyen/inference
     volume: "efficientnetb0.json:/opt/secret.json"
     docker_compose: true
     #port: 5012
