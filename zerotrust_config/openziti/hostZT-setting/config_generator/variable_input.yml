@@ -16,8 +16,8 @@ vms:
   - name: "cloud-messageq"
     tags: ["cloud-messageq", "ziti-app"]
     provisioner_script: "ziti-mq-init.sh.tmpl"
-    provisioner_source_path: "../../../../../applications/machine_learning/object_classification/src/database/"
-    provisioner_destination_path: "/home/hong3nguyen/app/"
+    provisioner_source_path: ""
+    provisioner_destination_path: "/hong3nguyen/app/"
     ctrl_name: "ziti_controller_router"
     use_template: true
     has_provisioner: true
@@ -101,11 +101,11 @@ edge_deployment:
     - ip: "YOUR_SENSOR_1_IP"
       ssh_user: "YOUR_SENSOR_SSH_USER"
       ssh_pass: "YOUR_SENSOR_1_SSH_PASS"
-      loadgen: "../../../../applications/machine_learning/object_classification/src/loadgen/"
+      loadgen: "../../../../../applications/machine_learning/object_classification/src/loadgen/"
     - ip: "YOUR_SENSOR_2_IP"
       ssh_user: "YOUR_SENSOR_SSH_USER"
       ssh_pass: "YOUR_SENSOR_2_SSH_PASS"
-      loadgen: "../../../../applications/machine_learning/object_classification/src/loadgen/"
+      loadgen: "../../../../../applications/machine_learning/object_classification/src/loadgen/"
 
 edge_applications:
   - name: "object-detection-client"
@@ -122,7 +122,7 @@ edge_applications:
       #DOCKER: "true"
       SEND_TO_QUEUE: true
       MANUAL_TRACING: true
-      OTEL_ENDPOINT: "http://{$JAEGER_IP}:4318/v1/traces"
+      OTEL_ENDPOINT: "http://${JAEGER_IP}:4318/v1/traces"
       cpus: 0.5
     intercept_address: "preprocessing.ziti-controller.private"
     host_address: "localhost"
@@ -138,7 +138,7 @@ edge_applications:
       OPENZITI: "true"
       #DOCKER: "true"
       MANUAL_TRACING: true
-      OTEL_ENDPOINT: "http://{$JAEGER_IP}:4318/v1/traces"
+      OTEL_ENDPOINT: "http://${JAEGER_IP}:4318/v1/traces"
       cpus: 0.5
     intercept_address: "ensemble.ziti-controller.private"
     host_address: "localhost"
@@ -149,13 +149,13 @@ edge_applications:
     image: hongtringuyen/inference_ziti:latest
     volume: "mobilenetv2.json:/opt/secret.json"
     docker_compose: true
-    port: 5012
+    #port: 5012
     environment:
       OPENZITI: "true"
       #DOCKER: "true"
       SEND_TO_QUEUE: true
       MANUAL_TRACING: true
-      OTEL_ENDPOINT: "http://{$JAEGER_IP}:4318/v1/traces"
+      OTEL_ENDPOINT: "http://${JAEGER_IP}:4318/v1/traces"
       cpus: 0.5
     intercept_address: "mobilenetv2.ziti-controller.private"
     host_address: "localhost"
@@ -166,13 +166,13 @@ edge_applications:
     image: hongtringuyen/inference_ziti:latest
     volume: "efficientnetb0.json:/opt/secret.json"
     docker_compose: true
-    port: 5012
+    #port: 5012
     environment:
       OPENZITI: "true"
       #DOCKER: "true"
       SEND_TO_QUEUE: true
       MANUAL_TRACING: true
-      OTEL_ENDPOINT: "http://{$JAEGER_IP}:4318/v1/traces"
+      OTEL_ENDPOINT: "http://${JAEGER_IP}:4318/v1/traces"
       cpus: 0.5
     intercept_address: "efficientnetb0.ziti-controller.private"
     host_address: "localhost"
