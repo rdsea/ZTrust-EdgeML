@@ -60,7 +60,7 @@ prepare_docker_compose() {
   # Ensure envsubst is available
   apt-get update -y && apt-get install -y gettext-base
 
-  envsubst <"${CURRENT_DIR}/docker-compose.template.yml" >"${CURRENT_DIR}/docker-compose.yml"
+  envsubst <"${CURRENT_DIR}/docker-compose.yml.tmpl" >"${CURRENT_DIR}/docker-compose.yml"
   docker compose -f "${CURRENT_DIR}/docker-compose.yml" down --volumes || true
 }
 
@@ -69,7 +69,7 @@ create_and_enroll_ziti_identities() {
   log "Creating and enrolling Ziti identities"
   "${ZITI_HOME}/bin/ziti" edge login "https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}" --yes --username "${ZITI_USER}" --password "${ZITI_PWD}"
 
-  rm -rf /tmp/*.json /tmp/*.jwt
+  rm -rf $CURRENT_DIR/*.json $CURRENT_DIR/*.jwt
 
   # Execute the templated create_id_entities.sh script
   "${CURRENT_DIR}/create_id_entities.sh"
