@@ -34,7 +34,7 @@ setup_experiment(){
 
   cd /home/$SSH_USER/{{ ssh_user }}/loadgen && $HOME/.local/bin/uv venv install &&  uv python pin 3.10.12
 
-  sudo apt install python3-locust
+  sudo apt install python3-locust -y
   }
 
 # ==============================================================================
