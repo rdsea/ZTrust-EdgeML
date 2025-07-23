@@ -1,7 +1,13 @@
 #!/bin/bash
 
-set -euo pipefail
+set -uo pipefail
 
+{% for vm in vms %}
+{{ vm.name | replace('-', '_') | upper }}_IP=$(cd ../cloud/ && terraform output -raw {{ vm.name | replace('-', '_') }}_ip)
+{% if not loop.last %}
+{% endif %}{% endfor %}
+
+source "$(dirname "$0")/common.sh"
 # ==============================================================================
 # FUNCTIONS
 # ==============================================================================
@@ -19,17 +25,18 @@ kill_remote_ziti_tunnel() {
 
   log "Attempting to kill ziti-edge-tunnel on $target_ip"
 
-  ssh "$ssh_user@$target_ip" \
-    "echo '$ssh_pass' | sudo -S bash -c '\
-      echo \"Shutdown running ziti-edge-tunnel\" && \
-      if pgrep -f ziti-edge-tunnel >/dev/null; then \
-        echo \"ziti-edge-tunnel is running. Killing it now...\" && \
-        sudo pkill -f ziti-edge-tunnel && \
-        echo \"ziti-edge-tunnel has been killed.\" \
-      else \
-        echo \"ziti-edge-tunnel is NOT running. Nothing to do.\" \
-      fi\
-    "
+  ssh "$ssh_user@$target_ip" bash <<EOF
+  echo "$ssh_pass" | sudo -S bash -c '
+    echo "Shutdown running ziti-edge-tunnel"
+    if pgrep -f ziti-edge-tunnel >/dev/null; then
+      echo "ziti-edge-tunnel is running. Killing it now..."
+      pkill -f ziti-edge-tunnel
+      echo "ziti-edge-tunnel has been killed."
+    else
+      echo "ziti-edge-tunnel is NOT running. Nothing to do."
+    fi
+  '
+EOF
 }
 
 # ==============================================================================
@@ -53,6 +60,30 @@ main() {
   {% endfor %}
 
   log "Finished attempting to kill ziti-edge-tunnel processes."
+
+  ssh "{{ ssh_user }}@${ZITI_CONTROLLER_ROUTER_IP}" bash <<'EOF'
+  log "Cleaning up Ziti resources..."
+
+# ========== DELETE SERVICES AND CONFIGS ==========
+  {% for app in edge_applications %}
+    log "Deleting service and configs for: {{ app.name }}"
+    ziti edge delete service-policy "{{ app.name }}-bind-policy" || true
+    ziti edge delete service-policy "{{ app.name }}-dial-policy" || true
+    ziti edge delete service "{{ app.name }}-service" || true
+    ziti edge delete config "{{ app.name }}-intercept-config" || true
+    ziti edge delete config "{{ app.name }}-host-config" || true
+  {% endfor %}
+
+# ========== DELETE IDENTITIES ==========
+
+# ========== DELETE POLICIES ==========
+
+  {% for policy in policies %}
+    ziti edge delete {% if policy.type == "edge-router-policy" %}{{ policy.type }} "{{ policy.name }}" 
+    {% else %}{{ policy.type }} "{{ policy.name }}" 
+    {% endif %}
+  {% endfor %}
+EOF
 }
 
 main "$@"
