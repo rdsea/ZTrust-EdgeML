@@ -13,7 +13,7 @@ services:
          {%- else %}
            {{ service.image }}:default
         {%- endif %}
-    {%- if service.port %}
+    {%- if not service.noport %}
     ports:
       - {{ service.port }}:{{ service.port }}
     {%- endif %}
