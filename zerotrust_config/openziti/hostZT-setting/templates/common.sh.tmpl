@@ -68,6 +68,7 @@ add_ziti_dns_entries() {
   {% endfor %}
 }
 
+
 # --- Create and enroll a Ziti identity ---
 create_and_enroll_identity() {
   local identity_name="$1"
@@ -79,7 +80,11 @@ create_and_enroll_identity() {
 
   log "Creating and enrolling identity: $identity_name  $machine_name"
 
-  full_identity="${identity_name}-${machine_name}"
+  if [[ -n "$machine_name" ]]; then
+    full_identity="${identity_name}-${machine_name}"
+  else
+    full_identity="$identity_name"
+  fi
 
   ${ZITI_HOME}/bin/ziti edge login https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT} --yes -u ${ZITI_USER} -p ${ZITI_PWD}
   
@@ -89,3 +94,38 @@ create_and_enroll_identity() {
   
   echo ${json_file}
 }
+
+
+# --- Function to create Ziti service and policies ---
+create_ziti_service() {
+  local name="$1"
+  local port="$2"
+  local intercept_address="$3"
+  local host_address="$4"
+  local service_roles="$5"
+  local bind_identity_roles="$6"
+  local dial_identity_roles="$7"
+
+  log "Creating Ziti service: $name"
+
+  # Create intercept config
+  "$ZITI_CLI" edge create config "${name}-intercept-config" intercept.v1 \
+    "{\"protocols\":[\"tcp\"],\"addresses\":[\"${intercept_address}\"], \"portRanges\":[{\"low\":${port}, \"high\":${port}}]}"
+
+  # Create host config
+  "$ZITI_CLI" edge create config "${name}-host-config" host.v1 \
+    "{\"protocol\":\"tcp\", \"address\":\"${host_address}\",\"port\":${port}}"
+
+  # Create service
+  "$ZITI_CLI" edge create service "${name}-service" \
+    --configs "${name}-intercept-config,${name}-host-config" --role-attributes "$service_roles"
+
+  # Create bind policy
+  "$ZITI_CLI" edge create service-policy "${name}-bind-policy" Bind \
+    --service-roles "@${name}-service" --identity-roles "$bind_identity_roles"
+
+  # Create dial policy
+  "$ZITI_CLI" edge create service-policy "${name}-dial-policy" Dial \
+    --service-roles "@${name}-service" --identity-roles "$dial_identity_roles"
+}
+
