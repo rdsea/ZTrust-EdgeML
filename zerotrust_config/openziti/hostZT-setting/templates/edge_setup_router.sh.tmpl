@@ -73,10 +73,13 @@ register_loadbalancer_tunnel() {
 
 main() {
   log "Starting Edge Router Setup"
+  rm -rf $CURRENT_DIR/*.json $CURRENT_DIR/*.jwt
+
   install_ziti_cli
   install_ziti_edge_tunnel
   add_ziti_dns_entries "$CLOUD_IP"
   create_and_enroll_edge_router
+
   register_loadbalancer_tunnel
   log "Edge Router Setup Complete."
 }
