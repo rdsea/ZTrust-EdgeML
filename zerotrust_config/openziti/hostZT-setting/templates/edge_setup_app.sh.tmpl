@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+source "$(dirname "$0")/common.sh"
+
 # ==============================================================================
 # VARIABLES
 # ==============================================================================
@@ -41,18 +43,6 @@ install_ziti_cli() {
   fi
 }
 
-# --- Add DNS entries for Ziti controllers/routers ---
-add_dns_entries() {
-  log "Adding Ziti DNS entries to /etc/hosts"
-  echo "$CLOUD_IP $ZITI_CTRL_ADVERTISED_ADDRESS" >>/etc/hosts
-  echo "$CLOUD_IP $ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS" >>/etc/hosts
-
-  {% for edge in ziti_config.router.edge_router %}
-  if ! grep -q "{{  edge.edge_router_advertised_address }}" /etc/hosts; then
-    echo "{{ edge.edge_router_ip }} {{ edge.edge_router_advertised_address }}" | sudo tee -a /etc/hosts
-  fi
-  {% endfor %}
-}
 
 # --- Prepare Docker Compose file ---
 prepare_docker_compose() {
@@ -88,7 +78,7 @@ start_docker_compose_services() {
 main() {
   log "Starting Edge Application Setup"
   install_ziti_cli
-  add_dns_entries
+  add_ziti_dns_entries "$CLOUD_IP"
   prepare_docker_compose
   create_and_enroll_ziti_identities
   start_docker_compose_services
