@@ -7,11 +7,11 @@ services:
   {{ service.name}}:
     container_name: {{ service.name }}-service
     image: {% if service.environment.DOCKER == "true" -%}
-           {{ ssh_user }}/{{ service.name }}:docker
+           {{ service.image }}:docker
          {%- elif service.environment.OPENZITI == "true" -%}
-           {{ ssh_user }}/{{ service.name }}_ziti:latest
+           {{ service.image }}_ziti:latest
          {%- else %}
-           {{ ssh_user }}/{{ service.name }}:default
+           {{ service.image }}:default
         {%- endif %}
     {%- if service.port %}
     ports:
