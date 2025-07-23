@@ -10,9 +10,11 @@ ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_add
 ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_port }}"
 ZITI_USER="{{ ziti_config.ctrl.cloud_ctrl.user }}"
 ZITI_PWD="{{ ziti_config.ctrl.cloud_ctrl.password }}"
+
 # --- Log a message ---
 log() {
-  echo ">>> $(date '+%Y-%m-%d %H:%M:%S') - $1"
+  #echo ">>> $(date '+%Y-%m-%d %H:%M:%S') - $1"
+  echo ">>> $(date '+%Y-%m-%d %H:%M:%S.%N') - $1"
 }
 
 # --- Install Ziti CLI ---
@@ -92,7 +94,6 @@ create_and_enroll_identity() {
 
   ${ZITI_HOME}/bin/ziti edge enroll --jwt ${jwt_file} --out ${json_file}
   
-  echo ${json_file}
 }
 
 

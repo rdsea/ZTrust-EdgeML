@@ -63,8 +63,9 @@ EOF
 # --- Register and enroll Ziti tunnel for loadbalancer ---
 register_loadbalancer_tunnel() {
   log "Registering and enrolling Ziti tunnel for loadbalancer"
-  json_file=$(create_and_enroll_identity "loadbalancer" "loadbalancer,edge" "" "/home/${SSH_USER}/{{ ssh_user }}")
-  nohup ziti-edge-tunnel run -i "${json_file}" >/var/log/ziti-edge-tunnel.log 2>&1 &
+  create_and_enroll_identity "loadbalancer" "loadbalancer,edge" "" "/home/${SSH_USER}/{{ ssh_user }}"
+
+  nohup ziti-edge-tunnel run -i "/home/${SSH_USER}/{{ ssh_user }}/loadbalancer.json" >/var/log/ziti-edge-tunnel.log 2>&1 &
 }
 
 # ==============================================================================

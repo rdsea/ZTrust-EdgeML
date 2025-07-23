@@ -49,10 +49,10 @@ main() {
   setup_experiment
 
   # Create and enroll the Ziti identity
-  json_file=$(create_and_enroll_identity "object-detection-client"  "object-detection-client,edge" "$(cat /etc/hostname)" "/home/${SSH_USER}/{{ ssh_user }}")
+  create_and_enroll_identity "object-detection-client"  "object-detection-client,edge" "$(cat /etc/hostname)" "/home/${SSH_USER}/{{ ssh_user }}"
 
   # Run the tunnel in the background
-  nohup ziti-edge-tunnel run -i "${json_file}" >/var/log/ziti-edge-tunnel.log 2>&1 &
+  nohup ziti-edge-tunnel run -i "/home/${SSH_USER}/{{ ssh_user }}/object-detection-client.json" >/var/log/ziti-edge-tunnel.log 2>&1 &
 
   log "Sensor Setup Complete."
 }

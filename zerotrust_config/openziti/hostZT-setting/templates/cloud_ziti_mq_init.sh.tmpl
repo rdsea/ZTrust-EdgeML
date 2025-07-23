@@ -97,7 +97,6 @@ create_and_enroll_identity() {
   
   $ZITI_HOME/bin/ziti edge enroll --jwt $jwt_file --out $json_file
   
-  echo $json_file
 }
 
 install_rabbitmq() {
@@ -173,10 +172,10 @@ main() {
   install_ziti_cli
 
   # Create and enroll the Ziti identity
-  json_file=$(create_and_enroll_identity "message-queue" "message-queue,{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_attribute }}")
+  create_and_enroll_identity "message-queue" "message-queue,{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_attribute }}"
 
   # Run the tunnel in the background
-  nohup ziti-edge-tunnel run -i $json_file  >/var/log/ziti-edge-tunnel.log 2>&1 &
+  nohup ziti-edge-tunnel run -i "/home/{{ ssh_user }}/message-queue.json"  >/var/log/ziti-edge-tunnel.log 2>&1 &
 
   setup_application
 
