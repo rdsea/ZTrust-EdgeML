@@ -22,11 +22,11 @@ main() {
   log "Creating Ziti Identities, Services, and Policies"
 
   # Create identities and services for each application
-  {% for app in edge_applications %} 
-  {% if app.docker_compose %}
-    create_and_enroll_identity "{{ app.name }}" "{{ app.roles | join(',') }}" "$(cat /etc/hostname)" "/home/${SSH_USER}/{{ ssh_user }}"
+  {%- for app in edge_applications %} 
+  {%- if app.docker_compose %}
+  create_and_enroll_identity "{{ app.name }}" "{{ app.roles | join(',') }}" "$(cat /etc/hostname)" "/home/${SSH_USER}/{{ ssh_user }}"
   {% endif %}
-  {% if not app.sensor %}
+  {%- if not app.sensor %}
   create_ziti_service \
     "{{ app.name }}" \
     "{{ app.port }}" \
@@ -35,8 +35,8 @@ main() {
     "{{ app.roles | join(',') }}" \
     "{{ app.bind_identity_roles | join(',') }}" \
     "{{ app.dial_identity_roles | join(',') }}"
-  {% endif %}
-  {% endfor %}
+  {%- endif %}
+  {%- endfor %}
 
   # Add specific policies that are not tied to a single application
   log "Creating general Ziti policies"
