@@ -13,42 +13,6 @@ source "$(dirname "$0")/common.sh"
 ZITI_CLI="/opt/openziti/bin/ziti"
 SH_USER="$SSH_USER"
 
-# ==============================================================================
-# FUNCTIONS
-# ==============================================================================
-
-# --- Function to create Ziti service and policies ---
-create_ziti_service() {
-  local name="$1"
-  local port="$2"
-  local intercept_address="$3"
-  local host_address="$4"
-  local service_roles="$5"
-  local bind_identity_roles="$6"
-  local dial_identity_roles="$7"
-
-  log "Creating Ziti service: $name"
-
-  # Create intercept config
-  "$ZITI_CLI" edge create config "${name}-intercept-config" intercept.v1 \
-    "{\"protocols\":[\"tcp\"],\"addresses\":[\"${intercept_address}\"], \"portRanges\":[{\"low\":${port}, \"high\":${port}}]}"
-
-  # Create host config
-  "$ZITI_CLI" edge create config "${name}-host-config" host.v1 \
-    "{\"protocol\":\"tcp\", \"address\":\"${host_address}\",\"port\":${port}}"
-
-  # Create service
-  "$ZITI_CLI" edge create service "${name}-service" \
-    --configs "${name}-intercept-config,${name}-host-config" --role-attributes "$service_roles"
-
-  # Create bind policy
-  "$ZITI_CLI" edge create service-policy "${name}-bind-policy" Bind \
-    --service-roles "@${name}-service" --identity-roles "$bind_identity_roles"
-
-  # Create dial policy
-  "$ZITI_CLI" edge create service-policy "${name}-dial-policy" Dial \
-    --service-roles "@${name}-service" --identity-roles "$dial_identity_roles"
-}
 
 # ==============================================================================
 # MAIN EXECUTION
@@ -58,9 +22,11 @@ main() {
   log "Creating Ziti Identities, Services, and Policies"
 
   # Create identities and services for each application
-  {% for app in edge_applications %}
-  create_and_enroll_identity "{{ app.name }}" "{{ app.roles | join(',') }}" "$(cat /etc/hostname)" "/home/${SSH_USER}/{{ ssh_user }}"
-  {% if app.port %}
+  {% for app in edge_applications %} 
+  {% if app.docker_compose %}
+    create_and_enroll_identity "{{ app.name }}" "{{ app.roles | join(',') }}" "$(cat /etc/hostname)" "/home/${SSH_USER}/{{ ssh_user }}"
+  {% endif %}
+  {% if not app.sensor %}
   create_ziti_service \
     "{{ app.name }}" \
     "{{ app.port }}" \
