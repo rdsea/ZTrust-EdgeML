@@ -49,7 +49,7 @@ run_exp() {
 
 main() {
   {% for sensor_ in edge_deployment.sensor %}
-  start_exp "{{ sensor_.ip }}" \
+  run_exp "{{ sensor_.ip }}" \
             "{{ sensor_.ssh_user }}" \
             "{{ sensor_.ssh_pass }}" \
             "{{ sensor_.run_locust_file }}" \
