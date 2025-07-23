@@ -111,6 +111,7 @@ edge_applications:
   - name: "object-detection-client"
     roles: ["object-detection-client", "edge"]
     docker_compose: false
+    sensor: true
   - name: "preprocessing"
     roles: ["preprocessing", "edge"]
     image: hongtringuyen/preprocessing
@@ -149,7 +150,8 @@ edge_applications:
     image: hongtringuyen/inference
     volume: "mobilenetv2.json:/opt/secret.json"
     docker_compose: true
-    #port: 5012
+    port: 5012
+    noport: true
     environment:
       OPENZITI: "true"
       #DOCKER: "true"
@@ -166,7 +168,8 @@ edge_applications:
     image: hongtringuyen/inference
     volume: "efficientnetb0.json:/opt/secret.json"
     docker_compose: true
-    #port: 5012
+    port: 5012
+    noport: true
     environment:
       OPENZITI: "true"
       #DOCKER: "true"
@@ -179,7 +182,7 @@ edge_applications:
     dial_identity_roles: ["#ensemble"]
     bind_identity_roles: ["#efficientnetb0"]
   - name: "loadbalancer"
-    roles: ["loadbalancer"]
+    roles: ["loadbalancer", "edge"]
     docker_compose: false
     port: 5009
     intercept_address: "loadbalancer.ziti-controller.private"
