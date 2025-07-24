@@ -18,7 +18,7 @@ resource "google_compute_instance" "{{ vm.name | replace('-', '_') }}" {
     }
   }
 
-  {% if vm.has_provisioner %}
+  {% if vm.provisioner_source_path is defined %}
   provisioner "remote-exec" {
     inline = [
       "mkdir -p {{ vm.provisioner_destination_path }}"
@@ -27,6 +27,10 @@ resource "google_compute_instance" "{{ vm.name | replace('-', '_') }}" {
   provisioner "file" {
     source      = "{{ vm.provisioner_source_path }}"
     destination = "{{ vm.provisioner_destination_path }}"
+  }
+  provisioner "file" {
+    source      = "{{ vm.config_file }}"
+    destination = "{{ vm.provisioner_destination_path }}/{{ vm.config_file }}"
   }
   connection {
     type        = "ssh"

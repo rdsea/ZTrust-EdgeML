@@ -268,3 +268,11 @@ echo "✅ Cleanup completed."
 >  uv run python client_processing.py --url http://loadbalancer.ziti-controller.private:5009/preprocessing  --ds_path ../image
 > locust -f /home/aaltosea/hong3nguyen/loadgen/load_test_para.py --ds-path /home/aaltosea/hong3nguyen/image/ --device-id $(hostname) --host http://loadbalancer.ziti-controller.private:5009 --headless --users 10 --spawn-rate 1 --run-time 1m --csv /home/aaltosea/hong3nguyen/locust_results.csv --csv-full-history
 
+
+# Note
+- The current setting allow for add routers and very flexibility
+
+- Somethings could be improved:
+  - the add/delete cloud routers: since the Openziti cloud setting is based on centralization, our setting now support a single pair of ctrl and router at cloud
+  - docker containers need to be build before, although we can give some parameters to allow the docker be built but yeah if have time to do it more
+  - id, roles, policy could be find a way to define easier

@@ -169,8 +169,14 @@ setup_application() {
 }
 
 setup_rabbit_mongo(){
+  local config_file="$1"
 
-  tee /home/{{ ssh_user }}/app/config.yaml >/dev/null <<EOF
+while [ ! -f "$config_file" ]; do
+  echo "Waiting for $config_file to be created..."
+  sleep 2
+done
+
+cat <<EOF > "$config_file"
 {% for vm in vms %}
 {%- if vm.rabbitmq_config is defined -%}
 rabbitmq:
@@ -207,8 +213,9 @@ main() {
   # Run the tunnel in the background
   nohup ziti-edge-tunnel run -i "/home/{{ ssh_user }}/message-queue.json"  >/var/log/ziti-edge-tunnel.log 2>&1 &
 
+  #setup_rabbit_mongo "/home/{{ ssh_user }}/app/config.yaml"
+
   setup_application
-  setup_rabbit_mongo
 
   nohup uv run python /home/{{ ssh_user }}/app/ml_consumer.py > /var/log/ml_consumer.log 2>&1 &
 
