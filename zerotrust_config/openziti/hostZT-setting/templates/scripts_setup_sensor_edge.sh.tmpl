@@ -72,6 +72,7 @@ main() {
     "../edge/setup_edge_app.sh" \
     "CLOUD_IP=$ZITI_CONTROLLER_ROUTER_IP JAEGER_IP=$JAEGER_IP SSH_USER={{ edge_.ssh_user }}" \
     "../edge/docker-compose.yml.tmpl" \
+    "{{ edge.src_app }}" \
     "../edge/create_id_entities.sh"
   {% endfor %}
 
