@@ -136,14 +136,14 @@ RABBITMQ_NODE_PORT=5672
 RABBITMQ_NODENAME=rabbitmq@localhost
 EOF
 
-{% for vm in vms %}
-{% if vm.rabbitmq_config is defined %}
+{%- for vm in vms %}
+{%- if vm.rabbitmq_config is defined %}
 # Provisioning RabbitMQ for VM: {{ vm.name }}
-rabbitmqctl add_user {{ vm.rabbitmq_config.rabbit_user }} {{ vm.rabbitmq_config.rabbit_pass }}
-rabbitmqctl set_user_tags {{ vm.rabbitmq_config.rabbit_user }} administrator
-rabbitmqctl set_permissions -p / {{ vm.rabbitmq_config.rabbit_user }} ".*" ".*" ".*"
-{% endif %}
-{% endfor %}
+# rabbitmqctl add_user {{ vm.rabbitmq_config.user }} {{ vm.rabbitmq_config.pass }}
+# rabbitmqctl set_user_tags {{ vm.rabbitmq_config.user }} administrator
+# rabbitmqctl set_permissions -p / {{ vm.rabbitmq_config.user }} ".*" ".*" ".*"
+{%- endif %}
+{%- endfor %}
 
   systemctl restart rabbitmq-server
 }
