@@ -236,9 +236,11 @@ if __name__ == "__main__":
     rabbitmq_block = ["  " + line for line in rabbitmq_block]
 
     final_yaml = (
-        rabbitmq_comment + "\n".join(rabbitmq_block) + "\n\n" + "\n".join(mongodb_block)
+        (rabbitmq_comment + "\n" if rabbitmq_comment else "")
+        + "\n".join(rabbitmq_block)
+        + "\n\n"
+        + "\n".join(mongodb_block)
     )
-
     with open("cloud/config.yaml", "w") as f:
         f.write(final_yaml)
 
