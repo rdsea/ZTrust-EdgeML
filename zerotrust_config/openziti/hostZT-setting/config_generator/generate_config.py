@@ -2,6 +2,7 @@ import yaml
 from jinja2 import Environment, FileSystemLoader, exceptions
 import os
 import argparse
+import yaml
 
 # Set up paths
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -200,6 +201,48 @@ if __name__ == "__main__":
             f"edge/{script_name}",
             OUTPUT_ROOT_DIR,
         )
+
+    rabbitmq_config = {}
+
+    mongodb_config = {}
+    for vm in config.get("vms", []):
+        if "rabbitmq_config" in vm:
+            rabbitmq_config = {
+                "url": vm["rabbitmq_config"].get("url", ""),
+                "queue_name": vm["rabbitmq_config"].get("queue_name", ""),
+                "username": vm["rabbitmq_config"].get("user", ""),
+                "password": vm["rabbitmq_config"].get("pass", ""),
+            }
+        if "mongo_config" in vm:
+            mongodb_config = {
+                "url": vm["mongo_config"].get("url", ""),
+                "username": vm["mongo_config"].get("user", ""),
+                "password": vm["mongo_config"].get("pass", ""),
+            }
+
+    config_dict = {"rabbitmq": rabbitmq_config, "mongodb": mongodb_config}
+
+    yaml_text = yaml.dump(config_dict, default_flow_style=False)
+
+    rabbitmq_comment = ""
+
+    lines = yaml_text.splitlines()
+    rabbitmq_start = lines.index("rabbitmq:")
+    mongodb_start = lines.index("mongodb:")
+
+    rabbitmq_block = lines[rabbitmq_start + 1 : mongodb_start]
+    mongodb_block = lines[mongodb_start:]
+
+    rabbitmq_block = ["  " + line for line in rabbitmq_block]
+
+    final_yaml = (
+        rabbitmq_comment + "\n".join(rabbitmq_block) + "\n\n" + "\n".join(mongodb_block)
+    )
+
+    with open("cloud/config.yaml", "w") as f:
+        f.write(final_yaml)
+
+    print("Config written to config_output.yaml with correct indentation and comments.")
 
     # --- Copy docker-compose.template.yml ---
     # docker_compose_template_source = os.path.join(
