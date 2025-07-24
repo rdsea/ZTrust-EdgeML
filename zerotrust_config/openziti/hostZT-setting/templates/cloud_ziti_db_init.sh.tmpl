@@ -145,14 +145,18 @@ EOF
 
   # Create admin user
   log "Creating MongoDB admin user"
+  {% for vm in vms %}
+  {% if vm.mongo_config is defined %}
   mongosh <<EOF
-use admin
-db.createUser({
-  user: "{{ vm.mongo_user }}",
-  pwd: "{{ vm.mongo_pass }}",
-  roles: [ { role: "userAdminAnyDatabase", db: "admin" } ]
-})
+  use admin
+  db.createUser({
+    user: "{{ vm.mongo_config.user }}",
+    pwd: "{{ vm.mongo_config.pass }}",
+    roles: [ { role: "userAdminAnyDatabase", db: "admin" } ]
+  })
 EOF
+  {%- endif %}
+  {%- endfor %}
 
   # Enable auth
   sudo sed -i '/^#*security:/a\  authorization: enabled' /etc/mongod.conf
