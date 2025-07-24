@@ -263,3 +263,8 @@ ziti edge delete service-edge-router-policy "allow.svc.router_cloud"
 echo "✅ Cleanup completed."
 
 ```
+
+
+>  uv run python client_processing.py --url http://loadbalancer.ziti-controller.private:5009/preprocessing  --ds_path ../image
+> locust -f /home/aaltosea/hong3nguyen/loadgen/load_test_para.py --ds-path /home/aaltosea/hong3nguyen/image/ --device-id $(hostname) --host http://loadbalancer.ziti-controller.private:5009 --headless --users 10 --spawn-rate 1 --run-time 1m --csv /home/aaltosea/hong3nguyen/locust_results.csv --csv-full-history
+
