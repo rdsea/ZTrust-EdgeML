@@ -128,12 +128,22 @@ configure_rabbitmq() {
   tee /etc/rabbitmq/rabbitmq.conf >/dev/null <<EOF
 listeners.tcp.default = 0.0.0.0:5672
 management.listener.port = 15672
+#loopback_users.guest = false
 EOF
 
   tee /etc/rabbitmq/rabbitmq-env.conf >/dev/null <<EOF
 RABBITMQ_NODE_PORT=5672
 RABBITMQ_NODENAME=rabbitmq@localhost
 EOF
+
+  # create user
+  #rabbitmqctl add_user {{ vm.rabbimq_config.rabbit_user }} {{ vm.rabbimq_config.rabbit_pass }}
+
+  # Give the user administrative rights (optional)
+  #rabbitmqctl set_user_tags {{ vm.rabbimq_config.rabbit_user }} administrator
+
+  # Grant full permissions to the default "/" virtual host
+  #rabbitmqctl set_permissions -p / {{ vm.rabbimq_config.rabbit_user }} ".*" ".*" ".*"
 
   systemctl restart rabbitmq-server
 }
