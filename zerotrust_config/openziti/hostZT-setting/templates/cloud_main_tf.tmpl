@@ -17,10 +17,6 @@ resource "google_compute_instance" "{{ vm.name | replace('-', '_') }}" {
       image = "{{ image }}"
     }
   }
-  metadata_startup_script = {% if vm.use_template %}templatefile("{{ vm.provisioner_script }}", {
-    controller_ip = google_compute_instance.{{ vm.ctrl_name }}.network_interface[0].network_ip
-    router_ip     = google_compute_instance.{{ vm.ctrl_name }}.network_interface[0].network_ip
-  }){% else %}file("{{ vm.provisioner_script }}"){% endif %}
 
   {% if vm.has_provisioner %}
   provisioner "remote-exec" {
@@ -47,6 +43,11 @@ resource "google_compute_instance" "{{ vm.name | replace('-', '_') }}" {
   metadata = {
     ssh-keys = "{{ ssh_user }}:${file("{{ ssh_public_key_path }}")}"
   }
+
+  metadata_startup_script = {% if vm.use_template %}templatefile("{{ vm.provisioner_script }}", {
+    controller_ip = google_compute_instance.{{ vm.ctrl_name }}.network_interface[0].network_ip
+    router_ip     = google_compute_instance.{{ vm.ctrl_name }}.network_interface[0].network_ip
+  }){% else %}file("{{ vm.provisioner_script }}"){% endif %}
 }
 {% endfor %}
 
