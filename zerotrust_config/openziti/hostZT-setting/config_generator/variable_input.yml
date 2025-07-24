@@ -135,9 +135,13 @@ edge_applications:
     volume: "ensemble.json:/opt/secret.json"
     docker_compose: true
     port: 5011
+    build:
+      context: ".src/"
+      dockerfile: ensemble/Dockerfile.ziti
     environment:
       OPENZITI: "true"
       #DOCKER: "true"
+      SEND_TO_QUEUE: "true"
       MANUAL_TRACING: true
       OTEL_ENDPOINT: "http://${JAEGER_IP}:4318/v1/traces"
       cpus: 0.5
