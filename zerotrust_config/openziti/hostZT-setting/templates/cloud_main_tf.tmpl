@@ -25,7 +25,7 @@ resource "google_compute_instance" "{{ vm.name | replace('-', '_') }}" {
     ]
   }
   provisioner "file" {
-    source      = "{{ vm.provisioner_source_path }}"
+    source      = "{{ vm.provisioner_source_path }}/"
     destination = "{{ vm.provisioner_destination_path }}"
   }
   provisioner "file" {

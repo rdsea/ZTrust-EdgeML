@@ -152,14 +152,18 @@ EOF
 setup_application() {
   log "Installing uv and setting up app environment for user hong3nguyen"
 
-  sudo -u hong3nguyen bash -c '
+  sudo -u {{ ssh_user }} bash -c '
     export PATH="$HOME/.local/bin:$PATH"
 
     # Install uv
     curl -Ls https://astral.sh/uv/install.sh | bash
 
     # Use uv to set up the virtual environment
-    cd /home/hong3nguyen/app
+    {% for vm in vms %}
+    {%- if vm.provisioner_destination_path is defined -%}
+    cd {{ vm.provisioner_destination_path }}
+    {%- endif %}
+    {% endfor %}
     $HOME/.local/bin/uv venv install
     $HOME/.local/bin/uv python pin 3.10.12
 
@@ -213,11 +217,11 @@ main() {
   # Run the tunnel in the background
   nohup ziti-edge-tunnel run -i "/home/{{ ssh_user }}/message-queue.json"  >/var/log/ziti-edge-tunnel.log 2>&1 &
 
-  #setup_rabbit_mongo "/home/{{ ssh_user }}/app/config.yaml"
+  #setup_rabbit_mongo "/home/{{ ssh_user }}/database/config.yaml"
 
   setup_application
 
-  nohup uv run python /home/{{ ssh_user }}/app/ml_consumer.py > /var/log/ml_consumer.log 2>&1 &
+  nohup uv run python /home/{{ ssh_user }}/database/ml_consumer.py > /var/log/ml_consumer.log 2>&1 &
 
   log "Message Queue setup complete."
 }
