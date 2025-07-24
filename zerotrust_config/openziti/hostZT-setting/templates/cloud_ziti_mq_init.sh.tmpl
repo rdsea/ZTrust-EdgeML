@@ -136,14 +136,14 @@ RABBITMQ_NODE_PORT=5672
 RABBITMQ_NODENAME=rabbitmq@localhost
 EOF
 
-  # create user
-  #rabbitmqctl add_user {{ vm.rabbimq_config.rabbit_user }} {{ vm.rabbimq_config.rabbit_pass }}
-
-  # Give the user administrative rights (optional)
-  #rabbitmqctl set_user_tags {{ vm.rabbimq_config.rabbit_user }} administrator
-
-  # Grant full permissions to the default "/" virtual host
-  #rabbitmqctl set_permissions -p / {{ vm.rabbimq_config.rabbit_user }} ".*" ".*" ".*"
+{% for vm in vms %}
+{% if vm.rabbitmq_config is defined %}
+# Provisioning RabbitMQ for VM: {{ vm.name }}
+rabbitmqctl add_user {{ vm.rabbitmq_config.rabbit_user }} {{ vm.rabbitmq_config.rabbit_pass }}
+rabbitmqctl set_user_tags {{ vm.rabbitmq_config.rabbit_user }} administrator
+rabbitmqctl set_permissions -p / {{ vm.rabbitmq_config.rabbit_user }} ".*" ".*" ".*"
+{% endif %}
+{% endfor %}
 
   systemctl restart rabbitmq-server
 }
@@ -168,6 +168,26 @@ setup_application() {
   '
 }
 
+setup_rabbit_mongo(){
+
+  tee /home/{{ ssh_user }}/app/config.yaml >/dev/null <<EOF
+{% for vm in vms %}
+{%- if vm.rabbitmq_config is defined -%}
+rabbitmq:
+  queue_name: {{ vm.rabbitmq_config.queue_name }}
+  url: {{ vm.rabbitmq_config.url }}
+  username: {{ vm.rabbitmq_config.user }}
+  password: {{ vm.rabbitmq_config.pass }}
+{%- endif -%}
+{% if vm.mongo_config is defined %}
+mongodb:
+  url: {{ vm.mongo_config.url }}
+  username: {{ vm.mongo_config.user }}
+  password: {{ vm.mongo_config.pass }}
+  {%- endif -%}
+{% endfor %}
+EOF
+  }
 # ==============================================================================
 # MAIN EXECUTION
 # ==============================================================================
@@ -188,6 +208,7 @@ main() {
   nohup ziti-edge-tunnel run -i "/home/{{ ssh_user }}/message-queue.json"  >/var/log/ziti-edge-tunnel.log 2>&1 &
 
   setup_application
+  setup_rabbit_mongo
 
   nohup uv run python /home/{{ ssh_user }}/app/ml_consumer.py > /var/log/ml_consumer.log 2>&1 &
 
