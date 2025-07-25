@@ -1,5 +1,6 @@
 #!/bin/bash
-
+exec > /var/log/startup-script.log 2>&1
+set -x
 set -euo pipefail
 
 # ==============================================================================
@@ -152,52 +153,37 @@ EOF
 setup_application() {
   log "Installing uv and setting up app environment for user hong3nguyen"
 
-  sudo -u {{ ssh_user }} bash -c '
-    export PATH="$HOME/.local/bin:$PATH"
+   sudo -u {{ ssh_user }} bash -c '
+   export HOME="/home/{{ ssh_user }}"
+   #export PATH="$HOME/.local/bin:$PATH"
 
     # Install uv
     curl -Ls https://astral.sh/uv/install.sh | bash
 
-    # Use uv to set up the virtual environment
-    {% for vm in vms %}
-    {%- if vm.provisioner_destination_path is defined -%}
-    cd {{ vm.provisioner_destination_path }}
-    {%- endif %}
-    {% endfor %}
-    $HOME/.local/bin/uv venv install
-    $HOME/.local/bin/uv python pin 3.10.12
+    source $HOME/.local/bin/env # (sh, bash, zsh)
 
-    # Optionally: install dependencies
-    $HOME/.local/bin/uv pip install -r requirements.txt
-  '
+    # source $HOME/.local/bin/env.fish (fish)
+
+
+    # Use uv to set up the virtual environment
+    {%- for vm in vms %}
+    {% if vm.provisioner_destination_path is defined %}
+    cd {{ vm.provisioner_destination_path }}
+    # Use uv to set up the virtual environment in a writable location
+    
+    uv venv {{ vm.provisioner_destination_path }}/.venv
+    
+    uv pip install {{ vm.provisioner_destination_path }}
+
+    # Pin Python version (optional, but now in correct location)
+    uv python pin 3.10.12
+
+    nohup  uv run python {{ vm.provisioner_destination_path }}/ml_consumer.py  > ml_consumer.log 2>&1 &
+    {%- endif -%}
+    {%- endfor -%}
+    '
 }
 
-setup_rabbit_mongo(){
-  local config_file="$1"
-
-while [ ! -f "$config_file" ]; do
-  echo "Waiting for $config_file to be created..."
-  sleep 2
-done
-
-cat <<EOF > "$config_file"
-{% for vm in vms %}
-{%- if vm.rabbitmq_config is defined -%}
-rabbitmq:
-  queue_name: {{ vm.rabbitmq_config.queue_name }}
-  url: {{ vm.rabbitmq_config.url }}
-  username: {{ vm.rabbitmq_config.user }}
-  password: {{ vm.rabbitmq_config.pass }}
-{%- endif -%}
-{% if vm.mongo_config is defined %}
-mongodb:
-  url: {{ vm.mongo_config.url }}
-  username: {{ vm.mongo_config.user }}
-  password: {{ vm.mongo_config.pass }}
-  {%- endif -%}
-{% endfor %}
-EOF
-  }
 # ==============================================================================
 # MAIN EXECUTION
 # ==============================================================================
@@ -221,9 +207,10 @@ main() {
 
   setup_application
 
-  nohup uv run python /home/{{ ssh_user }}/database/ml_consumer.py > /var/log/ml_consumer.log 2>&1 &
-
   log "Message Queue setup complete."
 }
 
 main "$@"
+
+echo ">>> $(date '+%Y-%m-%d %H:%M:%S') - STARTUP SCRIPT COMPLETED"
+
