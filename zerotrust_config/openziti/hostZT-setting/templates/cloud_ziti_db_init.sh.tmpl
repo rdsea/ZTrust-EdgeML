@@ -1,5 +1,7 @@
 #!/bin/bash
 
+exec > /var/log/startup-script.log 2>&1
+set -x
 set -euo pipefail
 
 # Source the common functions
@@ -187,3 +189,5 @@ main() {
 }
 
 main "$@"
+echo ">>> $(date '+%Y-%m-%d %H:%M:%S') - STARTUP SCRIPT COMPLETED"
+
