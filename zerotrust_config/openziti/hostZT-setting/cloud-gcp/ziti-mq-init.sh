@@ -1,0 +1,127 @@
+#!/bin/bash
+
+set -euo pipefail
+
+# ==============================================================================
+# FUNCTIONS
+# ==============================================================================
+
+# --- Helper function for logging ---
+log() {
+  echo "--- $1 ---"
+}
+
+# --- Install RabbitMQ and its dependencies ---
+install_rabbitmq() {
+  log "Installing RabbitMQ"
+  apt-get update -y
+  apt-get install -y curl gnupg apt-transport-https
+
+  # Add RabbitMQ signing keys
+  curl -1sLf "https://keys.openpgp.org/vks/v1/by-fingerprint/0A9AF2115F4687BD29803A206B73A36E6026DFCA" | gpg --dearmor > /usr/share/keyrings/com.rabbitmq.team.gpg
+  curl -1sLf https://github.com/rabbitmq/signing-keys/releases/download/3.0/cloudsmith.rabbitmq-erlang.E495BB49CC4BBE5B.key | gpg --dearmor > /usr/share/keyrings/rabbitmq.E495BB49CC4BBE5B.gpg
+  curl -1sLf https://github.com/rabbitmq/signing-keys/releases/download/3.0/cloudsmith.rabbitmq-server.9F4587F226208342.key | gpg --dearmor > /usr/share/keyrings/rabbitmq.9F4587F226208342.gpg
+
+  # Add RabbitMQ apt repositories
+  tee /etc/apt/sources.list.d/rabbitmq.list <<EOF
+deb [arch=amd64 signed-by=/usr/share/keyrings/rabbitmq.E495BB49CC4BBE5B.gpg] https://ppa1.rabbitmq.com/rabbitmq/rabbitmq-erlang/deb/ubuntu jammy main
+deb [arch=amd64 signed-by=/usr/share/keyrings/rabbitmq.9F4587F226208342.gpg] https://ppa1.rabbitmq.com/rabbitmq/rabbitmq-server/deb/ubuntu jammy main
+EOF
+
+  # Install Erlang and RabbitMQ
+  apt-get update -y
+  apt-get install -y erlang-base erlang-crypto erlang-inets erlang-mnesia erlang-os-mon erlang-public-key erlang-runtime-tools erlang-ssl erlang-syntax-tools erlang-tools rabbitmq-server --fix-missing
+}
+
+# --- Configure RabbitMQ ---
+configure_rabbitmq() {
+  log "Configuring RabbitMQ"
+  mkdir -p /etc/rabbitmq
+
+  tee /etc/rabbitmq/rabbitmq.conf >/dev/null <<EOF
+listeners.tcp.default = 0.0.0.0:5672
+management.listener.port = 15672
+EOF
+
+  tee /etc/rabbitmq/rabbitmq-env.conf >/dev/null <<EOF
+RABBITMQ_NODE_PORT=5672
+RABBITMQ_NODENAME=rabbitmq@localhost
+EOF
+
+  systemctl restart rabbitmq-server
+}
+
+# --- Configure local DNS for Ziti ---
+configure_ziti_dns() {
+  log "Configuring Ziti DNS"
+  echo " ctrl.cloud.hong3nguyen.com" | tee -a /etc/hosts
+  echo " router.cloud.hong3nguyen.com" | tee -a /etc/hosts
+}
+
+# --- Install the Ziti Edge Tunnel ---
+install_ziti_tunnel() {
+  log "Installing Ziti Edge Tunnel"
+  curl -sSLf https://get.openziti.io/tun/package-repos.gpg | gpg --dearmor > /usr/share/keyrings/openziti.gpg
+  chmod +r /usr/share/keyrings/openziti.gpg
+  echo "deb [signed-by=/usr/share/keyrings/openziti.gpg] https://packages.openziti.org/zitipax-openziti-deb-stable jammy main" | tee /etc/apt/sources.list.d/openziti.list >/dev/null
+  apt-get update
+  apt-get install -y ziti-edge-tunnel
+}
+
+# --- Set up the application environment ---
+setup_application() {
+  log "Setting up application environment"
+  apt-get install -y python3 python3-venv python3-pip
+
+  # Install uv for the application user
+  su - hong3nguyen -c 'curl -Ls https://astral.sh/uv/install.sh | bash'
+  echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/hong3nguyen/.bashrc
+
+  # Install application dependencies
+  su - hong3nguyen -c 'cd /home/hong3nguyen/app && $HOME/.local/bin/uv venv install'
+}
+
+# --- Create and enroll the Ziti identity ---
+create_ziti_identity() {
+  log "Creating and enrolling Ziti identity"
+  export ZITI_HOME="/opt/openziti"
+  export ZITI_CTRL_ADVERTISED_ADDRESS="ctrl.cloud.hong3nguyen.com"
+  export ZITI_CTRL_ADVERTISED_PORT="1280"
+  export ZITI_USER="admin"
+  export ZITI_PWD="admin"
+
+  # Install Ziti CLI if not present
+  if ! command -v ziti &>/dev/null; then
+    log "Installing Ziti CLI"
+    curl -sS https://get.openziti.io/install.bash | bash -s openziti-router
+  fi
+
+  # Log in and create the identity
+  "$ZITI_HOME/bin/ziti" edge login "https://$ZITI_CTRL_ADVERTISED_ADDRESS:$ZITI_CTRL_ADVERTISED_PORT" --yes -u "$ZITI_USER" -p "$ZITI_PWD"
+
+  "$ZITI_HOME/bin/ziti" edge create identity "message-queue" \
+    --jwt-output-file /tmp/message-queue.jwt \
+    --role-attributes "message-queue,cloud"
+
+  "$ZITI_HOME/bin/ziti" edge enroll --jwt /tmp/message-queue.jwt --out /tmp/message-queue.json
+
+  # Run the tunnel in the background
+  nohup ziti-edge-tunnel run -i /tmp/message-queue.json >/var/log/ziti-edge-tunnel.log 2>&1 &
+}
+
+# ==============================================================================
+# MAIN EXECUTION
+# ==============================================================================
+
+main() {
+  install_rabbitmq
+  configure_rabbitmq
+  configure_ziti_dns
+  install_ziti_tunnel
+  setup_application
+  create_ziti_identity
+
+  log "Message Queue setup complete."
+}
+
+main "$@"

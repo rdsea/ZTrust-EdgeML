@@ -9,7 +9,7 @@ terraform {
 
 provider "google" {
   project = "aalto-t313-cs-e4640"
-  region  = var.region
+  region  = "europe-north1"
 }
 
 # ------------------------------
@@ -17,8 +17,8 @@ provider "google" {
 # ------------------------------
 resource "google_compute_instance" "ziti_controller_router" {
   name         = "ziti-controller-router"
-  machine_type = var.machine_type
-  zone         = var.zone
+  machine_type = "e2-medium"
+  zone         = "europe-north1-a"
 
   boot_disk {
     initialize_params {
@@ -31,105 +31,93 @@ resource "google_compute_instance" "ziti_controller_router" {
     access_config {}
   }
 
-  metadata_startup_script = file("setup_cloud_ctrl_router.sh")
-
   metadata = {
     ssh-keys = "hong3nguyen:${file("~/.ssh/id_ed25519.pub")}"
   }
 
-
-  tags = ["ziti", "controller"]
-}
-
-# ------------------------------
-# Ziti Router VM
-# ------------------------------
-# resource "google_compute_instance" "ziti_router" {
-#   name         = "ziti-router"
-#   machine_type = var.machine_type
-#   zone         = var.zone
-#
-#   boot_disk {
-#     initialize_params {
-#       image = "ubuntu-os-cloud/ubuntu-2204-lts"
-#     }
-#   }
-#
-#   network_interface {
-#     network       = "default"
-#     access_config {}
-#   }
-#
-#   metadata_startup_script = file("router-startup.sh")
-#
-#   metadata = {
-#     ssh-keys = "hong3nguyen:${file("~/.ssh/id_ed25519.pub")}"
-#   }
-#
-#   tags = ["ziti", "router"]
-#}
-
-# ------------------------------
-# Application (MessageQ)
-# ------------------------------
-
-resource "google_compute_instance" "message_q" {
-  name         = "cloud-messageq"
-  machine_type = var.machine_type
-  zone         = var.zone
-
-  boot_disk {
-    initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2204-lts"
-    }
-  }
-
-  network_interface {
-    network       = "default"
-    access_config {}
-  }
-
-  # metadata_startup_script = file("setup_cloud_messageq.sh")
-  metadata = {
-    # consumer_py     = file("${path.module}/messq_script/ml_consumer.py")
-    # config_yaml     = file("${path.module}/messq_script/config.yaml")
-    # pyproject_toml  = file("${path.module}/messq_script/pyproject.toml")
-    ssh-keys = "hong3nguyen:${file("~/.ssh/id_ed25519.pub")}"
-  }
-  metadata_startup_script = templatefile("setup_cloud_messageq.sh.tmpl", {
-    ziti_edge_controller_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
-    ziti_edge_router_ip     = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
-  })
-
-  #depends_on = [google_compute_instance.ziti_edge_controller]
-  provisioner "remote-exec" {
-  inline = [
-    "mkdir -p /home/hong3nguyen/app"
-  ]
-  }
-  provisioner "file" {
-    #source      = "ml_consumer.py"
-    source = "../../../../applications/machine_learning/object_classification/src/database/"
-    destination = "/home/hong3nguyen/app/"
-  }
-
-  # provisioner "file" {
-  #   source      = "create_id_cloud_entities.sh"
-  #   destination = "/home/hong3nguyen/create_id_cloud_entities"
-  # }
-  #
-  # provisioner "remote-exec" {
-  #   inline = [
-  #     "chmod +x /home/hong3nguyen/create_id_cloud_entities"
-  #   ]
-  # }
   connection {
     type        = "ssh"
     user        = "hong3nguyen"
     private_key = file("~/.ssh/id_ed25519")
     host        = self.network_interface[0].access_config[0].nat_ip
-    agent = true  
+    agent       = true
   }
+
+  # provisioner "file" {
+  #   content = templatefile("ziti-cloud-init.sh.tmpl", {})
+  #   destination = "/tmp/ziti-cloud-init.sh"
+  # }
+  metadata_startup_script = file("ziti-cloud-init.sh")
+
+  # provisioner "remote-exec" {
+  #   inline = [
+  #     "chmod +x /tmp/ziti-cloud-init.sh",
+  #     "sudo /tmp/ziti-cloud-init.sh"
+  #   ]
+  # }
+
+  tags = ["ziti", "controller"]
+}
+
+# ------------------------------
+# Application (MessageQ)
+# ------------------------------
+resource "google_compute_instance" "message_q" {
+  name         = "cloud-messageq"
+  machine_type = "e2-medium"
+  zone         = "europe-north1-a"
+
+  boot_disk {
+    initialize_params {
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
+    }
+  }
+
+  network_interface {
+    network       = "default"
+    access_config {}
+  }
+
+  metadata = {
+    ssh-keys = "hong3nguyen:${file("~/.ssh/id_ed25519.pub")}"
+  }
+
+  connection {
+    type        = "ssh"
+    user        = "hong3nguyen"
+    private_key = file("~/.ssh/id_ed25519")
+    host        = self.network_interface[0].access_config[0].nat_ip
+    agent       = true
+  }
+
+  # Provision application files first
+  provisioner "remote-exec" {
+    inline = [
+      "mkdir -p /home/hong3nguyen/app"
+    ]
+  }
+  provisioner "file" {
+    source      = "../../../../applications/machine_learning/object_classification/src/database/"
+    destination = "/home/hong3nguyen/app/"
+  }
+
+  # Provision and run Ziti setup script
+  metadata_startup_script = file("ziti-mq-init.sh")
+
+  # provisioner "file" {
+  #   content = templatefile("ziti-mq-init.sh.tmpl", {
+  #     ziti_edge_controller_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip,
+  #     ziti_edge_router_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
+  #   })
+  #   destination = "/tmp/ziti-mq-init.sh"
+  # }
+
+  # provisioner "remote-exec" {
+  #   inline = [
+  #     "chmod +x /tmp/ziti-mq-init.sh",
+  #     "sudo /tmp/ziti-mq-init.sh"
+  #   ]
+  # }
 
   tags = ["cloud-messageq", "ziti-app"]
 }
@@ -139,8 +127,8 @@ resource "google_compute_instance" "message_q" {
 # ------------------------------
 resource "google_compute_instance" "database" {
   name         = "cloud-db"
-  machine_type = var.machine_type
-  zone         = var.zone
+  machine_type = "e2-medium"
+  zone         = "europe-north1-a"
 
   boot_disk {
     initialize_params {
@@ -153,19 +141,37 @@ resource "google_compute_instance" "database" {
     access_config {}
   }
 
-  #metadata_startup_script = file("setup_cloud_db.sh")
-
-  metadata_startup_script = templatefile("setup_cloud_db.sh.tmpl", {
-    ziti_edge_controller_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
-    ziti_edge_router_ip     = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
-  })
-
   metadata = {
     ssh-keys = "hong3nguyen:${file("~/.ssh/id_ed25519.pub")}"
   }
 
+  connection {
+    type        = "ssh"
+    user        = "hong3nguyen"
+    private_key = file("~/.ssh/id_ed25519")
+    host        = self.network_interface[0].access_config[0].nat_ip
+    agent       = true
+  }
+
+  metadata_startup_script = file("ziti-db-init.sh")
+  # provisioner "file" {
+  #   content = templatefile("ziti-db-init.sh.tmpl", {
+  #     ziti_edge_controller_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip,
+  #     ziti_edge_router_ip = google_compute_instance.ziti_controller_router.network_interface[0].network_ip
+  #   })
+  #   destination = "/tmp/ziti-db-init.sh"
+  # }
+  #
+  # provisioner "remote-exec" {
+  #   inline = [
+  #     "chmod +x /tmp/ziti-db-init.sh",
+  #     "sudo /tmp/ziti-db-init.sh"
+  #   ]
+  # }
+
   tags = ["cloud-db", "ziti-app"]
 }
+
 # ------------------------------
 # Shared Firewall Rules
 # ------------------------------
@@ -205,19 +211,6 @@ resource "google_compute_firewall" "allow-app" {
   source_ranges = ["0.0.0.0/0"]
 }
 
-# resource "google_compute_firewall" "allow-internal-services" {
-#   name    = "allow-internal-services"
-#   network = "default"
-#
-#   allow {
-#     protocol = "tcp"
-#     ports    = ["5672", "27017", "443", "6262", "10080", "8440-8443"]
-#   }
-#
-#   source_ranges = ["10.128.0.0/9"]  # internal IP range of your VPC
-#   target_tags   = ["ziti-app", "ziti", "controller", "cloud-messageq", "cloud-db"]
-# }
-
 # ------------------------------
 # Outputs
 # ------------------------------
@@ -230,8 +223,3 @@ output "messageq_ip" {
 output "database_ip" {
   value = google_compute_instance.database.network_interface[0].access_config[0].nat_ip
 }
-#
-# output "router_ip" {
-#   value = google_compute_instance.ziti_router.network_interface[0].access_config[0].nat_ip
-# }
-#

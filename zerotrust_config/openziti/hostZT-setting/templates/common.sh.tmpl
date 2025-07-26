@@ -1,0 +1,132 @@
+#!/bin/bash
+
+# ==============================================================================
+# COMMON FUNCTIONS
+# ==============================================================================
+
+# Ziti configuration from variable_input.yml
+ZITI_HOME="{{ ziti_config.ctrl.cloud_ctrl.home }}"
+ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
+ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_port }}"
+ZITI_USER="{{ ziti_config.ctrl.cloud_ctrl.user }}"
+ZITI_PWD="{{ ziti_config.ctrl.cloud_ctrl.password }}"
+
+# --- Log a message ---
+log() {
+  #echo ">>> $(date '+%Y-%m-%d %H:%M:%S') - $1"
+  echo ">>> $(date '+%Y-%m-%d %H:%M:%S.%N') - $1"
+}
+
+# --- Install Ziti CLI ---
+install_ziti_cli() {
+  apt install curl gpg -y
+  log "Installing Ziti CLI"
+  if ! command -v ziti &>/dev/null; then
+    source /etc/os-release
+    curl -sS https://get.openziti.io/install.bash | sudo bash -s openziti-router
+    log "Ziti CLI installed."
+  else
+    log "Ziti CLI is already installed."
+
+  fi
+}
+
+# --- Install Ziti Edge Tunnel ---
+install_ziti_edge_tunnel() {
+  log "Installing Ziti Edge Tunnel"
+  if ! command -v ziti-edge-tunnel &>/dev/null; then
+    curl -sSLf https://get.openziti.io/tun/package-repos.gpg |
+    gpg --dearmor --output /usr/share/keyrings/openziti.gpg
+
+    chmod -c +r /usr/share/keyrings/openziti.gpg
+
+    echo "deb [signed-by=/usr/share/keyrings/openziti.gpg] https://packages.openziti.org/zitipax-openziti-deb-stable jammy main" |
+      tee /etc/apt/sources.list.d/openziti.list >/dev/null
+
+    apt update
+
+    apt install -y ziti-edge-tunnel
+    log "Ziti Edge Tunnel installed."
+  else
+    log "Ziti Edge Tunnel is already installed."
+  fi
+
+}
+
+# --- Add Ziti DNS entries to /etc/hosts ---
+add_ziti_dns_entries() {
+  log "Adding Ziti DNS entries to /etc/hosts"
+  local cloud_ip="$1"
+  
+  # Ensure the entries are not already present
+  if ! grep -q "{{  ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address  }}" /etc/hosts; then
+    echo "$cloud_ip {{  ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address  }}" | sudo tee -a /etc/hosts
+    echo "$cloud_ip {{  ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address  }}" | sudo tee -a /etc/hosts
+  fi
+  {% for edge in ziti_config.router.edge_router %}
+  if ! grep -q "{{  edge.edge_router_advertised_address }}" /etc/hosts; then
+    echo "{{ edge.edge_router_ip }} {{ edge.edge_router_advertised_address }}" | sudo tee -a /etc/hosts
+  fi
+  {% endfor %}
+}
+
+
+# --- Create and enroll a Ziti identity ---
+create_and_enroll_identity() {
+  local identity_name="$1"
+  local identity_roles="$2"
+  local machine_name="$3"
+  local path="$4"
+  local jwt_file="${path}/${identity_name}.jwt"
+  local json_file="${path}/${identity_name}.json"
+
+  log "Creating and enrolling identity: $identity_name  $machine_name"
+
+  if [[ -n "$machine_name" ]]; then
+    full_identity="${identity_name}-${machine_name}"
+  else
+    full_identity="$identity_name"
+  fi
+
+  ${ZITI_HOME}/bin/ziti edge login https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT} --yes -u ${ZITI_USER} -p ${ZITI_PWD}
+  
+  ${ZITI_HOME}/bin/ziti edge create identity device "$full_identity" -a "$identity_roles" --jwt-output-file "$jwt_file"
+
+  ${ZITI_HOME}/bin/ziti edge enroll --jwt ${jwt_file} --out ${json_file}
+  
+}
+
+
+# --- Function to create Ziti service and policies ---
+create_ziti_service() {
+  local name="$1"
+  local port="$2"
+  local intercept_address="$3"
+  local host_address="$4"
+  local service_roles="$5"
+  local bind_identity_roles="$6"
+  local dial_identity_roles="$7"
+
+  log "Creating Ziti service: $name"
+
+  # Create intercept config
+  "$ZITI_CLI" edge create config "${name}-intercept-config" intercept.v1 \
+    "{\"protocols\":[\"tcp\"],\"addresses\":[\"${intercept_address}\"], \"portRanges\":[{\"low\":${port}, \"high\":${port}}]}"
+
+  # Create host config
+  "$ZITI_CLI" edge create config "${name}-host-config" host.v1 \
+    "{\"protocol\":\"tcp\", \"address\":\"${host_address}\",\"port\":${port}}"
+
+  # Create service
+  "$ZITI_CLI" edge create service "${name}-service" \
+    --configs "${name}-intercept-config,${name}-host-config" --role-attributes "$service_roles"
+
+  # Create bind policy
+  "$ZITI_CLI" edge create service-policy "${name}-bind-policy" Bind \
+    --service-roles "@${name}-service" --identity-roles "$bind_identity_roles"
+
+  # Create dial policy
+  "$ZITI_CLI" edge create service-policy "${name}-dial-policy" Dial \
+    --service-roles "@${name}-service" --identity-roles "$dial_identity_roles"
+}
+

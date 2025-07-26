@@ -2,13 +2,16 @@
 
 set -euo pipefail
 
+source "$(dirname "$0")/common.sh"
+
 # ==============================================================================
 # VARIABLES
 # ==============================================================================
 
 # Passed as environment variables from the calling script
 export CLOUD_IP="$CLOUD_IP"
-export EDGE_IP="$EDGE_IP"
+export JAEGER_IP="$JAEGER_IP"
+export SSH_USER="$SSH_USER"
 
 # Ziti configuration from variable_input.yml
 ZITI_HOME="/opt/openziti"
@@ -17,9 +20,9 @@ ZITI_CTRL_ADVERTISED_PORT="1280"
 ZITI_USER="admin"
 ZITI_PWD="admin"
 ZITI_CLOUD_ROUTER_ADVERTISED_ADDRESS="router.cloud.hong3nguyen.com"
-ZITI_EDGE_ROUTER_ADVERTISED_ADDRESS="router.edge.hong3nguyen.com"
+CURRENT_DIR="/home/${SSH_USER}/hong3nguyen"
 
-CURRENT_DIR="$(pwd)/hong3nguyen"
+
 
 # ==============================================================================
 # FUNCTIONS
@@ -40,13 +43,6 @@ install_ziti_cli() {
   fi
 }
 
-# --- Add DNS entries for Ziti controllers/routers ---
-add_dns_entries() {
-  log "Adding Ziti DNS entries to /etc/hosts"
-  echo "$CLOUD_IP ctrl.cloud.hong3nguyen.com" >>/etc/hosts
-  echo "$CLOUD_IP router.cloud.hong3nguyen.com" >>/etc/hosts
-  echo "$EDGE_IP router.edge.hong3nguyen.com" >>/etc/hosts
-}
 
 # --- Prepare Docker Compose file ---
 prepare_docker_compose() {
@@ -54,10 +50,7 @@ prepare_docker_compose() {
   # Ensure envsubst is available
   apt-get update -y && apt-get install -y gettext-base
 
-  # Pass JAEGER_IP from the calling script (script_settup_sensor_edge.sh)
-  export JAEGER_IP="$(cd ../cloud-gcp && terraform output -raw database_ip)"
-
-  envsubst <"${CURRENT_DIR}/docker-compose.template.yml" >"${CURRENT_DIR}/docker-compose.yml"
+  envsubst <"${CURRENT_DIR}/docker-compose.yml.tmpl" >"${CURRENT_DIR}/docker-compose.yml"
   docker compose -f "${CURRENT_DIR}/docker-compose.yml" down --volumes || true
 }
 
@@ -66,7 +59,7 @@ create_and_enroll_ziti_identities() {
   log "Creating and enrolling Ziti identities"
   "${ZITI_HOME}/bin/ziti" edge login "https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}" --yes --username "${ZITI_USER}" --password "${ZITI_PWD}"
 
-  rm -rf /tmp/*.json /tmp/*.jwt
+  rm -rf $CURRENT_DIR/*.json $CURRENT_DIR/*.jwt
 
   # Execute the templated create_id_entities.sh script
   "${CURRENT_DIR}/create_id_entities.sh"
@@ -85,7 +78,7 @@ start_docker_compose_services() {
 main() {
   log "Starting Edge Application Setup"
   install_ziti_cli
-  add_dns_entries
+  add_ziti_dns_entries "$CLOUD_IP"
   prepare_docker_compose
   create_and_enroll_ziti_identities
   start_docker_compose_services

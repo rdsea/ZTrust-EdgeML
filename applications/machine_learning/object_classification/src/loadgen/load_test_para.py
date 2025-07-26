@@ -5,7 +5,6 @@ import random
 import time
 from pathlib import Path
 
-
 class ImageUploadUser(HttpUser):
     wait_time = between(1, 1)
 
@@ -63,7 +62,6 @@ class ImageUploadUser(HttpUser):
 
         except Exception as e:
             logging.exception(f"Exception during upload: {e}")
-
 
 # Register custom arguments
 def add_custom_arguments(parser):

@@ -1,0 +1,43 @@
+volumes:
+  artifacts:
+
+services:
+{%- for service in edge_applications %}
+  {%- if service.docker_compose  %}
+  {{ service.name}}:
+    container_name: {{ service.name }}-service
+    image: {% if service.environment.DOCKER == "true" -%}
+           {{ service.image }}:docker
+         {%- elif service.environment.OPENZITI == "true" -%}
+           {{ service.image }}_ziti:latest
+         {%- else %}
+           {{ service.image }}:default
+        {%- endif %}
+    {%- if not service.noport %}
+    ports:
+      - {{ service.port }}:{{ service.port }}
+    {%- endif %}
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    extra_hosts:
+      - "{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}:${CLOUD_IP}"
+      - "{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}:${CLOUD_IP}"
+        {%- for r in ziti_config.router.edge_router %}
+      - "{{ r.edge_router_advertised_address }}:{{ r.edge_router_ip }}"
+        {%- endfor %}
+    networks:
+      - default
+    {%- if service.volume %}
+    volumes:
+      - /home/$SSH_USER/{{ ssh_user }}/{{ service.volume }}
+    {%- endif %}
+    {%- if service.environment %}
+    environment:
+    {%- for key, value in service.environment.items() %}
+      {{ key }}: "{{ value }}"
+    {%- endfor %}
+    {%- endif %}
+  {%- endif %}
+{%- endfor %}

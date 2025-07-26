@@ -1,0 +1,159 @@
+# .env
+# EDGE_ROUTER_ADVERTISED_ADDRESS=""
+# EDGE_ROUTER_IP=""
+#
+# EDGE_APP_IP=""
+# SENSOR_IP_1=""
+# SENSOR_IP_2=""
+#
+# CLOUD_CTRL_ADVERTISED_ADDRESS=""
+# CLOUD_CTRL_IP=""
+# CLOUD_CTRL_IP_INTERNAL=""
+#
+# CLOUD_ROUTER_ADVERTISED_ADDRESS=""
+# CLOUD_ROUTER_IP=""
+# CLOUD_ROUTER_IP_INTERNAL=""
+#
+# PASS="aaltosea"
+# ZT_USER=
+# ZT_PASS=
+# application flow?
+
+zt_config:
+  cloud:
+    ctrl_name: ${CLOUD_CTRL_NAME}
+    ctrl_ip: ${CLOUD_CTRL_IP}
+    ctrl_port: 1280
+    ctrl_user: ${ZT_USER}
+    ctrl_password: ${ZT_PASS}
+    cloud_router_name: ${CLOUD_ROUTER_NAME}
+    cloud_router_ip: ${CLOUD_ROUTER_IP}
+  edge:
+    extra_host:
+      - ${CLOUD_CTRL_IP}:${CLOUD_CTRL_ADVERTISED_ADDRESS}
+      - ${CLOUD_ROUTER_IP}:${CLOUD_ROUTER_ADVERTISED_ADDRESS}
+      - ${EDGE_ROUTER_IP}:${EDGE_ROUTER_ADVERTISED_ADDRESS}
+    edge_router_name: ${EDGE_ROUTER_NAME}
+    edge_router_ip: ${EDGE_ROUTER_IP}
+    loadbalancer:
+      port: 5009
+        - ${CLOUD_ROUTER_IP}:${CLOUD_ROUTER_NAME}
+
+app:
+  cloud:
+    message-queue:
+      extra_hosts:
+        - "${CLOUD_CTRL_ADVERTISED_ADDRESS}:${CLOUD_CTRL_IP_INTERNAL}"
+        - "${CLOUD_ROUTER_ADVERTISED_ADDRESS}:${CLOUD_ROUTER_IP_INTERNAL}"
+      port: 5672
+      depend_on: ensemble
+    database:
+      extra_hosts:
+        - "${CLOUD_CTRL_ADVERTISED_ADDRESS}:${CLOUD_CTRL_IP_INTERNAL}"
+        - "${CLOUD_ROUTER_ADVERTISED_ADDRESS}:${CLOUD_ROUTER_IP_INTERNAL}"
+      port: 27017
+      depend_on: message-queue
+  edge:
+    app_ip: ${EDGE_APP_IP}
+    services:
+      preprocessing-service:
+        image: hongtringuyen/preprocessing_ziti:latest
+        container_name: preprocessing-service
+        ports:
+          - 5010:5010
+        cap_add:
+          - NET_ADMIN
+        devices:
+          - /dev/net/tun:/dev/net/tun
+        extra_hosts:
+          - "${CLOUD_CTRL_ADVERTISED_ADDRESS}:${CLOUD_CTRL_IP}"
+          - "${CLOUD_ROUTER_ADVERTISED_ADDRESS}:${CLOUD_ROUTER_IP}"
+          - "${EDGE_ROUTER_ADVERTISED_ADDRESS}:${EDGE_ROUTER_IP}"
+        networks:
+          - default
+        volumes:
+          - /tmp/preprocessing.json:/opt/secret.json
+        environment:
+          OPENZITI: "true"
+          #DOCKER: "true"
+          MANUAL_TRACING: true
+          OTEL_ENDPOINT: "http://{$JAEGER_IP}:4318/v1/traces"
+          cpus: 0.5
+        depend_on: loadbalancer
+
+      ensemble-service:
+        image: hongtringuyen/ensemble_ziti:latest
+        container_name: ensemble-service
+        ports:
+          - 5011:5011
+        cap_add:
+          - NET_ADMIN
+        devices:
+          - /dev/net/tun:/dev/net/tun
+        extra_hosts:
+          - "${CLOUD_CTRL_ADVERTISED_ADDRESS}:${CLOUD_CTRL_IP}"
+          - "${CLOUD_ROUTER_ADVERTISED_ADDRESS}:${CLOUD_ROUTER_IP}"
+          - "${EDGE_ROUTER_ADVERTISED_ADDRESS}:${EDGE_ROUTER_IP}"
+        networks:
+          - default
+        volumes:
+          - /tmp/ensemble.json:/opt/secret.json
+        #entrypoint: ["/bin/bash", "-c", "/usr/local/bin/install-ziti-edge-tunnel.sh"]
+        environment:
+          OPENZITI: "true"
+          #DOCKER: "true"
+          SEND_TO_QUEUE: true
+          MANUAL_TRACING: true
+          OTEL_ENDPOINT: "http://{$JAEGER_IP}:4318/v1/traces"
+          cpus: 0.5
+        depend_on: preprocessing-service
+
+      mobilenetv2-service:
+        image: hongtringuyen/inference_ziti:latest
+        container_name: mobilenetv2-service
+        cap_add:
+          - NET_ADMIN
+        devices:
+          - /dev/net/tun:/dev/net/tun
+        extra_hosts:
+          - "${CLOUD_CTRL_ADVERTISED_ADDRESS}:${CLOUD_CTRL_IP}"
+          - "${CLOUD_ROUTER_ADVERTISED_ADDRESS}:${CLOUD_ROUTER_IP}"
+          - "${EDGE_ROUTER_ADVERTISED_ADDRESS}:${EDGE_ROUTER_IP}"
+        networks:
+          - default
+        volumes:
+          - /tmp/mobilenetv2.json:/opt/secret.json
+        #entrypoint: ["/bin/bash", "-c", "/usr/local/bin/install-ziti-edge-tunnel.sh"]
+        environment:
+          OPENZITI: "true"
+          #DOCKER: "true"
+          MANUAL_TRACING: true
+          OTEL_ENDPOINT: "http://{$JAEGER_IP}:4318/v1/traces"
+          cpus: 0.5
+        depend_on: ensemble-service
+
+      efficientnetb0-service:
+        image: hongtringuyen/inference_ziti:latest
+        container_name: efficientnetb0-service
+        cap_add:
+          - NET_ADMIN
+        devices:
+          - /dev/net/tun:/dev/net/tun
+        extra_hosts:
+          - "${CLOUD_CTRL_ADVERTISED_ADDRESS}:${CLOUD_CTRL_IP}"
+          - "${CLOUD_ROUTER_ADVERTISED_ADDRESS}:${CLOUD_ROUTER_IP}"
+          - "${EDGE_ROUTER_ADVERTISED_ADDRESS}:${EDGE_ROUTER_IP}"
+        networks:
+          - default
+        volumes:
+          - /tmp/efficientnetb0.json:/opt/secret.json
+        #entrypoint: ["/bin/bash", "-c", "/usr/local/bin/install-ziti-edge-tunnel.sh"]
+        environment:
+          OPENZITI: "true"
+          #DOCKER: "true"
+          MANUAL_TRACING: true
+          OTEL_ENDPOINT: "http://{$JAEGER_IP}:4318/v1/traces"
+          cpus: 0.5
+        depend_on: ensemble-service
+  sensor:
+    ip: ${SENSOR_IPS}

@@ -1,0 +1,71 @@
+#!/bin/bash
+
+set -euo pipefail
+# ==============================================================================
+# FUNCTIONS
+# ==============================================================================
+
+# --- Helper function for logging ---
+log() {
+  echo "############ $1 ############"
+}
+
+# --- Generic function to deploy a script to a target machine ---
+
+run_exp() {
+  local target_ip="$1"
+  local ssh_user="$2"
+  local ssh_pass="$3"
+  local run_locust_file="$4"
+  local host="$5"
+  local concurrent="$6"
+  local spawn_rate="$7"
+  local duration="$8"
+  local result_file="$9"
+  local image_data="${10}"
+
+  log "Running on $target_ip"
+
+  local remote_path="/home/$ssh_user/{{ ssh_user }}/$run_locust_file"
+  local cmd="locust -f $remote_path \
+    --ds-path $image_data \
+    --device-id \$(hostname) \
+    --host $host \
+    --headless \
+    --users $concurrent \
+    --spawn-rate $spawn_rate \
+    --run-time $duration \
+    --csv $result_file \
+    --csv-full-history"
+
+  echo $cmd
+
+  ssh "$ssh_user@$target_ip" "echo '$ssh_pass' | sudo -S bash -c '$cmd'"
+}
+# ==============================================================================
+# MAIN EXECUTION
+# ==============================================================================
+# uv run python client_processing.py --url http://loadbalancer.ziti-controller.private:5009/preprocessing --ds_path ../image --rate 1 --device_id $(cat /etc/hostname)
+# locust -f load_test_para.py  --ds-path ../image/  --device-id $(hostname) --host http://loadbalancer.ziti-controller.private:5009/preprocessing --headless --user 10 --spawn-rate 1 --run-time 1m  
+
+
+main() {
+  {% for sensor_ in edge_deployment.sensor %}
+  run_exp "{{ sensor_.ip }}" \
+            "{{ sensor_.ssh_user }}" \
+            "{{ sensor_.ssh_pass }}" \
+            "{{ sensor_.run_locust_file }}" \
+            "{{ sensor_.host }}" \
+            "{{ sensor_.concurrent }}" \
+            "{{ sensor_.spawn_rate }}" \
+            "{{ sensor_.duration }}" \
+            "{{ sensor_.result }}" \
+            "{{ sensor_.data_dest }}" &
+  {% endfor %}
+
+  # Wait for all background jobs to finish
+  wait
+
+  log "All sensor experiments completed."
+}
+main "$@"

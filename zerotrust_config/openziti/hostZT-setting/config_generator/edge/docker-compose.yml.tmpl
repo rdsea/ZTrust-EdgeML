@@ -1,0 +1,92 @@
+volumes:
+  artifacts:
+
+services:
+  preprocessing:
+    container_name: preprocessing-service
+    image: hongtringuyen/preprocessing_ziti:latest
+    ports:
+      - 5010:5010
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    extra_hosts:
+      - "ctrl.cloud.hong3nguyen.com:${CLOUD_IP}"
+      - "router.cloud.hong3nguyen.com:${CLOUD_IP}"
+      - "router.edge.hong3nguyen.com:130.233.195.219"
+    networks:
+      - default
+    volumes:
+      - /home/$SSH_USER/hong3nguyen/preprocessing.json:/opt/secret.json
+    environment:
+      OPENZITI: "true"
+      SEND_TO_QUEUE: "True"
+      MANUAL_TRACING: "True"
+      OTEL_ENDPOINT: "http://${JAEGER_IP}:4318/v1/traces"
+      cpus: "0.5"
+  ensemble:
+    container_name: ensemble-service
+    image: hongtringuyen/ensemble_ziti:latest
+    ports:
+      - 5011:5011
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    extra_hosts:
+      - "ctrl.cloud.hong3nguyen.com:${CLOUD_IP}"
+      - "router.cloud.hong3nguyen.com:${CLOUD_IP}"
+      - "router.edge.hong3nguyen.com:130.233.195.219"
+    networks:
+      - default
+    volumes:
+      - /home/$SSH_USER/hong3nguyen/ensemble.json:/opt/secret.json
+    environment:
+      OPENZITI: "true"
+      SEND_TO_QUEUE: "true"
+      MANUAL_TRACING: "True"
+      OTEL_ENDPOINT: "http://${JAEGER_IP}:4318/v1/traces"
+      cpus: "0.5"
+  mobilenetv2:
+    container_name: mobilenetv2-service
+    image: hongtringuyen/inference_ziti:latest
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    extra_hosts:
+      - "ctrl.cloud.hong3nguyen.com:${CLOUD_IP}"
+      - "router.cloud.hong3nguyen.com:${CLOUD_IP}"
+      - "router.edge.hong3nguyen.com:130.233.195.219"
+    networks:
+      - default
+    volumes:
+      - /home/$SSH_USER/hong3nguyen/mobilenetv2.json:/opt/secret.json
+    environment:
+      OPENZITI: "true"
+      SEND_TO_QUEUE: "True"
+      MANUAL_TRACING: "True"
+      OTEL_ENDPOINT: "http://${JAEGER_IP}:4318/v1/traces"
+      cpus: "0.5"
+  efficientnetb0:
+    container_name: efficientnetb0-service
+    image: hongtringuyen/inference_ziti:latest
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    extra_hosts:
+      - "ctrl.cloud.hong3nguyen.com:${CLOUD_IP}"
+      - "router.cloud.hong3nguyen.com:${CLOUD_IP}"
+      - "router.edge.hong3nguyen.com:130.233.195.219"
+    networks:
+      - default
+    volumes:
+      - /home/$SSH_USER/hong3nguyen/efficientnetb0.json:/opt/secret.json
+    environment:
+      OPENZITI: "true"
+      SEND_TO_QUEUE: "True"
+      MANUAL_TRACING: "True"
+      OTEL_ENDPOINT: "http://${JAEGER_IP}:4318/v1/traces"
+      cpus: "0.5"
