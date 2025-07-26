@@ -4,8 +4,9 @@
 
 ```bash
 locust -f load_test.py --host http://localhost:5010 --headless --user 10 --spawn-rate 1 --run-time 1m
-```
 
+locust -f load_test_para.py  --ds-path ../image/  --device-id $(hostname) --host http://loadbalancer.ziti-controller.private:5009/preprocessing --headless --user 10 --spawn-rate 1 --run-time 1m  
+```
 ## Using docker
 
 ```bash

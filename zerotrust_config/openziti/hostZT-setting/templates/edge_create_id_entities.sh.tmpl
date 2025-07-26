@@ -1,0 +1,55 @@
+#!/bin/bash
+
+set -euo pipefail
+
+# Source the common functions
+# shellcheck source=common.sh.tmpl
+source "$(dirname "$0")/common.sh"
+# ==============================================================================
+# VARIABLES
+# ==============================================================================
+
+# Ziti CLI path
+ZITI_CLI="/opt/openziti/bin/ziti"
+SH_USER="$SSH_USER"
+
+
+# ==============================================================================
+# MAIN EXECUTION
+# ==============================================================================
+
+main() {
+  log "Creating Ziti Identities, Services, and Policies"
+
+  # Create identities and services for each application
+  {%- for app in edge_applications %} 
+  {%- if app.docker_compose %}
+  create_and_enroll_identity "{{ app.name }}" "{{ app.roles | join(',') }}" "" "/home/${SSH_USER}/{{ ssh_user }}"
+  {% endif %}
+  {%- if not app.sensor %}
+  create_ziti_service \
+    "{{ app.name }}" \
+    "{{ app.port }}" \
+    "{{ app.intercept_address }}" \
+    "{{ app.host_address }}" \
+    "{{ app.roles | join(',') }}" \
+    "{{ app.bind_identity_roles | join(',') }}" \
+    "{{ app.dial_identity_roles | join(',') }}"
+  {%- endif %}
+  {%- endfor %}
+
+  # Add specific policies that are not tied to a single application
+  log "Creating general Ziti policies"
+
+  {% for policy in policies %}
+  "$ZITI_CLI" edge create {% if policy.type == "edge-router-policy" %}{{ policy.type }} "{{ policy.name }}" \
+    --edge-router-roles '{{ policy.edge_router_roles }}' --identity-roles '{{ policy.identity_roles }}'
+  {% else %}{{ policy.type }} "{{ policy.name }}" \
+    --edge-router-roles '{{ policy.edge_router_roles }}' --service-roles '{{ policy.service_roles }}'
+  {% endif %}
+  {% endfor %}
+
+  log "Ziti identity and service creation complete."
+}
+
+main "$@"

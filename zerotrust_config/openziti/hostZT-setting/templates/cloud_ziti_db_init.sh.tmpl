@@ -1,0 +1,193 @@
+#!/bin/bash
+
+exec > /var/log/startup-script.log 2>&1
+set -x
+set -euo pipefail
+
+# Source the common functions
+# shellcheck source=common.sh.tmpl
+# source "../scripts/common.sh"
+
+# ==============================================================================
+# FUNCTIONS
+# ==============================================================================
+# --- Log a message ---
+log() {
+  echo ">>> $(date '+%Y-%m-%d %H:%M:%S') - $1"
+}
+
+# --- Set up Ziti environment variables ---
+set_ziti_variables() {
+  log "Setting Ziti environment variables"
+  export ZITI_HOME="{{ ziti_config.ctrl.cloud_ctrl.home }}"
+  export ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
+  export ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_port }}"
+  export ZITI_USER="{{ ziti_config.ctrl.cloud_ctrl.user }}"
+  export ZITI_PWD="{{ ziti_config.ctrl.cloud_ctrl.password }}"
+  export ZITI_DIR="/home/{{ ssh_user }}"
+  export OPENZITI="true"
+}
+
+# --- Install Ziti CLI ---
+install_ziti_cli() {
+  apt install curl gpg -y
+  log "Installing Ziti CLI"
+  if ! command -v ziti &>/dev/null; then
+    source /etc/os-release
+    curl -sS https://get.openziti.io/install.bash | sudo bash -s openziti-router
+    log "Ziti CLI installed."
+  else
+    log "Ziti CLI is already installed."
+
+  fi
+}
+
+# --- Install Ziti Edge Tunnel ---
+install_ziti_edge_tunnel() {
+  log "Installing Ziti Edge Tunnel"
+  if ! command -v ziti-edge-tunnel &>/dev/null; then
+    curl -sSLf https://get.openziti.io/tun/package-repos.gpg |
+    gpg --dearmor --output /usr/share/keyrings/openziti.gpg
+
+    chmod -c +r /usr/share/keyrings/openziti.gpg
+
+    echo "deb [signed-by=/usr/share/keyrings/openziti.gpg] https://packages.openziti.org/zitipax-openziti-deb-stable jammy main" |
+      tee /etc/apt/sources.list.d/openziti.list >/dev/null
+
+    apt update
+
+    apt install -y ziti-edge-tunnel
+    log "Ziti Edge Tunnel installed."
+  else
+    log "Ziti Edge Tunnel is already installed."
+  fi
+
+}
+
+# --- Add Ziti DNS entries to /etc/hosts ---
+add_ziti_dns_entries() {
+  log "Adding Ziti DNS entries to /etc/hosts"
+  local cloud_ip="$1"
+  
+  # Ensure the entries are not already present
+  if ! grep -q "{{  ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address  }}" /etc/hosts; then
+    echo "$cloud_ip {{  ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address  }}" | sudo tee -a /etc/hosts
+    echo "$cloud_ip {{  ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address  }}" | sudo tee -a /etc/hosts
+  fi
+  {% for edge in ziti_config.router.edge_router %}
+  if ! grep -q "{{  edge.edge_router_advertised_address }}" /etc/hosts; then
+    echo "{{ edge.edge_router_ip }} {{ edge.edge_router_advertised_address }}" | sudo tee -a /etc/hosts
+  fi
+  {% endfor %}
+}
+
+# --- Create and enroll a Ziti identity ---
+create_and_enroll_identity() {
+  local identity_name="$1"
+  local identity_roles="$2"
+  local jwt_file="/home/{{ ssh_user }}/$1.jwt"
+  local json_file="/home/{{ ssh_user }}/$1.json"
+
+  log "Creating and enrolling identity: $1"
+  
+  export ZITI_HOME="{{ ziti_config.ctrl.cloud_ctrl.home }}"
+
+  $ZITI_HOME/bin/ziti edge login https://{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}:{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_port }} --yes -u {{ ziti_config.ctrl.cloud_ctrl.user }} -p {{ ziti_config.ctrl.cloud_ctrl.password }}
+  
+  $ZITI_HOME/bin/ziti edge create identity device $identity_name -a $identity_roles --jwt-output-file $jwt_file
+  
+  $ZITI_HOME/bin/ziti edge enroll --jwt $jwt_file --out $json_file
+  
+}
+
+
+# --- Install MongoDB ---
+install_mongodb() {
+  log "Installing MongoDB"
+  sudo apt-get update -y
+  sudo apt-get install -y gnupg curl
+
+
+  curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc |
+    sudo gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg \
+      --dearmor
+
+  echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/8.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
+
+  sudo apt-get update -y 
+  sudo apt-get install -y mongodb-org
+  sudo systemctl start mongod
+  sudo systemctl daemon-reload
+  sudo systemctl enable mongod
+
+}
+
+# --- Configure MongoDB ---
+configure_mongodb() {
+  log "Configuring MongoDB"
+  mkdir -p /home/{{ssh_user}}/data/db
+  sudo chown -R mongodb:mongodb /home/{{ssh_user}}/data/db
+  sudo chmod 755 /home
+  sudo chmod 755 /home/{{ssh_user}}
+  sudo chmod 755 /home/{{ssh_user}}/data
+
+  sudo tee /etc/mongod.conf >/dev/null <<EOF
+net:
+  bindIp: 0.0.0.0
+  port: 27017
+storage:
+  dbPath: /home/{{ssh_user}}/data/db
+systemLog:
+  destination: file
+  path: /var/log/mongodb/mongod.log
+  logAppend: true
+EOF
+
+  sudo systemctl restart mongod
+
+  # Create admin user
+  log "Creating MongoDB admin user"
+  {% for vm in vms %}
+  {% if vm.mongo_config is defined %}
+  mongosh <<EOF
+  use admin
+  db.createUser({
+    user: "{{ vm.mongo_config.user }}",
+    pwd: "{{ vm.mongo_config.pass }}",
+    roles: [ { role: "userAdminAnyDatabase", db: "admin" } ]
+  })
+EOF
+  {%- endif %}
+  {%- endfor %}
+
+  # Enable auth
+  sudo sed -i '/^#*security:/a\  authorization: enabled' /etc/mongod.conf
+
+  sudo systemctl restart mongod
+}
+
+# ==============================================================================
+# MAIN EXECUTION
+# ==============================================================================
+
+main() {
+  set_ziti_variables
+  install_mongodb
+  configure_mongodb
+  add_ziti_dns_entries "${controller_ip}" 
+
+  install_ziti_edge_tunnel
+  install_ziti_cli
+
+  # Create and enroll the Ziti identity
+  create_and_enroll_identity "database" "database,{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_attribute }}"
+
+  # Run the tunnel in the background
+  nohup ziti-edge-tunnel run -i "/home/{{ ssh_user }}/database.json"  >/var/log/ziti-edge-tunnel.log 2>&1 &
+
+  log "Database setup complete."
+}
+
+main "$@"
+echo ">>> $(date '+%Y-%m-%d %H:%M:%S') - STARTUP SCRIPT COMPLETED"
+

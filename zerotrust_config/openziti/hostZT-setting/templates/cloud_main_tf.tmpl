@@ -1,0 +1,77 @@
+provider "google" {
+  project = "{{ project_name }}"
+  region  = "{{ region }}"
+  zone    = "{{ zone }}"
+}
+
+
+# VM Instances
+{% for vm in vms %}
+resource "google_compute_instance" "{{ vm.name | replace('-', '_') }}" {
+  name         = "{{ vm.name }}"
+  machine_type = "{{ machine_type }}"
+  zone         = "{{ zone }}"
+  tags = [{% for tag in vm.tags %}"{{ tag }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+  boot_disk {
+    initialize_params {
+      image = "{{ image }}"
+    }
+  }
+
+  {% if vm.provisioner_source_path is defined %}
+  provisioner "remote-exec" {
+    inline = [
+      "mkdir -p {{ vm.provisioner_destination_path }}"
+    ]
+  }
+  provisioner "file" {
+    source      = "{{ vm.provisioner_source_path }}/"
+    destination = "{{ vm.provisioner_destination_path }}"
+  }
+  provisioner "file" {
+    source      = "{{ vm.config_file }}"
+    destination = "{{ vm.provisioner_destination_path }}/{{ vm.config_file }}"
+  }
+  connection {
+    type        = "ssh"
+    user        = "{{ ssh_user }}"
+    private_key = file("{{ ssh_private_key_path }}")
+    host        = self.network_interface[0].access_config[0].nat_ip
+    agent = true  
+  }
+  {% endif %}
+  network_interface {
+    network = "default"
+    access_config {}
+  }
+  metadata = {
+    ssh-keys = "{{ ssh_user }}:${file("{{ ssh_public_key_path }}")}"
+  }
+
+  metadata_startup_script = {% if vm.use_template %}templatefile("{{ vm.provisioner_script }}", {
+    controller_ip = google_compute_instance.{{ vm.ctrl_name }}.network_interface[0].network_ip
+    router_ip     = google_compute_instance.{{ vm.ctrl_name }}.network_interface[0].network_ip
+  }){% else %}file("{{ vm.provisioner_script }}"){% endif %}
+}
+{% endfor %}
+
+# Firewall Rules
+{% for rule in firewall_rules %}
+resource "google_compute_firewall" "{{ rule.name | replace('-', '_') }}" {
+  name    = "{{ rule.name }}"
+  network = "default"
+
+  allow {
+    protocol = "{{ rule.protocol }}"
+    ports    = [{% for port in rule.ports %}"{{ port }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+  }
+
+  source_ranges = [{% for range in rule.source_ranges %}"{{ range }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+}
+{% endfor %}
+
+{% for vm in vms %}
+output "{{ vm.name | replace('-', '_') }}_ip" {
+  value = google_compute_instance.{{ vm.name | replace('-', '_') }}.network_interface[0].access_config[0].nat_ip
+}
+{% endfor %}
