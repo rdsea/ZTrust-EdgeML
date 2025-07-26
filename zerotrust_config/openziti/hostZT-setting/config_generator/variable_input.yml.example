@@ -1,105 +1,186 @@
-project_name: "your-gcp-project-id"
-region: "your-gcp-region"
-zone: "your-gcp-zone"
-machine_type: "e2-medium" # Example: e2-medium, n1-standard-1
-image: "ubuntu-os-cloud/ubuntu-2204-lts" # Example: ubuntu-os-cloud/ubuntu-2204-lts
-ssh_user: "your-ssh-username"
-ssh_public_key_path: "~/.ssh/id_rsa.pub" # Path to your SSH public key
-ssh_private_key_path: "~/.ssh/id_rsa" # Path to your SSH private key
+# This file contains sensitive local configuration and should NOT be committed to Git.
+# It will override values in variable_input.yml.
+
+project_name: "aalto"
+ssh_user: "hong3"
+region: "europe"
+zone: "europe"
+machine_type: "e2-medium"
+image: "ubuntu-os-cloud/ubuntu-2204-lts"
+ssh_public_key_path: ""
+ssh_private_key_path: ""
+dir_default: "/home/hong3" # only for cloud setting :(
 
 vms:
   - name: "ziti-controller-router"
     tags: ["ziti", "controller"]
     provisioner_script: "ziti-cloud-init.sh"
+    use_template: false
   - name: "cloud-messageq"
     tags: ["cloud-messageq", "ziti-app"]
-    provisioner_script: "ziti-mq-init.sh"
-    application_source_path: "../../../../applications/machine_learning/object_classification/src/database/" # Example path
-    application_destination_path: "/home/{{ssh_user}}/app/"
+    provisioner_script: "ziti-mq-init.sh.tmpl"
+    provisioner_source_path: "<database src folder>"
+    provisioner_destination_path: "/home/hong3/database"
+    config_file: "config.yaml"
+    ctrl_name: "ziti_controller_router"
+    use_template: true
+    has_provisioner: false
+    rabbitmq_config:
+      url: "localhost"
+      queue_name: "object_detection_result"
+      user: "" # change guest need to change ensemble
+      pass: ""
   - name: "cloud-db"
     tags: ["cloud-db", "ziti-app"]
-    provisioner_script: "ziti-db-init.sh"
-
-firewall_rules:
-  - name: "allow-ssh"
-    protocol: "tcp"
-    ports: ["22"]
-    source_ranges: ["0.0.0.0/0"]
-  - name: "allow-ziti"
-    protocol: "tcp"
-    ports:
-      [
-        "1280",
-        "3022",
-        "443",
-        "5672",
-        "27017",
-        "6262",
-        "10080",
-        "10000",
-        "8440-8443",
-      ]
-    source_ranges: ["0.0.0.0/0"]
-  - name: "allow-app"
-    protocol: "tcp"
-    ports: ["5672"]
-    source_ranges: ["0.0.0.0/0"]
+    provisioner_script: "ziti-db-init.sh.tmpl"
+    ctrl_name: "ziti_controller_router"
+    mongo_config:
+      url: "database.ziti-controller.private"
+      user: ""
+      pass: ""
+    use_template: true
+  - name: "jaeger"
+    tags: ["jaeger-db", "ziti-app"]
+    provisioner_script: "ziti-jaeger-init.sh"
+    use_template: false
 
 ziti_config:
-  home: "/opt/openziti"
-  user: "ziti-admin-username"
-  password: "ziti-admin-password"
-  ctrl_advertised_address: "ctrl.yourdomain.com"
-  ctrl_advertised_port: "1280"
-  router_advertised_address: "router.yourdomain.com"
-  router_port: "3022"
-  router_attribute: "cloud"
-  edge_router_advertised_address: "edge-router.yourdomain.com"
+  ctrl:
+    cloud_ctrl:
+      user: "admin"
+      password: "admin"
+      ctrl_advertised_address: "ctrl.cloud.hong3nguyen.com"
+      router:
+        id: "cloud_router"
+        cloud_router_advertised_address: "router.cloud.hong3nguyen.com"
+        cloud_router_port: "3022"
+        cloud_router_attribute: "cloud"
+  router:
+    # cloud_router:
+    #   - id: "cloud_router"
+    #     cloud_router_advertised_address: "router.cloud.hong3nguyen.com"
+    edge_router:
+      - id: "edge_router"
+        edge_router_advertised_address: "router.edge.hong3nguyen.com"
+        edge_router_ip: ""
+        ssh_user: ""
+        ssh_pass: ""
+        edge_router_port: "3022"
+        edge_router_attribute: "edge"
 
 edge_deployment:
-  ssh_user: "edge-ssh-username"
-  ssh_pass: "edge-ssh-password"
-  edge_router_ip: "192.168.1.100" # Example IP
-  edge_app_ip: "192.168.1.101" # Example IP
-  sensors:
-    - ip: "192.168.1.102" # Example IP
-      ssh_pass: "sensor-ssh-password-1"
-    - ip: "192.168.1.103" # Example IP
-      ssh_pass: "sensor-ssh-password-2"
+  edge:
+    - edge_app_ip: ""
+      ssh_user: ""
+      ssh_pass: ""
+      src_app: "<src app for further build docker>"
+  sensor:
+    - ip: ""
+      ssh_user: ""
+      ssh_pass: ""
+      loadgen: "<locust-based src to test>"
+      data_dest: "/home/aaltosea/hong3nguyen/image/"
+      data_src: "../image"
+      run_locust_file: "loadgen/load_test_para.py"
+      host: "http://loadbalancer.ziti-controller.private:5009"
+      concurrent: "10"
+      spawn_rate: "1"
+      duration: "1m"
+      result: "/home/.../hong3nguyen/locust_results.csv"
+    - ip: ""
+    ssh_pass: ""
+      ssh_user: ""
+      loadgen: "<locust-based src to test>"
+      data_dest: "/home/aaltosea/hong3nguyen/image/"
+      data_src: "../image"
+      run_locust_file: "loadgen/load_test_para"
+      host: "http://loadbalancer.ziti-controller.private:5009"
+      concurrent: "10"
+      spawn_rate: "1"
+      duration: "1m"
+      result: "/home/aaltosea/hong3nguyen/locust_results.csv"
 
 edge_applications:
   - name: "object-detection-client"
     roles: ["object-detection-client", "edge"]
+    docker_compose: false
+    sensor: true
   - name: "preprocessing"
     roles: ["preprocessing", "edge"]
+    image: hongtringuyen/preprocessing
+    volume: "preprocessing.json:/opt/secret.json"
+    docker_compose: true
     port: 5010
+    environment:
+      OPENZITI: "true"
+      #DOCKER: "true"
+      SEND_TO_QUEUE: true
+      MANUAL_TRACING: true
+      OTEL_ENDPOINT: "http://${JAEGER_IP}:4318/v1/traces"
+      cpus: 0.5
     intercept_address: "preprocessing.ziti-controller.private"
     host_address: "localhost"
     dial_identity_roles: ["#loadbalancer"]
     bind_identity_roles: ["#preprocessing"]
   - name: "ensemble"
     roles: ["ensemble", "edge", "cloud"]
+    image: hongtringuyen/ensemble
+    volume: "ensemble.json:/opt/secret.json"
+    docker_compose: true
     port: 5011
+    build:
+      context: ".src/"
+      dockerfile: ensemble/Dockerfile.ziti
+    environment:
+      OPENZITI: "true"
+      #DOCKER: "true"
+      SEND_TO_QUEUE: "true"
+      MANUAL_TRACING: true
+      OTEL_ENDPOINT: "http://${JAEGER_IP}:4318/v1/traces"
+      cpus: 0.5
     intercept_address: "ensemble.ziti-controller.private"
     host_address: "localhost"
     dial_identity_roles: ["#preprocessing"]
     bind_identity_roles: ["#ensemble"]
   - name: "mobilenetv2"
     roles: ["mobilenetv2", "edge"]
+    image: hongtringuyen/inference
+    volume: "mobilenetv2.json:/opt/secret.json"
+    docker_compose: true
     port: 5012
+    noport: true
+    environment:
+      OPENZITI: "true"
+      #DOCKER: "true"
+      SEND_TO_QUEUE: true
+      MANUAL_TRACING: true
+      OTEL_ENDPOINT: "http://${JAEGER_IP}:4318/v1/traces"
+      cpus: 0.5
     intercept_address: "mobilenetv2.ziti-controller.private"
     host_address: "localhost"
     dial_identity_roles: ["#ensemble"]
     bind_identity_roles: ["#mobilenetv2"]
   - name: "efficientnetb0"
     roles: ["efficientnetb0", "edge"]
+    image: hongtringuyen/inference
+    volume: "efficientnetb0.json:/opt/secret.json"
+    docker_compose: true
     port: 5012
+    noport: true
+    environment:
+      OPENZITI: "true"
+      #DOCKER: "true"
+      SEND_TO_QUEUE: true
+      MANUAL_TRACING: true
+      OTEL_ENDPOINT: "http://${JAEGER_IP}:4318/v1/traces"
+      cpus: 0.5
     intercept_address: "efficientnetb0.ziti-controller.private"
     host_address: "localhost"
     dial_identity_roles: ["#ensemble"]
     bind_identity_roles: ["#efficientnetb0"]
   - name: "loadbalancer"
-    roles: ["loadbalancer"]
+    roles: ["loadbalancer", "edge"]
+    docker_compose: false
     port: 5009
     intercept_address: "loadbalancer.ziti-controller.private"
     host_address: "localhost"
@@ -107,6 +188,7 @@ edge_applications:
     bind_identity_roles: ["#loadbalancer"]
   - name: "message-queue"
     roles: ["message-queue", "cloud"]
+    docker_compose: false
     port: 5672
     intercept_address: "rabbitmq.ziti-controller.private"
     host_address: "localhost"
@@ -114,6 +196,7 @@ edge_applications:
     bind_identity_roles: ["#message-queue"]
   - name: "database"
     roles: ["database", "cloud"]
+    docker_compose: false
     port: 27017
     intercept_address: "database.ziti-controller.private"
     host_address: "localhost"
