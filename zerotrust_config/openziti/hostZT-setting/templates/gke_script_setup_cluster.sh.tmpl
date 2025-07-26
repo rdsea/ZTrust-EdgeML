@@ -1,0 +1,48 @@
+#!/bin/bash
+
+set -e 
+
+cd ../gke/ && terraform output -raw kubeconfig_command
+
+CLUSTER_IP=$(cd ../gke/ && terraform output -raw {{ gke.cluster_name | replace('-', '_') }}_ip)
+
+CTRL_ADVERTISED="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
+
+# helm upgrade --install ingress-nginx ingress-nginx \
+#   --repo https://kubernetes.github.io/ingress-nginx \
+#   --namespace ingress-nginx --create-namespace \
+#   --version 4.10.0
+
+# Create namespace if it doesn't exist
+NAMESPACE="{{ gke.namespace }}"
+
+if ! kubectl get namespace "$NAMESPACE" >/dev/null 2>&1; then
+  echo "Creating namespace: $NAMESPACE"
+  kubectl create namespace "$NAMESPACE"
+else
+  echo "Namespace $NAMESPACE already exists."
+fi
+
+helm install \
+    --namespace $NAMESPACE ziti-controller-minimal1 \
+    openziti/ziti-controller \
+    --set cert-manager.enabled="true" --set trust-manager.enabled="true" \
+        --set clientApi.advertisedHost="$CLUSTER_IP" \
+        --set clientApi.advertisedPort="443"
+
+
+helm install \
+    --namespace $NAMESPACE ziti-controller-minimal1 \
+    openziti/ziti-controller \
+        --set clientApi.advertisedHost="$CTRL_ADVERTISED" \
+        --set clientApi.advertisedPort="443" \
+        --set service.type=LoadBalancer
+
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.crds.yaml
+kubectl apply -f https://raw.githubusercontent.com/cert-manager/trust-manager/v0.7.0/deploy/crds/trust.cert-manager.io_bundles.yaml
+
+kubectl get secrets -n $NAMESPACE
+kubectl get configmaps -n $NAMESPACE
+
+

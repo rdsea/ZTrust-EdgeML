@@ -1,0 +1,83 @@
+provider "google" {
+  project = "{{ project_name }}"
+  region  = "{{ region }}"
+  zone    = "{{ zone }}"
+}
+
+# GKE Cluster
+resource "google_container_cluster" "primary" {
+  name     = "{{ gke.cluster_name }}"
+  location = "{{ region }}"
+
+  initial_node_count       = 1
+  remove_default_node_pool = true
+  deletion_protection      = false  
+  ip_allocation_policy {}
+}
+
+# GKE Node Pool
+resource "google_container_node_pool" "primary_nodes" {
+  name     = "{{ gke.cluster_name }}-node-pool"
+  cluster  = google_container_cluster.primary.name
+  location = "{{ region }}"
+
+  node_config {
+    preemptible  = {{ gke.preemptible }}
+    machine_type = "{{ machine_type }}"
+    oauth_scopes = [
+      "https://www.googleapis.com/auth/cloud-platform"
+    ]
+    labels = {
+      role = "worker"
+    }
+    tags = ["gke-node"]
+  }
+
+  initial_node_count = {{ gke.node_count }}
+}
+
+# Firewall Rules: External
+{% for rule in gke.firewall_external %}
+resource "google_compute_firewall" "{{ rule.name | replace('-', '_') }}" {
+  name    = "{{ rule.name }}"
+  network = "default"
+
+  allow {
+    protocol = "{{ rule.protocol }}"
+    ports    = [{% for port in rule.ports %}"{{ port }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+  }
+
+  source_ranges = [{% for range in rule.source_ranges %}"{{ range }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+}
+{% endfor %}
+
+# Firewall Rules: Internal
+{% for rule in gke.firewall_internal %}
+resource "google_compute_firewall" "{{ rule.name | replace('-', '_') }}" {
+  name    = "{{ rule.name }}"
+  network = "default"
+
+  allow {
+    protocol = "{{ rule.protocol }}"
+    ports    = [{% for port in rule.ports %}"{{ port }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+  }
+
+  source_ranges = [{% for range in rule.source_ranges %}"{{ range }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+}
+{% endfor %}
+
+# Outputs for the GKE cluster
+output "cluster_name" {
+  description = "The name of the GKE cluster."
+  value       = google_container_cluster.primary.name
+}
+
+output "{{ gke.cluster_name | replace('-', '_') }}_ip" {
+  description = "The IP address of the GKE cluster's control plane."
+  value       = google_container_cluster.primary.endpoint
+}
+
+output "kubeconfig_command" {
+  value       = format("gcloud container clusters get-credentials %s --region %s", google_container_cluster.primary.name, google_container_cluster.primary.location)
+  description = "Command to configure kubectl for the GKE cluster."
+}
