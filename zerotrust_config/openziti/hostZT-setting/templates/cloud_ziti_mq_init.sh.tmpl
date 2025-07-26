@@ -166,7 +166,7 @@ setup_application() {
 
 
     # Use uv to set up the virtual environment
-    {%- for vm in vms %}
+    {%- for vm in vms -%}
     {% if vm.provisioner_destination_path is defined %}
     cd {{ vm.provisioner_destination_path }}
     # Use uv to set up the virtual environment in a writable location
