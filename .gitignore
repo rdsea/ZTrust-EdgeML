@@ -43,3 +43,5 @@ terraform.rc
 
 # terraform lock 
 *.lock.hcl
+
+*.local.yaml
