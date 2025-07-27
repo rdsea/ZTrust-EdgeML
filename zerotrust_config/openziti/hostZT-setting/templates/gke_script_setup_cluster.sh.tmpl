@@ -38,13 +38,53 @@ helm upgrade --install trust-manager jetstack/trust-manager \
 
 
 helm install ziti-controller openziti/ziti-controller \
-  --namespace ziti \
+  --namespace $NAMESPACE \
   --set cert-manager.enabled=false \
   --set trust-manager.enabled=false \
   --set clientApi.advertisedHost="$CTRL_ADVERTISED" \
 
-echo "$(kubectl get svc ziti-controller-client -n $NAMESPACE -o jsonpath='{.status.loadBalancer.ingress[0].ip}') $CTRL_ADVERTISED" | tee -a /etc/hosts
+sudo sed -i.bak "/$CTRL_ADVERTISED/ s/^/# /" /etc/hosts
 
-ziti edge login $CTRL_ADVERTISED:443 --yes --username admin --password $(kubectl -n $NAMESPACE get secrets ziti-controller-admin-secret -o go-template='{{index .data "admin-password" | base64decode }}')
+EXTERNAL_IP=$(kubectl get svc ziti-controller-client -n $NAMESPACE -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+echo "$EXTERNAL_IP $CTRL_ADVERTISED" | sudo tee -a /etc/hosts
 
 
+ziti edge login "$CTRL_ADVERTISED:443" \
+  --yes --username admin \
+  --password "$(kubectl -n "$NAMESPACE" get secrets ziti-controller-admin-secret -o go-template='{{"{{"}}index .data "admin-password" | base64decode {{"}}"}}')"
+
+
+# Router setting
+
+# get a router enrollment token from the controller's management API
+ziti edge create edge-router "{{ ziti_config.ctrl.cloud_ctrl.router.id }}" \
+  --tunneler-enabled --jwt-output-file /tmp/{{ ziti_config.ctrl.cloud_ctrl.router.id }}.jwt
+
+# subscribe to the openziti Helm repo
+if ! helm repo list | grep -q "^openziti"; then
+  echo "Adding Helm repo 'openziti'..."
+  helm repo add "openziti" "https://openziti.github.io/helm-charts/"
+else
+  echo "Helm repo 'openziti' already exists. Skipping."
+fi
+
+
+# install the router chart with a public address
+helm upgrade --install \
+  "ziti-cloud-router-{{ ziti_config.ctrl.cloud_ctrl.router.id | replace('_', '') }}"  \
+  openziti/ziti-router \
+    --set-file enrollmentJwt=/tmp/{{ ziti_config.ctrl.cloud_ctrl.router.id }}.jwt \
+    --set ctrl.endpoint=$CTRL_ADVERTISED:443 \
+    --set edge.advertisedHost={{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }} \
+
+# DNS setting 
+envsubst < gke_dns_configmap.yml | kubectl apply -f -
+
+CUSTOM_DNS_IP=kubectl get pod -n kube-system -l app=custom-dns-server -o jsonpath='{.items[0].status.podIP}'
+
+kubectl patch configmap kube-dns -n kube-system --type merge -p "{\"data\":{\"stubDomains\":\"{\\\"{{ custom_domain }}\\\":[\\\"$CUSTOM_DNS_IP\\\"]}\"}}"
+
+kubectl delete pods -n kube-system -l k8s-app=kube-dns
+
+# Setup the public router

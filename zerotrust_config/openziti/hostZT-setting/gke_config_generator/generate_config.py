@@ -72,10 +72,20 @@ if __name__ == "__main__":
     files_to_generate = {
         "gke_main_tf.tmpl": "gke/main.tf",
         "gke_script_setup_cluster.sh.tmpl": "scripts/gke_script_setup_cluster.sh",
+        "gke_dns_configmap.yml.tmpl": "scripts/gke_dns_configmap.yml",
     }
 
-    # ziti_config = config.get("ziti_config", {})
-    # ctrls = ziti_config.get("ctrl", {})
+    ctrl_advertise_name = (
+        config.get("ziti_config", {})
+        .get("ctrl", {})
+        .get("cloud_ctrl", {})
+        .get("ctrl_advertised_address")
+    )
+    print("ctrl name", ctrl_advertise_name)
+    parts = ctrl_advertise_name.split(".")
+    domain = ".".join(parts[-2:])
+    print("domain ", domain)
+    domain_config = deep_merge(config.copy(), {"custom_domain": domain})
     # routers = ziti_config.get("router", {})
     #
     # for ctrl_name, ctrl_data in ctrls.items():
@@ -101,7 +111,9 @@ if __name__ == "__main__":
     #         break  # or continue if want to allow multiple pairs
     #
     for template_name, relative_output_path in files_to_generate.items():
-        generate_file(env, config, template_name, relative_output_path, OUTPUT_ROOT_DIR)
+        generate_file(
+            env, domain_config, template_name, relative_output_path, OUTPUT_ROOT_DIR
+        )
     #
     # # Generate shell scripts for VMs (these also go into the new 'cloud' folder)
     # vm_script_mapping = {
