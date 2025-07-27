@@ -2,16 +2,17 @@
 
 set -e 
 
-cd ../gke/ && terraform output -raw kubeconfig_command
+# Assumption
+# It is not normally necessary to obtain publicly trusted certificates for Ziti's TLS servers.
+# Ziti manages the trust relationships between the controller and routers and clients independent of the web's root authorities.
+# See the Alternative Web Server Certificates section for more information.
+
+
+eval "$(cd ../gke/ && terraform output -raw kubeconfig_command)"
 
 CLUSTER_IP=$(cd ../gke/ && terraform output -raw {{ gke.cluster_name | replace('-', '_') }}_ip)
 
 CTRL_ADVERTISED="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
-
-# helm upgrade --install ingress-nginx ingress-nginx \
-#   --repo https://kubernetes.github.io/ingress-nginx \
-#   --namespace ingress-nginx --create-namespace \
-#   --version 4.10.0
 
 # Create namespace if it doesn't exist
 NAMESPACE="{{ gke.namespace }}"
@@ -23,26 +24,27 @@ else
   echo "Namespace $NAMESPACE already exists."
 fi
 
-helm install \
-    --namespace $NAMESPACE ziti-controller-minimal1 \
-    openziti/ziti-controller \
-    --set cert-manager.enabled="true" --set trust-manager.enabled="true" \
-        --set clientApi.advertisedHost="$CLUSTER_IP" \
-        --set clientApi.advertisedPort="443"
+helm repo add jetstack https://charts.jetstack.io
+
+helm upgrade --install cert-manager jetstack/cert-manager \
+    --namespace cert-manager --create-namespace \
+    --set crds.enabled=true
 
 
-helm install \
-    --namespace $NAMESPACE ziti-controller-minimal1 \
-    openziti/ziti-controller \
-        --set clientApi.advertisedHost="$CTRL_ADVERTISED" \
-        --set clientApi.advertisedPort="443" \
-        --set service.type=LoadBalancer
+helm upgrade --install trust-manager jetstack/trust-manager \
+    --namespace cert-manager \
+    --set crds.keep=false \
+    --set app.trust.namespace=$NAMESPACE
 
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.crds.yaml
-kubectl apply -f https://raw.githubusercontent.com/cert-manager/trust-manager/v0.7.0/deploy/crds/trust.cert-manager.io_bundles.yaml
 
-kubectl get secrets -n $NAMESPACE
-kubectl get configmaps -n $NAMESPACE
+helm install ziti-controller openziti/ziti-controller \
+  --namespace ziti \
+  --set cert-manager.enabled=false \
+  --set trust-manager.enabled=false \
+  --set clientApi.advertisedHost="$CTRL_ADVERTISED" \
+
+echo "$(kubectl get svc ziti-controller-client -n $NAMESPACE -o jsonpath='{.status.loadBalancer.ingress[0].ip}') $CTRL_ADVERTISED" | tee -a /etc/hosts
+
+ziti edge login $CTRL_ADVERTISED:443 --yes --username admin --password $(kubectl -n $NAMESPACE get secrets ziti-controller-admin-secret -o go-template='{{index .data "admin-password" | base64decode }}')
 
 
