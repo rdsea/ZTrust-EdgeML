@@ -7,7 +7,49 @@ set -e
 # Ziti manages the trust relationships between the controller and routers and clients independent of the web's root authorities.
 # See the Alternative Web Server Certificates section for more information.
 
+log() {
+  echo -e "\n====== $1 ======\n"
+}
 
+# wait_for_deployment() {
+#   ns=$1
+#   deploy=$2
+#   echo "Waiting for deployment '$deploy' in namespace '$ns' to be ready..."
+#   kubectl rollout status deployment/"$deploy" -n "$ns" --timeout=120s
+# }
+
+wait_for_deployment() {
+  ns=$1
+  deploy=$2
+  echo "Waiting for deployment '$deploy' in namespace '$ns' to be ready..."
+
+  success_msg="deployment \"$deploy\" successfully rolled out"
+  timeout=180  # seconds
+  interval=10  # seconds
+  elapsed=0
+
+  while true; do
+    output=$(kubectl rollout status deployment/"$deploy" -n "$ns" --timeout=5s 2>&1 || true)
+
+    if echo "$output" | grep -q "$success_msg"; then
+      echo "$output"
+      break
+    else
+      echo "Still waiting: $output"
+    fi
+
+    if [ "$elapsed" -ge "$timeout" ]; then
+      echo "Timeout waiting for deployment $deploy in namespace $ns"
+      exit 1
+    fi
+
+    sleep "$interval"
+    elapsed=$((elapsed + interval))
+  done
+}
+
+
+setting_k8s(){
 eval "$(cd ../gke/ && terraform output -raw kubeconfig_command)"
 
 CLUSTER_IP=$(cd ../gke/ && terraform output -raw {{ gke.cluster_name | replace('-', '_') }}_ip)
@@ -23,40 +65,66 @@ if ! kubectl get namespace "$NAMESPACE" >/dev/null 2>&1; then
 else
   echo "Namespace $NAMESPACE already exists."
 fi
+  }
 
+trust_setup(){
 helm repo add jetstack https://charts.jetstack.io
 
+log "cert-manager"
 helm upgrade --install cert-manager jetstack/cert-manager \
     --namespace cert-manager --create-namespace \
     --set crds.enabled=true
 
+wait_for_deployment cert-manager cert-manager
 
+
+log "trust-manager"
 helm upgrade --install trust-manager jetstack/trust-manager \
     --namespace cert-manager \
     --set crds.keep=false \
     --set app.trust.namespace=$NAMESPACE
 
+wait_for_deployment cert-manager trust-manager
 
+
+log "zt-ctrl"
 helm install ziti-controller openziti/ziti-controller \
   --namespace $NAMESPACE \
   --set cert-manager.enabled=false \
   --set trust-manager.enabled=false \
   --set clientApi.advertisedHost="$CTRL_ADVERTISED" \
 
-sudo sed -i.bak "/$CTRL_ADVERTISED/ s/^/# /" /etc/hosts
+wait_for_deployment "$NAMESPACE" ziti-controller
 
-EXTERNAL_IP=$(kubectl get svc ziti-controller-client -n $NAMESPACE -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+  }
 
-echo "$EXTERNAL_IP $CTRL_ADVERTISED" | sudo tee -a /etc/hosts
+setup_localhost(){
 
+  log "/etc/hosts"
+  sudo sed -i.bak "/$CTRL_ADVERTISED/ s/^/# /" /etc/hosts
+
+  EXTERNAL_IP=$(kubectl get svc ziti-controller-client -n $NAMESPACE -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+  if [ -z "$EXTERNAL_IP" ]; then
+    echo "External IP is not assigned yet. Exiting or waiting..."
+    exit 1
+  else
+    echo "External IP found: $EXTERNAL_IP"
+    echo "$EXTERNAL_IP $CTRL_ADVERTISED" | sudo tee -a /etc/hosts
+  fi
+  }
+
+login_zt(){
 
 ziti edge login "$CTRL_ADVERTISED:443" \
   --yes --username admin \
   --password "$(kubectl -n "$NAMESPACE" get secrets ziti-controller-admin-secret -o go-template='{{"{{"}}index .data "admin-password" | base64decode {{"}}"}}')"
 
+}
 
 # Router setting
-
+setup_router(){
+log "router-cloud"
 # get a router enrollment token from the controller's management API
 ziti edge create edge-router "{{ ziti_config.ctrl.cloud_ctrl.router.id }}" \
   --tunneler-enabled --jwt-output-file /tmp/{{ ziti_config.ctrl.cloud_ctrl.router.id }}.jwt
@@ -76,15 +144,44 @@ helm upgrade --install \
   openziti/ziti-router \
     --set-file enrollmentJwt=/tmp/{{ ziti_config.ctrl.cloud_ctrl.router.id }}.jwt \
     --set ctrl.endpoint=$CTRL_ADVERTISED:443 \
-    --set edge.advertisedHost={{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }} \
+    {%- if ziti_config.ctrl.cloud_ctrl.router.loadbalancer %}
+    --set edge.service.type=LoadBalancer \
+    {%- endif %}
+    --set edge.advertisedHost={{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }} 
+    
+}
 
+setup_dns(){
 # DNS setting 
-envsubst < gke_dns_configmap.yml | kubectl apply -f -
+env EXTERNAL_IP="$EXTERNAL_IP" envsubst < gke_dns_configmap.yml | kubectl apply -f -
 
-CUSTOM_DNS_IP=kubectl get pod -n kube-system -l app=custom-dns-server -o jsonpath='{.items[0].status.podIP}'
+wait_for_deployment kube-system  custom-dns-server
+
+CUSTOM_DNS_IP=$(kubectl get pod -n kube-system -l app=custom-dns-server -o jsonpath='{.items[0].status.podIP}')
 
 kubectl patch configmap kube-dns -n kube-system --type merge -p "{\"data\":{\"stubDomains\":\"{\\\"{{ custom_domain }}\\\":[\\\"$CUSTOM_DNS_IP\\\"]}\"}}"
 
 kubectl delete pods -n kube-system -l k8s-app=kube-dns
 
-# Setup the public router
+wait_for_deployment kube-system  custom-dns-server
+
+}
+
+main(){
+
+setting_k8s
+
+trust_setup
+
+setup_localhost
+
+login_zt
+
+setup_dns
+
+setup_router
+
+log "Edge and Sensor deployment complete."
+}
+
+main "$@"
