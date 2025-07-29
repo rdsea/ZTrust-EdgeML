@@ -130,3 +130,106 @@ create_ziti_service() {
     --service-roles "@${name}-service" --identity-roles "$dial_identity_roles"
 }
 
+# Router setting
+setup_router(){
+  local router_id=$1
+  local router_namespace=$2
+  local router_advertise=$3
+
+log "router"
+# get a router enrollment token from the controller's management API
+ziti edge create edge-router "$router_id" \
+  --tunneler-enabled --jwt-output-file /tmp/$router_id.jwt
+
+# subscribe to the openziti Helm repo
+if ! helm repo list | grep -q "^openziti"; then
+  echo "Adding Helm repo 'openziti'..."
+  helm repo add "openziti" "https://openziti.github.io/helm-charts/"
+else
+  echo "Helm repo 'openziti' already exists. Skipping."
+fi
+
+
+# install the router chart with a public address
+
+if ! kubectl get namespace "$router_namespace" >/dev/null 2>&1; then
+  echo "Creating namespace: $router_namespace"
+  kubectl create namespace "$router_namespace"
+else
+  echo "Namespace $router_namespace already exists."
+fi
+
+helm upgrade --install \
+  "$router_id"  \
+  openziti/ziti-router \
+    --namespace $router_namespace \
+    --set-file enrollmentJwt=/tmp/$router_id.jwt \
+    --set ctrl.endpoint=$ctrl_advertise:443 \
+    {%- if ziti_config.ctrl.cloud_ctrl.router.loadbalancer %}
+    --set edge.service.type=LoadBalancer \
+    {%- endif %}
+    --set edge.advertisedHost=$router_advertise
+
+}
+
+login_zt() {
+  local ctrl_advertise=$1
+  local namespace=${2:-default}  # Use $2 if set, else "default"
+
+  ziti edge login "$ctrl_advertise:443" \
+    --yes --username admin \
+    --password "$(kubectl -n "$namespace" get secrets ziti-controller-admin-secret -o go-template='{{index .data "admin-password" | base64decode }}')"
+
+}
+
+setup_localhost() {
+  local ip=$1
+  local advertise=$2
+
+  echo "$ip $advertise"
+  log "/etc/hosts"
+  echo "sudo sed -i.bak \"/$advertise/ s/^/# /\" /etc/hosts"
+  sudo sed -i.bak "/$advertise/ s/^/# /" /etc/hosts
+
+  if [ -z "$ip" ]; then
+    echo "External IP is not assigned yet. Exiting or waiting..."
+    exit 1
+  else
+    echo "External IP found: $ip"
+    echo "$ip $advertise" | sudo tee -a /etc/hosts
+  fi
+}
+
+wait_for_deployment() {
+  ns=$1
+  deploy=$2
+  echo "Waiting for deployment '$deploy' in namespace '$ns' to be ready..."
+
+  success_msg="deployment \"$deploy\" successfully rolled out"
+  timeout=180 # seconds
+  interval=10 # seconds
+  elapsed=0
+
+  while true; do
+    output=$(kubectl rollout status deployment/"$deploy" -n "$ns" --timeout=5s 2>&1 || true)
+
+    if echo "$output" | grep -q "$success_msg"; then
+      echo "$output"
+      break
+    else
+      echo "Still waiting: $output"
+    fi
+
+    if [ "$elapsed" -ge "$timeout" ]; then
+      echo "Timeout waiting for deployment $deploy in namespace $ns"
+      exit 1
+    fi
+
+    sleep "$interval"
+    elapsed=$((elapsed + interval))
+  done
+}
+
+log() {
+  echo -e "\n====== $1 ======\n"
+}
