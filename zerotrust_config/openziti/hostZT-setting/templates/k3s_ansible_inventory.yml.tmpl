@@ -14,4 +14,4 @@ k3s_cluster:
     {% for key, value in k3s_cluster.vars.items() -%}
     {{ key }}: {{ value }}
     {% endfor -%}
-    api_endpoint: 130.233.195.214
+    api_endpoint: {{ k3s_cluster.ctrl }}
