@@ -1,0 +1,17 @@
+k3s_cluster:
+  children:
+    server:
+      hosts:
+      {%- for worker in k3s_cluster.ctrl %}
+        {{ worker }}:
+      {%- endfor %}
+    agent:
+      hosts:
+      {%- for worker in k3s_cluster.worker %}
+        {{ worker }}:
+      {%- endfor %}
+  vars:
+    {% for key, value in k3s_cluster.vars.items() -%}
+    {{ key }}: {{ value }}
+    {% endfor -%}
+    api_endpoint: 130.233.195.214

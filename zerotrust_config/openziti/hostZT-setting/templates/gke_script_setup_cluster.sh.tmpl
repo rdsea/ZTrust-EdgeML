@@ -51,20 +51,24 @@ wait_for_deployment() {
 
 setting_k8s(){
 eval "$(cd ../gke/ && terraform output -raw kubeconfig_command)"
-
 CLUSTER_IP=$(cd ../gke/ && terraform output -raw {{ gke.cluster_name | replace('-', '_') }}_ip)
-
 CTRL_ADVERTISED="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
+ROUTER_NAMESPACE="router"
 
 # Create namespace if it doesn't exist
-NAMESPACE="{{ gke.namespace }}"
+CTRL_NAMESPACE="{{ gke.namespace }}"
 
-if ! kubectl get namespace "$NAMESPACE" >/dev/null 2>&1; then
-  echo "Creating namespace: $NAMESPACE"
-  kubectl create namespace "$NAMESPACE"
+ROUTER_ADVERTISE="{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}"
+ROUTER_ID="ziti-{{ ziti_config.ctrl.cloud_ctrl.router.id | replace('_', '') }}"
+
+if ! kubectl get namespace "$CTRL_NAMESPACE" >/dev/null 2>&1; then
+  echo "Creating namespace: $CTRL_NAMESPACE"
+  kubectl create namespace "$CTRL_NAMESPACE"
 else
-  echo "Namespace $NAMESPACE already exists."
+  echo "Namespace $CTRL_NAMESPACE already exists."
 fi
+
+
   }
 
 trust_setup(){
@@ -103,13 +107,14 @@ setup_localhost(){
   local advertise=$2
 
   log "/etc/hosts"
+  echo "sudo sed -i.bak \"/$advertise/ s/^/# /\" /etc/hosts"
   sudo sed -i.bak "/$advertise/ s/^/# /" /etc/hosts
 
   if [ -z "$ip" ]; then
     echo "External IP is not assigned yet. Exiting or waiting..."
     exit 1
   else
-    echo "External IP found: $IP"
+    echo "External IP found: $ip"
     echo "$ip $advertise" | sudo tee -a /etc/hosts
   fi
   }
@@ -139,7 +144,6 @@ fi
 
 
 # install the router chart with a public address
-ROUTER_NAMESPACE="router"
 
 if ! kubectl get namespace "$ROUTER_NAMESPACE" >/dev/null 2>&1; then
   echo "Creating namespace: $ROUTER_NAMESPACE"
@@ -148,8 +152,6 @@ else
   echo "Namespace $ROUTER_NAMESPACE already exists."
 fi
 
-ROUTER_ADVERTISE="{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}"
-ROUTER_ID="ziti-{{ ziti_config.ctrl.cloud_ctrl.router.id | replace('_', '') }}"
 helm upgrade --install \
   "$ROUTER_ID"  \
   openziti/ziti-router \
@@ -161,7 +163,6 @@ helm upgrade --install \
     {%- endif %}
     --set edge.advertisedHost=$ROUTER_ADVERTISE
 
-PUB_ROUTER_IP=$(kubectl get svc $ROUTER_ID -n $ROUTER_NAMESPACE -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 }
 
 setup_dns(){
@@ -195,6 +196,7 @@ setup_dns
 
 setup_router
 
+PUB_ROUTER_IP=$(kubectl get svc "$ROUTER_ID-edge" -n $ROUTER_NAMESPACE -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 setup_localhost $PUB_ROUTER_IP $ROUTER_ADVERTISE
 
 log "Edge and Sensor deployment complete."
