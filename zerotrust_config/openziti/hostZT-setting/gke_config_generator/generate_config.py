@@ -73,6 +73,7 @@ if __name__ == "__main__":
         "gke_main_tf.tmpl": "gke/main.tf",
         "gke_script_setup_cluster.sh.tmpl": "scripts/gke_script_setup_cluster.sh",
         "gke_dns_configmap.yml.tmpl": "scripts/gke_dns_configmap.yml",
+        "k3s_ansible_inventory.yml.tmpl": "edge/k3s_ansible_inventory_test.local.yml",
     }
 
     ctrl_advertise_name = (
