@@ -99,18 +99,18 @@ wait_for_deployment "$NAMESPACE" ziti-controller
   }
 
 setup_localhost(){
+  local ip=$1
+  local advertise=$2
 
   log "/etc/hosts"
-  sudo sed -i.bak "/$CTRL_ADVERTISED/ s/^/# /" /etc/hosts
+  sudo sed -i.bak "/$advertise/ s/^/# /" /etc/hosts
 
-  EXTERNAL_IP=$(kubectl get svc ziti-controller-client -n $NAMESPACE -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-
-  if [ -z "$EXTERNAL_IP" ]; then
+  if [ -z "$ip" ]; then
     echo "External IP is not assigned yet. Exiting or waiting..."
     exit 1
   else
-    echo "External IP found: $EXTERNAL_IP"
-    echo "$EXTERNAL_IP $CTRL_ADVERTISED" | sudo tee -a /etc/hosts
+    echo "External IP found: $IP"
+    echo "$ip $advertise" | sudo tee -a /etc/hosts
   fi
   }
 
@@ -139,16 +139,29 @@ fi
 
 
 # install the router chart with a public address
+ROUTER_NAMESPACE="router"
+
+if ! kubectl get namespace "$ROUTER_NAMESPACE" >/dev/null 2>&1; then
+  echo "Creating namespace: $ROUTER_NAMESPACE"
+  kubectl create namespace "$ROUTER_NAMESPACE"
+else
+  echo "Namespace $ROUTER_NAMESPACE already exists."
+fi
+
+ROUTER_ADVERTISE="{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}"
+ROUTER_ID="ziti-{{ ziti_config.ctrl.cloud_ctrl.router.id | replace('_', '') }}"
 helm upgrade --install \
-  "ziti-cloud-router-{{ ziti_config.ctrl.cloud_ctrl.router.id | replace('_', '') }}"  \
+  "$ROUTER_ID"  \
   openziti/ziti-router \
+    --namespace $ROUTER_NAMESPACE \
     --set-file enrollmentJwt=/tmp/{{ ziti_config.ctrl.cloud_ctrl.router.id }}.jwt \
     --set ctrl.endpoint=$CTRL_ADVERTISED:443 \
     {%- if ziti_config.ctrl.cloud_ctrl.router.loadbalancer %}
     --set edge.service.type=LoadBalancer \
     {%- endif %}
-    --set edge.advertisedHost={{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }} 
-    
+    --set edge.advertisedHost=$ROUTER_ADVERTISE
+
+PUB_ROUTER_IP=$(kubectl get svc $ROUTER_ID -n $ROUTER_NAMESPACE -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 }
 
 setup_dns(){
@@ -173,13 +186,16 @@ setting_k8s
 
 trust_setup
 
-setup_localhost
+EXTERNAL_IP=$(kubectl get svc ziti-controller-client -n $NAMESPACE -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+setup_localhost $EXTERNAL_IP $CTRL_ADVERTISED
 
 login_zt
 
 setup_dns
 
 setup_router
+
+setup_localhost $PUB_ROUTER_IP $ROUTER_ADVERTISE
 
 log "Edge and Sensor deployment complete."
 }
