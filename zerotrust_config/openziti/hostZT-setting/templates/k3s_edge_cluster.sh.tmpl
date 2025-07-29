@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -euo pipefail
+
+source "$(dirname "$0")/common.sh"
+
+
+main(){
+
+ansible-playbook k3s.orchestration.site -i edge/k3s_inventory.local.yml
+
+ssh aaltosea@{{ k3s_cluster.ctrl }} "sudo cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/config
+
+# setup dns for all nodes go to ctrl.cloud.hong3nguyen.com
+
+# config Install MetalLB (bare metal solution)
+
+}
+
+main"$@"
