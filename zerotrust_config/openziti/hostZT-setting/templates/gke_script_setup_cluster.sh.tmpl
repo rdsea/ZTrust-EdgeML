@@ -1,6 +1,9 @@
 #!/bin/bash
 
-set -e 
+set -euo pipefail
+
+source "$(dirname "$0")/common.sh"
+
 
 # Assumption
 # It is not normally necessary to obtain publicly trusted certificates for Ziti's TLS servers.
