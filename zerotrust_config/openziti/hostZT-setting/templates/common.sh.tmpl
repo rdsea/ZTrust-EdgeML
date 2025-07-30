@@ -233,3 +233,38 @@ login_zt() {
     --yes --username admin \
     --password "$(kubectl -n "$namespace" get secrets ziti-controller-admin-secret -o go-template='{{"{{"}}index .data "admin-password" | base64decode {{"}}"}}')"
 }
+
+wait_for_ip_and_advertise() {
+  ip_var_name=$1
+  advertise_var_name=$2
+  ip_command=$3
+  advertise_command=$4
+
+  MAX_RETRIES=10
+  RETRY_INTERVAL=5
+  RETRIES=0
+
+  while true; do
+    local ip_value
+    local advertise_value
+
+    ip_value=$(eval "$ip_command")
+    advertise_value=$(eval "$advertise_command")
+
+    if [[ -n "$ip_value" && -n "$advertise_value" ]]; then
+      eval "$ip_var_name=\"$ip_value\""
+      eval "$advertise_var_name=\"$advertise_value\""
+      break
+    fi
+
+    echo "Waiting for $ip_var_name or $advertise_var_name to be available..."
+    sleep "$RETRY_INTERVAL"
+    RETRIES=$((RETRIES + 1))
+
+    if [ "$RETRIES" -ge "$MAX_RETRIES" ]; then
+      echo "Timeout waiting for $ip_var_name and $advertise_var_name"
+      exit 1
+    fi
+  done
+}
+
