@@ -66,7 +66,7 @@ wait_for_deployment "$CTRL_NAMESPACE" ziti-controller
 
 setup_dns(){
 # DNS setting 
-env EXTERNAL_IP="$EXTERNAL_IP" envsubst < gke_dns_configmap.yml | kubectl apply -f -
+env PUB_CTRL_IP="$PUB_CTRL_IP" envsubst < gke_dns_configmap.yml | kubectl apply -f -
 
 wait_for_deployment kube-system  custom-dns-server
 
@@ -85,11 +85,11 @@ main(){
   setting_k8s
   trust_setup
 
-  wait_for_ip_and_advertise EXTERNAL_IP CTRL_ADVERTISED \
+  wait_for_ip_and_advertise PUB_CTRL_IP CTRL_ADVERTISED \
     "kubectl get svc ziti-controller-client -n \"$CTRL_NAMESPACE\" -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
     "echo {{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
 
-  setup_localhost "$EXTERNAL_IP" "$CTRL_ADVERTISED"
+  setup_localhost "$PUB_CTRL_IP" "$CTRL_ADVERTISED"
   login_zt "$CTRL_ADVERTISED" "$CTRL_NAMESPACE"
   setup_dns
   setup_router "$ROUTER_ID" "$ROUTER_NAMESPACE" "$ROUTER_ADVERTISE"
@@ -100,6 +100,9 @@ main(){
 
   setup_localhost "$PUB_ROUTER_IP" "$ROUTER_ADVERTISE"
   log "Edge and Sensor deployment complete."
+
+  envsubst < ../k3s/k3s_edge_cluster.sh.tmpl > ../k3s/k3s_edge_cluster.sh
+
 }
 
 main "$@"
