@@ -8,7 +8,7 @@ main(){
 
 ansible-playbook k3s.orchestration.site -i edge/k3s_inventory.local.yml
 
-ssh aaltosea@{{ k3s_cluster.ctrl[0] }} "sudo cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/config
+ssh aaltosea@{{ k3s_cluster.ctrl[0].ip }} "sudo cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/config
 
 CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
 CLI_ARCH=amd64
@@ -20,10 +20,22 @@ rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
 cilium install --version 1.18.0
 
 # setup dns for all nodes go to ctrl.cloud.hong3nguyen.com
-
-kubectl -n kube-system get configmap coredns -o yaml > coredns-config.yaml
-
-kubectl -n kube-system edit configmap coredns
+# override NodeHosts
+kubectl patch configmap coredns -n kube-system \
+  --type merge \
+  --patch "$(cat <<EOF
+data:
+  NodeHosts: |
+    {% for worker in k3s_cluster.worker -%}
+    {{ worker.ip }} {{ worker.name }}
+    {% endfor -%}
+    {% for ctrl in k3s_cluster.ctrl -%}
+    {{ ctrl.ip }} {{ ctrl.name }}
+    {% endfor -%}
+    ${PUB_CTRL_IP} {{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}
+    ${PUB_ROUTER_IP} {{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}
+EOF
+)"
 
 
 # config Install MetalLB (bare metal solution)
