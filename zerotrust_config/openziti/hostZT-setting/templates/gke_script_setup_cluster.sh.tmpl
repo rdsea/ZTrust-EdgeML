@@ -10,47 +10,6 @@ source "$(dirname "$0")/common.sh"
 # Ziti manages the trust relationships between the controller and routers and clients independent of the web's root authorities.
 # See the Alternative Web Server Certificates section for more information.
 
-log() {
-  echo -e "\n====== $1 ======\n"
-}
-
-# wait_for_deployment() {
-#   ns=$1
-#   deploy=$2
-#   echo "Waiting for deployment '$deploy' in namespace '$ns' to be ready..."
-#   kubectl rollout status deployment/"$deploy" -n "$ns" --timeout=120s
-# }
-
-wait_for_deployment() {
-  ns=$1
-  deploy=$2
-  echo "Waiting for deployment '$deploy' in namespace '$ns' to be ready..."
-
-  success_msg="deployment \"$deploy\" successfully rolled out"
-  timeout=180  # seconds
-  interval=10  # seconds
-  elapsed=0
-
-  while true; do
-    output=$(kubectl rollout status deployment/"$deploy" -n "$ns" --timeout=5s 2>&1 || true)
-
-    if echo "$output" | grep -q "$success_msg"; then
-      echo "$output"
-      break
-    else
-      echo "Still waiting: $output"
-    fi
-
-    if [ "$elapsed" -ge "$timeout" ]; then
-      echo "Timeout waiting for deployment $deploy in namespace $ns"
-      exit 1
-    fi
-
-    sleep "$interval"
-    elapsed=$((elapsed + interval))
-  done
-}
-
 
 setting_k8s(){
 eval "$(cd ../gke/ && terraform output -raw kubeconfig_command)"
@@ -89,84 +48,21 @@ log "trust-manager"
 helm upgrade --install trust-manager jetstack/trust-manager \
     --namespace cert-manager \
     --set crds.keep=false \
-    --set app.trust.namespace=$NAMESPACE
+    --set app.trust.namespace=$CTRL_NAMESPACE
 
 wait_for_deployment cert-manager trust-manager
 
 
 log "zt-ctrl"
 helm install ziti-controller openziti/ziti-controller \
-  --namespace $NAMESPACE \
+  --namespace $CTRL_NAMESPACE \
   --set cert-manager.enabled=false \
   --set trust-manager.enabled=false \
   --set clientApi.advertisedHost="$CTRL_ADVERTISED" \
 
-wait_for_deployment "$NAMESPACE" ziti-controller
+wait_for_deployment "$CTRL_NAMESPACE" ziti-controller
 
   }
-
-setup_localhost(){
-  local ip=$1
-  local advertise=$2
-
-  log "/etc/hosts"
-  echo "sudo sed -i.bak \"/$advertise/ s/^/# /\" /etc/hosts"
-  sudo sed -i.bak "/$advertise/ s/^/# /" /etc/hosts
-
-  if [ -z "$ip" ]; then
-    echo "External IP is not assigned yet. Exiting or waiting..."
-    exit 1
-  else
-    echo "External IP found: $ip"
-    echo "$ip $advertise" | sudo tee -a /etc/hosts
-  fi
-  }
-
-login_zt(){
-
-ziti edge login "$CTRL_ADVERTISED:443" \
-  --yes --username admin \
-  --password "$(kubectl -n "$NAMESPACE" get secrets ziti-controller-admin-secret -o go-template='{{"{{"}}index .data "admin-password" | base64decode {{"}}"}}')"
-
-}
-
-# Router setting
-setup_router(){
-log "router-cloud"
-# get a router enrollment token from the controller's management API
-ziti edge create edge-router "{{ ziti_config.ctrl.cloud_ctrl.router.id }}" \
-  --tunneler-enabled --jwt-output-file /tmp/{{ ziti_config.ctrl.cloud_ctrl.router.id }}.jwt
-
-# subscribe to the openziti Helm repo
-if ! helm repo list | grep -q "^openziti"; then
-  echo "Adding Helm repo 'openziti'..."
-  helm repo add "openziti" "https://openziti.github.io/helm-charts/"
-else
-  echo "Helm repo 'openziti' already exists. Skipping."
-fi
-
-
-# install the router chart with a public address
-
-if ! kubectl get namespace "$ROUTER_NAMESPACE" >/dev/null 2>&1; then
-  echo "Creating namespace: $ROUTER_NAMESPACE"
-  kubectl create namespace "$ROUTER_NAMESPACE"
-else
-  echo "Namespace $ROUTER_NAMESPACE already exists."
-fi
-
-helm upgrade --install \
-  "$ROUTER_ID"  \
-  openziti/ziti-router \
-    --namespace $ROUTER_NAMESPACE \
-    --set-file enrollmentJwt=/tmp/{{ ziti_config.ctrl.cloud_ctrl.router.id }}.jwt \
-    --set ctrl.endpoint=$CTRL_ADVERTISED:443 \
-    {%- if ziti_config.ctrl.cloud_ctrl.router.loadbalancer %}
-    --set edge.service.type=LoadBalancer \
-    {%- endif %}
-    --set edge.advertisedHost=$ROUTER_ADVERTISE
-
-}
 
 setup_dns(){
 # DNS setting 
@@ -186,23 +82,26 @@ wait_for_deployment kube-system  custom-dns-server
 
 main(){
 
-setting_k8s
+  setting_k8s
+  trust_setup
 
-trust_setup
+  wait_for_ip_and_advertise EXTERNAL_IP CTRL_ADVERTISED \
+    "kubectl get svc ziti-controller-client -n \"$CTRL_NAMESPACE\" -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
+    "echo {{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
 
-EXTERNAL_IP=$(kubectl get svc ziti-controller-client -n $NAMESPACE -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-setup_localhost $EXTERNAL_IP $CTRL_ADVERTISED
+  setup_localhost "$EXTERNAL_IP" "$CTRL_ADVERTISED"
+  login_zt "$CTRL_ADVERTISED" "$CTRL_NAMESPACE"
+  setup_dns
+  setup_router "$ROUTER_ID" "$ROUTER_NAMESPACE" "$ROUTER_ADVERTISE"
 
-login_zt
+  wait_for_ip_and_advertise PUB_ROUTER_IP CTRL_ADVERTISED \
+    "kubectl get svc \"$ROUTER_ID-edge\" -n \"$ROUTER_NAMESPACE\" -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
+    "echo {{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
 
-setup_dns
-
-setup_router
-
-PUB_ROUTER_IP=$(kubectl get svc "$ROUTER_ID-edge" -n $ROUTER_NAMESPACE -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-setup_localhost $PUB_ROUTER_IP $ROUTER_ADVERTISE
-
-log "Edge and Sensor deployment complete."
+  setup_localhost "$PUB_ROUTER_IP" "$ROUTER_ADVERTISE"
+  log "Edge and Sensor deployment complete."
 }
 
 main "$@"
+
+
