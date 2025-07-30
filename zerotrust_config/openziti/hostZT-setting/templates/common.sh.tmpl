@@ -56,7 +56,7 @@ install_ziti_edge_tunnel() {
 # --- Add Ziti DNS entries to /etc/hosts ---
 add_ziti_dns_entries() {
   log "Adding Ziti DNS entries to /etc/hosts"
-  local cloud_ip="$1"
+  cloud_ip="$1"
   
   # Ensure the entries are not already present
   if ! grep -q "{{  ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address  }}" /etc/hosts; then
@@ -73,12 +73,12 @@ add_ziti_dns_entries() {
 
 # --- Create and enroll a Ziti identity ---
 create_and_enroll_identity() {
-  local identity_name="$1"
-  local identity_roles="$2"
-  local machine_name="$3"
-  local path="$4"
-  local jwt_file="${path}/${identity_name}.jwt"
-  local json_file="${path}/${identity_name}.json"
+  identity_name="$1"
+  identity_roles="$2"
+  machine_name="$3"
+  path="$4"
+  jwt_file="${path}/${identity_name}.jwt"
+  json_file="${path}/${identity_name}.json"
 
   log "Creating and enrolling identity: $identity_name  $machine_name"
 
@@ -99,13 +99,13 @@ create_and_enroll_identity() {
 
 # --- Function to create Ziti service and policies ---
 create_ziti_service() {
-  local name="$1"
-  local port="$2"
-  local intercept_address="$3"
-  local host_address="$4"
-  local service_roles="$5"
-  local bind_identity_roles="$6"
-  local dial_identity_roles="$7"
+  name="$1"
+  port="$2"
+  intercept_address="$3"
+  host_address="$4"
+  service_roles="$5"
+  bind_identity_roles="$6"
+  dial_identity_roles="$7"
 
   log "Creating Ziti service: $name"
 
@@ -130,11 +130,63 @@ create_ziti_service() {
     --service-roles "@${name}-service" --identity-roles "$dial_identity_roles"
 }
 
-# Router setting
+wait_for_deployment() {
+  ns=$1
+  deploy=$2
+  echo "Waiting for deployment '$deploy' in namespace '$ns' to be ready..."
+
+  success_msg="deployment \"$deploy\" successfully rolled out"
+  timeout=180 # seconds
+  interval=10 # seconds
+  elapsed=0
+
+  while true; do
+    output=$(kubectl rollout status deployment/"$deploy" -n "$ns" --timeout=5s 2>&1 || true)
+
+    if echo "$output" | grep -q "$success_msg"; then
+      echo "$output"
+      break
+    else
+      echo "Still waiting: $output"
+    fi
+
+    if [ "$elapsed" -ge "$timeout" ]; then
+      echo "Timeout waiting for deployment $deploy in namespace $ns"
+      exit 1
+    fi
+
+    sleep "$interval"
+    elapsed=$((elapsed + interval))
+  done
+}
+
+log() {
+  echo -e "\n====== $1 ======\n"
+}
+
+
+setup_localhost() {
+  ip=$1
+  advertise=$2
+
+  echo "$ip $advertise"
+  log "/etc/hosts"
+  echo "sudo sed -i.bak \"/$advertise/ s/^/# /\" /etc/hosts"
+  sudo sed -i.bak "/$advertise/ s/^/# /" /etc/hosts
+
+  if [ -z "$ip" ]; then
+    echo "External IP is not assigned yet. Exiting or waiting..."
+    exit 1
+  else
+    echo "External IP found: $ip"
+    echo "$ip $advertise" | sudo tee -a /etc/hosts
+  fi
+}
+
 setup_router(){
-  local router_id=$1
-  local router_namespace=$2
-  local router_advertise=$3
+  router_id=$1
+  router_namespace=$2
+  router_advertise=$3
 
 log "router"
 # get a router enrollment token from the controller's management API
@@ -173,63 +225,11 @@ helm upgrade --install \
 }
 
 login_zt() {
-  local ctrl_advertise=$1
-  local namespace=${2:-default}  # Use $2 if set, else "default"
+  ctrl_advertise=$1
+
+  namespace=${2:-default}  # Use $2 if set, else "default"
 
   ziti edge login "$ctrl_advertise:443" \
     --yes --username admin \
-    --password "$(kubectl -n "$namespace" get secrets ziti-controller-admin-secret -o go-template='{{index .data "admin-password" | base64decode }}')"
-
-}
-
-setup_localhost() {
-  local ip=$1
-  local advertise=$2
-
-  echo "$ip $advertise"
-  log "/etc/hosts"
-  echo "sudo sed -i.bak \"/$advertise/ s/^/# /\" /etc/hosts"
-  sudo sed -i.bak "/$advertise/ s/^/# /" /etc/hosts
-
-  if [ -z "$ip" ]; then
-    echo "External IP is not assigned yet. Exiting or waiting..."
-    exit 1
-  else
-    echo "External IP found: $ip"
-    echo "$ip $advertise" | sudo tee -a /etc/hosts
-  fi
-}
-
-wait_for_deployment() {
-  ns=$1
-  deploy=$2
-  echo "Waiting for deployment '$deploy' in namespace '$ns' to be ready..."
-
-  success_msg="deployment \"$deploy\" successfully rolled out"
-  timeout=180 # seconds
-  interval=10 # seconds
-  elapsed=0
-
-  while true; do
-    output=$(kubectl rollout status deployment/"$deploy" -n "$ns" --timeout=5s 2>&1 || true)
-
-    if echo "$output" | grep -q "$success_msg"; then
-      echo "$output"
-      break
-    else
-      echo "Still waiting: $output"
-    fi
-
-    if [ "$elapsed" -ge "$timeout" ]; then
-      echo "Timeout waiting for deployment $deploy in namespace $ns"
-      exit 1
-    fi
-
-    sleep "$interval"
-    elapsed=$((elapsed + interval))
-  done
-}
-
-log() {
-  echo -e "\n====== $1 ======\n"
+    --password "$(kubectl -n "$namespace" get secrets ziti-controller-admin-secret -o go-template='{{"{{"}}index .data "admin-password" | base64decode {{"}}"}}')"
 }
