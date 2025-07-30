@@ -75,8 +75,9 @@ if __name__ == "__main__":
         "gke_script_setup_cluster.sh.tmpl": "scripts/gke_script_setup_cluster.sh",
         "gke_dns_configmap.yml.tmpl": "scripts/gke_dns_configmap.yml",
         "k3s_ansible_inventory.yml.tmpl": "k3s/k3s_ansible_inventory_test.local.yml",
-        "k3s_edge_cluster.sh.tmpl": "k3s/k3s_edge_cluster.sh",
+        "k3s_edge_cluster.sh.tmpl": "k3s/k3s_edge_cluster.sh.tmpl",
         "k3s_edge_setup_router.sh.tmpl": "k3s/k3s_edge_setup_router.sh",
+        "k3s_metallb.yml.tmpl": "k3s/k3s_metallb.local.yml",
     }
 
     ctrl_advertise_name = (
