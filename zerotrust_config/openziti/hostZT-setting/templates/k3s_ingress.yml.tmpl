@@ -1,0 +1,22 @@
+{% for router in ziti_config.router.edge_router %}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ router.id }}
+  namespace: {{ router.namespace }}
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  rules:
+  - host: {{ router.edge_router_advertised_address }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ router.id }}-edge
+            port:
+              number: 443
+{% endfor %}
