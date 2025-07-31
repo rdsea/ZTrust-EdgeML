@@ -14,7 +14,7 @@ source "$(dirname "$0")/common.sh"
 setting_k8s(){
 eval "$(cd ../gke/ && terraform output -raw kubeconfig_command)"
 CLUSTER_IP=$(cd ../gke/ && terraform output -raw {{ gke.cluster_name | replace('-', '_') }}_ip)
-CTRL_ADVERTISED="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
+CTRL_ADVERTISE="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
 ROUTER_NAMESPACE="router"
 
 # Create namespace if it doesn't exist
@@ -58,7 +58,7 @@ helm install ziti-controller openziti/ziti-controller \
   --namespace $CTRL_NAMESPACE \
   --set cert-manager.enabled=false \
   --set trust-manager.enabled=false \
-  --set clientApi.advertisedHost="$CTRL_ADVERTISED" \
+  --set clientApi.advertisedHost="$CTRL_ADVERTISE" \
 
 wait_for_deployment "$CTRL_NAMESPACE" ziti-controller
 
@@ -85,18 +85,18 @@ main(){
   setting_k8s
   trust_setup
 
-  wait_for_ip_and_advertise PUB_CTRL_IP CTRL_ADVERTISED \
+  wait_for_ip_and_advertise PUB_CTRL_IP CTRL_ADVERTISE \
     "kubectl get svc ziti-controller-client -n \"$CTRL_NAMESPACE\" -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
-    "echo {{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
+    $CTRL_ADVERTISE
 
-  setup_localhost "$PUB_CTRL_IP" "$CTRL_ADVERTISED"
-  login_zt "$CTRL_ADVERTISED" "$CTRL_NAMESPACE"
+  setup_localhost "$PUB_CTRL_IP" "$CTRL_ADVERTISE"
+  login_zt "$CTRL_ADVERTISE" "$CTRL_NAMESPACE"
   setup_dns
   setup_router "$ROUTER_ID" "$ROUTER_NAMESPACE" "$ROUTER_ADVERTISE"
 
-  wait_for_ip_and_advertise PUB_ROUTER_IP CTRL_ADVERTISED \
+  wait_for_ip_and_advertise PUB_ROUTER_IP ROUTER_ADVERTISE \
     "kubectl get svc \"$ROUTER_ID-edge\" -n \"$ROUTER_NAMESPACE\" -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
-    "echo {{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
+    $ROUTER_ADVERTISE
 
   setup_localhost "$PUB_ROUTER_IP" "$ROUTER_ADVERTISE"
   log "Edge and Sensor deployment complete."
