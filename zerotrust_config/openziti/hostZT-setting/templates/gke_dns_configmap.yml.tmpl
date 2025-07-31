@@ -5,7 +5,7 @@ metadata:
   namespace: kube-system
 data:
   hosts: |
-    $EXTERNAL_IP {{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}
+    $PUB_CTRL_IP {{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}
     ::1 {{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}
 ---
 apiVersion: apps/v1
