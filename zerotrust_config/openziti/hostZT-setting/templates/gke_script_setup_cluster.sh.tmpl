@@ -101,8 +101,8 @@ main(){
   setup_localhost "$PUB_ROUTER_IP" "$ROUTER_ADVERTISE"
   log "Edge and Sensor deployment complete."
 
-  envsubst < ../k3s/k3s_edge_cluster.sh.tmpl > ../k3s/k3s_edge_cluster.sh
-
+  export PUB_CTRL_IP PUB_ROUTER_IP
+  envsubst '${PUB_CTRL_IP} ${PUB_ROUTER_IP}' < ../k3s/k3s_edge_cluster.sh.tmpl > ../k3s/k3s_edge_cluster.sh
 }
 
 main "$@"
