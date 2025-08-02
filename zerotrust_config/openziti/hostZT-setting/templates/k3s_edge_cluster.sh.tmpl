@@ -6,7 +6,7 @@ source "$(dirname "$0")/../scripts/common.sh"
 
 main(){
 
-ansible-playbook k3s.orchestration.site -i edge/k3s_inventory.local.yml
+ansible-playbook k3s.orchestration.site -i edge/k3s_ansible_inventory.local.yml
 
 ssh aaltosea@{{ k3s_cluster.ctrl[0].ip }} "sudo cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/config
 
