@@ -1,0 +1,22 @@
+- name: Remove K3s from nodes
+  hosts: all
+  become: yes
+  tasks:
+    - name: Run k3s-uninstall.sh if present (server nodes)
+      shell: |
+        if [ -f /usr/local/bin/k3s-uninstall.sh ]; then
+          /usr/local/bin/k3s-uninstall.sh
+        fi
+      ignore_errors: yes
+
+    - name: Run k3s-agent-uninstall.sh if present (agent nodes)
+      shell: |
+        if [ -f /usr/local/bin/k3s-agent-uninstall.sh ]; then
+          /usr/local/bin/k3s-agent-uninstall.sh
+        fi
+      ignore_errors: yes
+
+    - name: Remove leftover kube config
+      file:
+        path: /etc/rancher
+        state: absent
