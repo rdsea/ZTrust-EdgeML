@@ -6,10 +6,14 @@ source "$(dirname "$0")/../scripts/common.sh"
 
 main(){
 
+sudo chown -R {{ k3s_cluster.vars.ansible_user }}:{{ k3s_cluster.vars.ansible_user }} /home/{{ k3s_cluster.vars.ansible_user }} /.config/ziti
+
 login_zt {{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }} {{ gke.namespace }}
 
 {% for router in ziti_config.router.edge_router %}
 setup_router {{ router.id }} {{ router.id }}_namespace {{ router.edge_router_advertised_address }}
+
+kubectl patch pvc {{ router.id }} -n {{ router.id }}_namespace -p '{"spec":{"storageClassName":"local-path"}}'
 {% endfor %}
 
 }
