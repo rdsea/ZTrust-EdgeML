@@ -10,6 +10,11 @@ ansible-playbook k3s.orchestration.site -i edge/k3s_ansible_inventory.local.yml
 
 ssh aaltosea@{{ k3s_cluster.ctrl[0].ip }} "sudo cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/config
 
+sed -i 's|server: https://.*:6443|server: https://{{ k3s_cluster.ctrl[0].ip }}:6443|' ~/.kube/config
+
+# kubectl config set-cluster default --server=https://{{ k3s_cluster.ctrl[0].ip }}:6443
+
+
 CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
 CLI_ARCH=amd64
 if [ "$(uname -m)" = "aarch64" ]; then CLI_ARCH=arm64; fi
@@ -37,6 +42,11 @@ data:
 EOF
 )"
 
+# Restart CoreDNS to ensure configmap is picked up
+kubectl rollout restart deployment coredns -n kube-system
+
+# Wait for rollout to complete
+wait_for_deployment kube-system coredns
 
 # config Install MetalLB (bare metal solution)
 kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.10/config/manifests/metallb-native.yaml
