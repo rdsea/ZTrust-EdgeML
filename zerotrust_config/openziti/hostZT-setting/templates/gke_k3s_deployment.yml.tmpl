@@ -1,5 +1,5 @@
-{% for service in edge_applications -%}
-{% if service.location == "edge" -%}
+{% for service in services -%}
+# -- {{ service.name }} --
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -51,5 +51,4 @@ spec:
       targetPort: {{ service.port }}
   selector:
     app: {{ service.name }}
-{% endif -%}
 {% endfor -%}

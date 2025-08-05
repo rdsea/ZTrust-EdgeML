@@ -79,8 +79,8 @@ if __name__ == "__main__":
         "k3s_edge_setup_router.sh.tmpl": "k3s/k3s_edge_setup_router.sh",
         "k3s_metallb.yml.tmpl": "k3s/k3s_metallb.local.yml",
         "k3s_ingress.yml.tmpl": "k3s/k3s_ingress.yml",
-        "k3s_deployment.yml.tmpl": "k3s/k3s_deployment.yml",
-        "gke_deployment.yml.tmpl": "gke/gke_deployment.yml",
+        # "gke_k3s_deployment.yml.tmpl": "k3s/k3s_deployment.yml",
+        # "gke_k3s_deployment.yml.tmpl": "gke/gke_deployment.yml",
     }
 
     ctrl_advertise_name = (
@@ -122,6 +122,32 @@ if __name__ == "__main__":
         generate_file(
             env, domain_config, template_name, relative_output_path, OUTPUT_ROOT_DIR
         )
+
+    services = config.get("edge_applications", [])
+
+    # Split by location
+    edge_services = [s for s in services if s.get("location") == "edge"]
+    cloud_services = [s for s in services if s.get("location") == "cloud"]
+
+    # Render both to separate files using the same template
+    split_template = "gke_k3s_deployment.yml.tmpl"
+
+    generate_file(
+        env,
+        {"services": edge_services},
+        split_template,
+        "k3s/edge_deployment.yml",  # Customize as needed
+        OUTPUT_ROOT_DIR,
+    )
+
+    generate_file(
+        env,
+        {"services": cloud_services},
+        split_template,
+        "gke/cloud_deployment.yml",  # Customize as needed
+        OUTPUT_ROOT_DIR,
+    )
+
     #
     # # Generate shell scripts for VMs (these also go into the new 'cloud' folder)
     # vm_script_mapping = {
