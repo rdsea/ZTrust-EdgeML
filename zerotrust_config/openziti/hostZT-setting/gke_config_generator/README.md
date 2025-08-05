@@ -25,7 +25,7 @@ helm install ziti-controller openziti/ziti-controller \
   --set clientApi.advertisedHost="ctrl.cloud.hong3nguyen.com"\
 ```
 
-# nginx?
+# nginx? (NO NEED)
 ```bash
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 helm repo update
@@ -95,7 +95,7 @@ helm upgrade --install \
 ```
 
 
-# k3s setting
+# [k3s setting](https://github.com/rdsea/EdgeDeviceManagement/tree/main/scripts/k3s) -- from Anh-Dung
 - ansible setting 
 - inventory yml files to list IP 
 
@@ -105,9 +105,35 @@ helm upgrade --install \
 - remember check the location ansbile installed (e.g. .local/bin/uv/ansible) to add to PATH
 - prepare k3s_inventory.yml
 
-```bash
-ansible-playbook ..
+> ansible-playbook k3s.orchestration.site -i k3s_inventory.yml
+
+## remove the all k3s setting
+```yaml
+# k3s_teardown.yml
+- name: Remove K3s from nodes
+  hosts: all
+  become: yes
+  tasks:
+    - name: Run k3s-uninstall.sh if present (server nodes)
+      shell: |
+        if [ -f /usr/local/bin/k3s-uninstall.sh ]; then
+          /usr/local/bin/k3s-uninstall.sh
+        fi
+      ignore_errors: yes
+
+    - name: Run k3s-agent-uninstall.sh if present (agent nodes)
+      shell: |
+        if [ -f /usr/local/bin/k3s-agent-uninstall.sh ]; then
+          /usr/local/bin/k3s-agent-uninstall.sh
+        fi
+      ignore_errors: yes
+
+    - name: Remove leftover kube config
+      file:
+        path: /etc/rancher
+        state: absent
 ```
+> ansible-playbook k3s_teardown.yml -i k3s_inventory.yml
 
 ## clean all setting from each machine
 ```bash
@@ -148,6 +174,9 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.
 sudo apt-get update
 sudo apt-get install helm
 
+# Default Storage Provisioner
+kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
+
 # add openziti
 helm --kubeconfig ~/.kube/config  repo add "openziti" "https://openziti.github.io/helm-charts/"
 
@@ -155,10 +184,10 @@ helm --kubeconfig ~/.kube/config  repo add "openziti" "https://openziti.github.i
 - login from password of ctrl
 
 ```bash
-kubectl create namespace zt-cluster
+kubectl create namespace router-edge
 
 # login
-sudo ziti edge login https://ctrl.cloud.hong3nguyen.com:443 --yes -u admin -p 2Otm9VingoCCtI9J3D39lO1qkpPBnDoh
+sudo ziti edge login https://ctrl.cloud.hong3nguyen.com:443 --yes -u admin -p  wfTIFItNRFhcmCx7bb52QR0ZnuiGThng
 
 # register
 sudo ziti edge create edge-router "edgerouter123" \
@@ -168,12 +197,190 @@ sudo ziti edge create edge-router "edgerouter123" \
 helm --kubeconfig ~/.kube/config upgrade --install \
   edgerouter123 \
   openziti/ziti-router \
-  --namespace zt-cluster1 \
+  --namespace router-edge \
   --set-file enrollmentJwt=edgerouter123.jwt \
   --set ctrl.endpoint=ctrl.cloud.hong3nguyen.com:443 \
   --set edge.service.type=LoadBalancer \
   --set edge.advertisedHost=router123.edge.hong3nguyen.com
 
 ```
+# Traefik (reverse proxy)
+
+```bash
+kubectl edit svc traefik -n kube-system
+
+```
+change from LoadBalancer to NodePort
+- apply application
+- add ingress configuration
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: edgerouter-ingress
+  namespace: router-edge
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  rules:
+  - host: router.edge.hong3nguyen.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: edgerouter-edge
+            port:
+              number: 443
+```
+### NOTE: checking from this, instead of waiting for external_IP
+>kubectl edit ingress "edge-router-ingress" -n "edge-router-namespace"
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"networking.k8s.io/v1","kind":"Ingress","metadata":{"annotations":{"kubernetes.io/ingress.class":"traefik"},"name":"edge-router-ingress","namespace":"edge-router-namespace"},"spec":{"rules":[{"host":"router.edge.hong3nguyen.com","http":{"paths":[{"backend":{"service":{"name":"edge-router-edge","port":{"number":443}}},"path":"/","pathType":"Prefix"}]}}]}}
+    kubernetes.io/ingress.class: traefik
+  creationTimestamp: "2025-08-05T15:58:21Z"
+  generation: 1
+  name: edge-router-ingress
+  namespace: edge-router-namespace
+  resourceVersion: "52251"
+  uid: d6389258-911d-4028-96fe-3cab4838834a
+spec:
+  rules:
+  - host: router.edge.hong3nguyen.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: edge-router-edge
+            port:
+              number: 443
+        path: /
+        pathType: Prefix
+status:
+  loadBalancer:
+    ingress:
+    - ip: 130.233.195.211
+    - ip: 130.233.195.214
+```
+> curl -k https://router.edge.hong3nguyen.com:30957
+
+#### Example
+- echo application
+```yaml
+# echo-app.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: echo
+  namespace: test-echo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: echo
+  template:
+    metadata:
+      labels:
+        app: echo
+    spec:
+      containers:
+      - name: echo
+        image: hashicorp/http-echo
+        args:
+        - "-text=Hello from Traefik!"
+        ports:
+        - containerPort: 5678
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: echo-service
+  namespace: test-echo
+spec:
+  selector:
+    app: echo
+  ports:
+  - port: 80
+    targetPort: 5678
+
+```
+- kubectl apply 
+```yaml
+# echo-ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: echo-ingress
+  namespace: test-echo
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  rules:
+  - host: echo.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: echo-service
+            port:
+              number: 80
+
+```
+- kubectl apply
+- test: 
+```bash
+curl -H "Host: echo.local" http://<IP of cluster workers>:30522
+
+```
 
 
+
+# metallb -- NOT work with the University
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.10/config/manifests/metallb-native.yaml
+kubectl get pods -n metallb-system
+kubectl apply -f k3s_metallb.local.yml
+```
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: metallb-system
+  name: config
+data:
+  config: |
+    address-pools:
+    - name: default
+      protocol: layer2
+      addresses:
+        - 130.233.195.218-130.233.195.218
+
+```
+
+# install cilium for metallb
+install CLI
+
+```bash
+CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
+CLI_ARCH=amd64
+if [ "$(uname -m)" = "aarch64" ]; then CLI_ARCH=arm64; fi
+curl -L --fail --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+sha256sum --check cilium-linux-${CLI_ARCH}.tar.gz.sha256sum
+sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
+rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+
+```
+- instsall cilium
+```bash
+cilium install --version 1.18.0
+```
