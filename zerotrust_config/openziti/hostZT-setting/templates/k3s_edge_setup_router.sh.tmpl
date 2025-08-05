@@ -11,7 +11,7 @@ sudo chown -R {{ k3s_cluster.vars.ansible_user }}:{{ k3s_cluster.vars.ansible_us
 login_zt {{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }} $CTRL_PASS
 
 {% for router in ziti_config.router.edge_router %}
-setup_router {{ router.id }} {{ router.id }}_namespace {{ router.edge_router_advertised_address }}
+setup_router {{ router.id | replace('_', '-')}} {{ router.id | replace('_', '-') }}-namespace {{ router.edge_router_advertised_address }}
 
 kubectl patch pvc {{ router.id }} -n {{ router.id }}_namespace -p '{"spec":{"storageClassName":"local-path"}}'
 {% endfor %}
