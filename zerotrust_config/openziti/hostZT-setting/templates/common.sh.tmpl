@@ -226,12 +226,12 @@ helm upgrade --install \
 
 login_zt() {
   ctrl_advertise=$1
-
-  namespace=${2:-default}  # Use $2 if set, else "default"
+  ctrl_pass=$2
 
   ziti edge login "$ctrl_advertise:443" \
     --yes --username admin \
-    --password "$(kubectl -n "$namespace" get secrets ziti-controller-admin-secret -o go-template='{{"{{"}}index .data "admin-password" | base64decode {{"}}"}}')"
+    --password "$ctrl_pass"
+
 }
 
 wait_for_ip_and_advertise() {

@@ -6,9 +6,9 @@ source "$(dirname "$0")/../scripts/common.sh"
 
 main(){
 
-sudo chown -R {{ k3s_cluster.vars.ansible_user }}:{{ k3s_cluster.vars.ansible_user }} /home/{{ k3s_cluster.vars.ansible_user }} /.config/ziti
+sudo chown -R {{ k3s_cluster.vars.ansible_user }}:{{ k3s_cluster.vars.ansible_user }} /home/{{ k3s_cluster.vars.ansible_user }}/.config/ziti
 
-login_zt {{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }} {{ gke.namespace }}
+login_zt {{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }} $CTRL_PASS
 
 {% for router in ziti_config.router.edge_router %}
 setup_router {{ router.id }} {{ router.id }}_namespace {{ router.edge_router_advertised_address }}

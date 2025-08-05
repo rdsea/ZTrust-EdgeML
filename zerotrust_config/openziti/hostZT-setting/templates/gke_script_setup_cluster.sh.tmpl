@@ -88,9 +88,11 @@ main(){
   wait_for_ip_and_advertise PUB_CTRL_IP CTRL_ADVERTISE \
     "kubectl get svc ziti-controller-client -n \"$CTRL_NAMESPACE\" -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
     $CTRL_ADVERTISE
+  
+  CTRL_PASS=$(kubectl -n "$CTRL_NAMESPACE" get secrets ziti-controller-admin-secret -o go-template='{{"{{"}}index .data "admin-password" | base64decode {{"}}"}}')"
 
   setup_localhost "$PUB_CTRL_IP" "$CTRL_ADVERTISE"
-  login_zt "$CTRL_ADVERTISE" "$CTRL_NAMESPACE"
+  login_zt "$CTRL_ADVERTISE" "$CTRL_PASS"
   setup_dns
   setup_router "$ROUTER_ID" "$ROUTER_NAMESPACE" "$ROUTER_ADVERTISE"
 
@@ -101,8 +103,9 @@ main(){
   setup_localhost "$PUB_ROUTER_IP" "$ROUTER_ADVERTISE"
   log "Edge and Sensor deployment complete."
 
-  export PUB_CTRL_IP PUB_ROUTER_IP
-  envsubst '${PUB_CTRL_IP} ${PUB_ROUTER_IP}' < ../k3s/k3s_edge_cluster.sh.tmpl > ../k3s/k3s_edge_cluster.sh
+  export PUB_CTRL_IP PUB_ROUTER_IP CTRL_PASS
+  envsubst '${PUB_CTRL_IP} ${PUB_ROUTER_IP} ${CTRL_PASS}' < ../k3s/k3s_edge_cluster.sh.tmpl > ../k3s/k3s_edge_cluster.sh
+  envsubst '${CTRL_PASS}' < ../k3s/k3s_edge_setup_router.sh.tmpl > ../k3s/k3s_edge_setup_router.sh
 }
 
 main "$@"

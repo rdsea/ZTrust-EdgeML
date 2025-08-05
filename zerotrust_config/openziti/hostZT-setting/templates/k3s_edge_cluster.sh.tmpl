@@ -6,7 +6,8 @@ source "$(dirname "$0")/../scripts/common.sh"
 
 main(){
 
-ansible-playbook k3s.orchestration.site -i edge/k3s_ansible_inventory.local.yml
+# use this command to setting k3s_cluster
+# ansible-playbook k3s.orchestration.site -i edge/k3s_ansible_inventory.local.yml
 
 ssh aaltosea@{{ k3s_cluster.ctrl[0].ip }} "sudo cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/config
 
@@ -48,12 +49,10 @@ kubectl rollout restart deployment coredns -n kube-system
 # Wait for rollout to complete
 wait_for_deployment kube-system coredns
 
-# config Install MetalLB (bare metal solution)
-kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.10/config/manifests/metallb-native.yaml
+# login ctrl
+#
+login_zt {{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }} $PASS_CTRL
 
-kubectl get pods -n metallb-system
-
-kubectl apply -f k3s_metallb.local.yml
 
 }
 
