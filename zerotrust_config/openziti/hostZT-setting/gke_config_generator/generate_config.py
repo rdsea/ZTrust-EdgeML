@@ -79,6 +79,8 @@ if __name__ == "__main__":
         "k3s_edge_setup_router.sh.tmpl": "k3s/k3s_edge_setup_router.sh",
         "k3s_metallb.yml.tmpl": "k3s/k3s_metallb.local.yml",
         "k3s_ingress.yml.tmpl": "k3s/k3s_ingress.yml",
+        "k3s_deployment.yml.tmpl": "k3s/k3s_deployment.yml",
+        "gke_deployment.yml.tmpl": "gke/gke_deployment.yml",
     }
 
     ctrl_advertise_name = (

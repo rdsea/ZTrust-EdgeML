@@ -1,0 +1,55 @@
+{% for service in edge_applications -%}
+{% if service.location == "edge" -%}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ service.name }}
+  labels:
+    app: {{ service.name }}
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ service.name }}
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: {{ service.name }}
+        version: v1
+      annotations:
+        sidecar.istio.io/inject: "true"
+    spec:
+      containers:
+        - name: {{ service.name }}
+          # imagePullPolicy: "IfNotPresent"
+          {% if service.image is defined -%}
+          image: {{ service.image }}
+          {% endif -%}
+          ports:
+            - containerPort: {{ service.port }}
+          {% if service.args -%}
+          args: {{ service.args }}
+          {% endif -%}
+          {% if service.environment is defined -%}
+          env:
+            {% for key, value in service.environment.items() -%}
+            - name: {{ key }}
+              value: {{ value }}
+            {% endfor -%}
+          {% endif %}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ service.name }}-service
+spec:
+  ports:
+    - port: {{ service.port }}
+      targetPort: {{ service.port }}
+  selector:
+    app: {{ service.name }}
+{% endif -%}
+{% endfor -%}
