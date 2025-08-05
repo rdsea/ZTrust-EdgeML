@@ -191,7 +191,7 @@ setup_router(){
 log "router"
 # get a router enrollment token from the controller's management API
 ziti edge create edge-router "$router_id" \
-  --tunneler-enabled --jwt-output-file /tmp/$router_id.jwt
+  --tunneler-enabled --jwt-output-file $router_id.jwt
 
 # subscribe to the openziti Helm repo
 if ! helm repo list | grep -q "^openziti"; then
@@ -215,7 +215,7 @@ helm upgrade --install \
   "$router_id"  \
   openziti/ziti-router \
     --namespace $router_namespace \
-    --set-file enrollmentJwt=/tmp/$router_id.jwt \
+    --set-file enrollmentJwt=$router_id.jwt \
     --set ctrl.endpoint=$ctrl_advertise:443 \
     {%- if ziti_config.ctrl.cloud_ctrl.router.loadbalancer %}
     --set edge.service.type=LoadBalancer \
