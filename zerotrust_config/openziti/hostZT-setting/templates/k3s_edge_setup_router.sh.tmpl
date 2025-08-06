@@ -9,6 +9,30 @@ main(){
 CTRL_ADVERTISE={{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}
 ROUTER_ADVERTISE={{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}
 
+log "setup cluster dns to cloud"
+# setup dns for all nodes go to ctrl.cloud.hong3nguyen.com
+# override NodeHosts
+kubectl patch configmap coredns -n kube-system \
+  --type merge \
+  --patch "$(cat <<EOF
+data:
+  NodeHosts: |
+    {% for worker in k3s_cluster.worker -%}
+    {{ worker.ip }} {{ worker.name }}
+    {% endfor -%}
+    {% for ctrl in k3s_cluster.ctrl -%}
+    {{ ctrl.ip }} {{ ctrl.name }}
+    {% endfor -%}
+    ${PUB_CTRL_IP} $CTRL_ADVERTISE
+    ${PUB_ROUTER_IP} $ROUTER_ADVERTISE
+EOF
+)"
+
+# Restart CoreDNS to ensure configmap is picked up
+kubectl rollout restart deployment coredns -n kube-system
+
+# Wait for rollout to complete
+wait_for_deployment kube-system coredns
 log "setup /etc/hosts for local machine"
 setup_localhost "$PUB_CTRL_IP" "$CTRL_ADVERTISE"
 setup_localhost "$PUB_ROUTER_IP" "$ROUTER_ADVERTISE"
@@ -19,10 +43,40 @@ login_zt {{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }} $CTRL_PASS
 
 {% for router in ziti_config.router.edge_router %}
 ROUTER_ID={{ router.id | replace('_', '-')}}
+NAMESPACE=$ROUTER_ID-namespace
 
 setup_router $ROUTER_ID $ROUTER_ID-namespace {{ router.edge_router_advertised_address }}
 
-kubectl patch pvc $ROUTER_ID -n $ROUTER_ID-namespace -p '{"spec":{"storageClassName":"local-path"}}'
+kubectl patch pvc $ROUTER_ID -n $NAMESPACE -p '{"spec":{"storageClassName":"local-path"}}'
+
+# Check if pod is running
+echo "Checking pod status..."
+
+sleep 5
+POD_STATUS=$(kubectl get pod -n $NAMESPACE -l app.kubernetes.io/name=ziti-router -o jsonpath="{.items[0].status.phase}" 2>/dev/null || echo "NotFound")
+
+if [[ "$POD_STATUS" != "Running" ]]; then
+  echo "Pod is not running (status: $POD_STATUS). Deleting pod and waiting..."
+  kubectl delete pod -n $NAMESPACE -l app.kubernetes.io/name=ziti-router --ignore-not-found
+
+  # Wait for the new pod to be recreated and become Running
+  echo "Waiting for pod to become Running..."
+  for i in {1..30}; do
+    sleep 5
+    POD_STATUS=$(kubectl get pod -n $NAMESPACE -l app.kubernetes.io/name=ziti-router -o jsonpath="{.items[0].status.phase}" 2>/dev/null || echo "NotFound")
+    if [[ "$POD_STATUS" == "Running" ]]; then
+      echo "Pod is now Running."
+      break
+    fi
+  done
+
+  if [[ "$POD_STATUS" != "Running" ]]; then
+    echo "Pod did not reach Running state in time."
+    exit 1
+  fi
+else
+  echo "Pod is already Running."
+fi
 
 kubectl apply -f - <<EOF
 apiVersion: networking.k8s.io/v1
@@ -45,6 +99,8 @@ spec:
             port:
               number: 443
 EOF
+
+
 {% endfor %}
 
 

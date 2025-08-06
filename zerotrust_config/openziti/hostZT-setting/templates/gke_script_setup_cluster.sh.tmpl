@@ -105,7 +105,7 @@ main(){
 
   export PUB_CTRL_IP PUB_ROUTER_IP CTRL_PASS
   envsubst '${PUB_CTRL_IP} ${PUB_ROUTER_IP} ${CTRL_PASS}' < ../k3s/k3s_edge_cluster.sh.tmpl > ../k3s/k3s_edge_cluster.sh
-  envsubst '${CTRL_PASS}' < ../k3s/k3s_edge_setup_router.sh.tmpl > ../k3s/k3s_edge_setup_router.sh
+  envsubst '${PUB_CTRL_IP} ${PUB_ROUTER_IP} ${CTRL_PASS}' < ../k3s/k3s_edge_setup_router.sh.tmpl > ../k3s/k3s_edge_setup_router.sh
 }
 
 main "$@"
