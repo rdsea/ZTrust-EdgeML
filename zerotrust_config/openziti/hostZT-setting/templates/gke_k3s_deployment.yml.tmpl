@@ -37,7 +37,7 @@ spec:
           env:
             {% for key, value in service.environment.items() -%}
             - name: {{ key }}
-              value: {{ value }}
+              value: "{{ value }}"
             {% endfor -%}
           {% endif %}
 ---
