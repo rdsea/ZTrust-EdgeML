@@ -5,17 +5,20 @@ set -euo pipefail
 source "$(dirname "$0")/../scripts/common.sh"
 
 main(){
+CTRL_ADVERTISE={{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}
+ROUTER_ADVERTISE={{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}
 
 # use this command to setting k3s_cluster
 # ansible-playbook k3s.orchestration.site -i edge/k3s_ansible_inventory.local.yml
 
+log "setup kubectl"
 ssh aaltosea@{{ k3s_cluster.ctrl[0].ip }} "sudo cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/config
 
 sed -i 's|server: https://.*:6443|server: https://{{ k3s_cluster.ctrl[0].ip }}:6443|' ~/.kube/config
 
 # kubectl config set-cluster default --server=https://{{ k3s_cluster.ctrl[0].ip }}:6443
 
-
+log "setup cilium"
 CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
 CLI_ARCH=amd64
 if [ "$(uname -m)" = "aarch64" ]; then CLI_ARCH=arm64; fi
@@ -25,6 +28,7 @@ sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
 rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
 cilium install --version 1.18.0
 
+log "setup cluster dns to cloud"
 # setup dns for all nodes go to ctrl.cloud.hong3nguyen.com
 # override NodeHosts
 kubectl patch configmap coredns -n kube-system \
@@ -38,8 +42,8 @@ data:
     {% for ctrl in k3s_cluster.ctrl -%}
     {{ ctrl.ip }} {{ ctrl.name }}
     {% endfor -%}
-    ${PUB_CTRL_IP} {{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}
-    ${PUB_ROUTER_IP} {{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}
+    ${PUB_CTRL_IP} $CTRL_ADVERTISE
+    ${PUB_ROUTER_IP} $ROUTER_ADVERTISE
 EOF
 )"
 
@@ -49,9 +53,12 @@ kubectl rollout restart deployment coredns -n kube-system
 # Wait for rollout to complete
 wait_for_deployment kube-system coredns
 
+log "setup /etc/hosts for local machine"
+setup_localhost "$PUB_CTRL_IP" "$CTRL_ADVERTISE"
+setup_localhost "$PUB_ROUTER_IP" "$ROUTER_ADVERTISE"
+
 # login ctrl
-#
-login_zt {{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }} $PASS_CTRL
+login_zt $CTRL_ADVERTISE $PASS_CTRL
 
 
 }
