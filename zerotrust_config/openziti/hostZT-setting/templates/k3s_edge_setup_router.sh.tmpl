@@ -6,6 +6,13 @@ source "$(dirname "$0")/../scripts/common.sh"
 
 main(){
 
+CTRL_ADVERTISE={{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}
+ROUTER_ADVERTISE={{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}
+
+log "setup /etc/hosts for local machine"
+setup_localhost "$PUB_CTRL_IP" "$CTRL_ADVERTISE"
+setup_localhost "$PUB_ROUTER_IP" "$ROUTER_ADVERTISE"
+
 sudo chown -R {{ k3s_cluster.vars.ansible_user }}:{{ k3s_cluster.vars.ansible_user }} /home/{{ k3s_cluster.vars.ansible_user }}/.config/ziti
 
 login_zt {{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }} $CTRL_PASS
@@ -17,7 +24,7 @@ setup_router $ROUTER_ID $ROUTER_ID-namespace {{ router.edge_router_advertised_ad
 
 kubectl patch pvc $ROUTER_ID -n $ROUTER_ID-namespace -p '{"spec":{"storageClassName":"local-path"}}'
 
-kubectl apply -f <<EOF
+kubectl apply -f - <<EOF
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
