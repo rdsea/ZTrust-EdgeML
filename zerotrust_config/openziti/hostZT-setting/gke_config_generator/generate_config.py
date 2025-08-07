@@ -125,8 +125,16 @@ if __name__ == "__main__":
     services = config.get("edge_applications", [])
 
     # Split by location
-    edge_services = [s for s in services if s.get("location") == "edge"]
-    cloud_services = [s for s in services if s.get("location") == "cloud"]
+    edge_services = [
+        s
+        for s in services
+        if s.get("location") == "edge" and s.get("image") != "default"
+    ]
+    cloud_services = [
+        s
+        for s in services
+        if s.get("location") == "cloud" and s.get("image") != "default"
+    ]
 
     # Render both to separate files using the same template
     split_template = "gke_k3s_deployment.yml.tmpl"
