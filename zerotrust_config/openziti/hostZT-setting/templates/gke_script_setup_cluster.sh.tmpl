@@ -80,52 +80,9 @@ wait_for_deployment kube-system  custom-dns-server
 
 }
 
-setup_jaeger(){
+sidecar_jaeger_gke(){
 
-log "jaeger-setup"
-kubectl create ns observability
-kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/latest/download/opentelemetry-operator.yaml -n observability
-
-# Jaeger with in-momory storage
-kubectl apply -f - <<EOF
-apiVersion: opentelemetry.io/v1beta1
-kind: OpenTelemetryCollector
-metadata:
-  name: jaeger-inmemory-instance
-  namespace: observability
-spec:
-  image: jaegertracing/jaeger:latest
-  ports:
-  - name: jaeger
-    port: 16686
-  config:
-    service:
-      extensions: [jaeger_storage, jaeger_query]
-      pipelines:
-        traces:
-          receivers: [otlp]    
-          exporters: [jaeger_storage_exporter]
-    extensions:
-      jaeger_query:
-        storage:
-          traces: memstore
-      jaeger_storage:
-        backends:
-          memstore:
-            memory:
-              max_traces: 100000
-    receivers:
-      otlp:
-        protocols:
-          grpc:
-            endpoint: 0.0.0.0:4317
-          http:
-            endpoint: 0.0.0.0:4318
-    exporters:
-      jaeger_storage_exporter:
-        trace_storage: memstore
-EOF
-
+log "sidecar_jaeger_gke"
 # setting sidecar
 kubectl apply -f - <<EOF
 apiVersion: opentelemetry.io/v1beta1
@@ -198,9 +155,19 @@ main(){
   setup_localhost "$PUB_ROUTER_IP" "$ROUTER_ADVERTISE"
   log "Edge and Sensor deployment complete."
 
-  export PUB_CTRL_IP PUB_ROUTER_IP CTRL_PASS
-  envsubst '${PUB_CTRL_IP} ${PUB_ROUTER_IP} ${CTRL_PASS}' < ../k3s/k3s_edge_cluster.sh.tmpl > ../k3s/k3s_edge_cluster.sh
+  setup_jaeger
+
+  sidecar_jaeger_gke
+
+  wait_for_ip_and_advertise PUB_JAEGER_IP  \
+    "kubectl get svc otel-collector -n observability -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
+    $ROUTER_ADVERTISE
+
+  export PUB_CTRL_IP PUB_ROUTER_IP CTRL_PASS PUB_JAEGER_IP
+  envsubst '${PUB_CTRL_IP} ${PUB_ROUTER_IP} ${CTRL_PASS} $PUB_JAEGER_IP' < ../k3s/k3s_edge_cluster.sh.tmpl > ../k3s/k3s_edge_cluster.sh
   envsubst '${PUB_CTRL_IP} ${PUB_ROUTER_IP} ${CTRL_PASS}' < ../k3s/k3s_edge_setup_router.sh.tmpl > ../k3s/k3s_edge_setup_router.sh
+
+
 }
 
 main "$@"

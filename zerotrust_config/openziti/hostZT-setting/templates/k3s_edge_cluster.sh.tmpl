@@ -4,6 +4,38 @@ set -euo pipefail
 
 source "$(dirname "$0")/../scripts/common.sh"
 
+sidecar_jaeger_k3s(){
+
+log "sidecar-jaeger-k3s"
+kubectl apply -f - <<EOF
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: sidecar-for-my-app
+spec:
+  mode: sidecar
+  config:
+    receivers:
+      jaeger:
+        protocols:
+          thrift_compact: {}
+    processors:
+      batch:
+        send_batch_size: 10000
+        timeout: 5s
+    exporters:
+      otlp:
+        endpoint: ${PUB_JAEGER_IP}:4317
+        tls:
+          insecure: true  # Set to true if not using TLS
+    service:
+      pipelines:
+        traces:
+          receivers: [jaeger]
+          exporters: [otlp]
+EOF
+  }
+
 main(){
 CTRL_ADVERTISE={{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}
 ROUTER_ADVERTISE={{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}
