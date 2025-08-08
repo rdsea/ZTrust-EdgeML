@@ -384,3 +384,212 @@ rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
 ```bash
 cilium install --version 1.18.0
 ```
+
+# setup application on gke
+mongodb and jaeger
+```bash
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo update
+
+helm install mongodb bitnami/mongodb \
+  --namespace mongodb --create-namespace \
+  --set auth.rootPassword=changeme \
+  --set auth.username=guest \
+  --set auth.password=guest \
+  --set auth.database=object-detection \
+  --set mongodb.architecture=replicaSet \
+  --set persistence.enabled=true \
+  --set persistence.storageClass=standard \
+  --set persistence.size=2Gi \
+  --set resources.requests.cpu=100m \
+  --set resources.requests.memory=256Mi \
+  --set readinessProbe.initialDelaySeconds=30 \
+  --set readinessProbe.periodSeconds=10 \
+  --set readinessProbe.failureThreshold=6 \
+  --set startupProbe.enabled=true \
+  --set startupProbe.initialDelaySeconds=10 \
+  --set startupProbe.periodSeconds=10 \
+  --set startupProbe.failureThreshold=30 \
+  --set podAnnotations.sidecar\\.opentelemetry\\.io/inject="true"
+
+#kubectl patch pvc mongodb -n mongodb -p '{"spec":{"storageClassName":"local-path"}}'
+
+
+
+kubectl port-forward svc/mongodb 27017:27017 -n mongodb
+
+```
+```bash
+# output
+MongoDB&reg; can be accessed on the following DNS name(s) and ports from within your cluster:
+    mongodb.mongodb.svc.cluster.local
+To get the root password run:
+    export MONGODB_ROOT_PASSWORD=$(kubectl get secret --namespace mongodb mongodb -o jsonpath="{.data.mongodb-root-password}" | base64 -d)
+To get the password for "guest" run:
+    export MONGODB_PASSWORD=$(kubectl get secret --namespace mongodb mongodb -o jsonpath="{.data.mongodb-passwords}" | base64 -d | awk -F',' '{print $1}')
+To connect to your database, create a MongoDB&reg; client container:
+    kubectl run --namespace mongodb mongodb-client --rm --tty -i --restart='Never' --env="MONGODB_ROOT_PASSWORD=$MONGODB_ROOT_PASSWORD" --image docker.io/bitnami/mongodb:8.0.12-debian-12-r0 --command -- bash
+Then, run the following command:
+    mongosh admin --host "mongodb" --authenticationDatabase admin -u $MONGODB_ROOT_USER -p $MONGODB_ROOT_PASSWORD
+To connect to your database from outside the cluster execute the following commands:
+    kubectl port-forward --namespace mongodb svc/mongodb 27017:27017 &
+    mongosh --host 127.0.0.1 --authenticationDatabase admin -p $MONGODB_ROOT_PASSWORD
+
+```
+
+## Jaeger setting
+
+### Manual
+
+### Jaeger Operater for automatic
+- [Jaeger operator does not work at the moment](https://github.com/jaegertracing/jaeger-operator?tab=readme-ov-file#jaeger-v2-operator), it requires the [Opentelemetry](https://github.com/open-telemetry/opentelemetry-operator) 
+
+```bash
+# Install the cert-manager ALREADY HAD
+
+# install the opentelemetry-operator
+kubectl create ns observability
+kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/latest/download/opentelemetry-operator.yaml -n observability
+
+# Jaeger with in-momory storage
+kubectl apply -f - <<EOF
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: jaeger-inmemory-instance
+  namespace: observability
+spec:
+  image: jaegertracing/jaeger:latest
+  ports:
+  - name: jaeger
+    port: 16686
+  config:
+    service:
+      extensions: [jaeger_storage, jaeger_query]
+      pipelines:
+        traces:
+          receivers: [otlp]    
+          exporters: [jaeger_storage_exporter]
+    extensions:
+      jaeger_query:
+        storage:
+          traces: memstore
+      jaeger_storage:
+        backends:
+          memstore:
+            memory:
+              max_traces: 100000
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    exporters:
+      jaeger_storage_exporter:
+        trace_storage: memstore
+EOF
+
+# setting sidecar
+kubectl apply -f - <<EOF
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: sidecar-for-my-app
+spec:
+  mode: sidecar
+  config:
+    receivers:
+      jaeger:
+        protocols:
+          thrift_compact: {}
+    processors:
+      batch:
+        send_batch_size: 10000
+        timeout: 5s
+
+    exporters:
+      debug: {}
+
+    service:
+      pipelines:
+        traces:
+          receivers: [jaeger]
+          exporters: [debug]
+EOF
+
+# apply for a single pod
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp
+  annotations:
+    sidecar.opentelemetry.io/inject: "true"
+spec:
+  containers:
+  - name: myapp
+    image: jaegertracing/vertx-create-span:operator-e2e-tests
+    ports:
+      - containerPort: 8080
+        protocol: TCP
+EOF
+
+# apply for deployment and statefulset
+kubectl apply -f - <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+  labels:
+    app: my-app
+  annotations:
+    sidecar.opentelemetry.io/inject: "true" # WRONG
+spec:
+  selector:
+    matchLabels:
+      app: my-app
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: my-app
+      annotations:
+        sidecar.opentelemetry.io/inject: "true" # CORRECT
+    spec:
+      containers:
+      - name: myapp
+        image: jaegertracing/vertx-create-span:operator-e2e-tests
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+EOF
+
+kubectl label namespace test sidecar.opentelemetry.io/inject=enabled
+
+# to accesst via localhost:8080
+kubectl port-forward deployment/jaeger-inmemory-instance-collector 8080:16686
+
+```
+
+
+
+- apply to helm installation like mongodb
+
+```yaml
+# values.yml
+architecture: standalone
+
+podAnnotations:
+  sidecar.opentelemetry.io/inject: "true"
+
+```
+
+```bash
+
+helm install my-mongodb bitnami/mongodb -f values.yaml --namespace default
+
+```
+
+
