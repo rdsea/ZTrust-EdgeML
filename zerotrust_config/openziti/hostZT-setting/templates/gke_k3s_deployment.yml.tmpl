@@ -20,7 +20,8 @@ spec:
         app: {{ service.name }}
         version: v1
       annotations:
-        sidecar.istio.io/inject: "true"
+        #sidecar.istio.io/inject: "true"
+        sidecar.opentelemetry.io/inject: "true"
     spec:
       containers:
         - name: {{ service.name }}
