@@ -1,3 +1,76 @@
+# CSC cPouta
+- login
+> source a script from API Access → Download OpenStack RC File v4 from the csc.login
+
+- check basic flavors and images and authentication
+```bash
+openstack token issue
+
+openstack flavor list
+
+openstack image list --long | grep -i ubuntu
+```
+
+#### Error from certificate
+- error from certificate since the k3s setup with the internal IP
+- edit the tls with the external IP
+
+```bash
+# on master node
+# Manually edit /etc/systemd/system/k3s.service or k3s startup options to add:
+sudo systemctl stop k3s
+ExecStart=/usr/local/bin/k3s server --data-dir /var/lib/rancher/k3s --flannel-backend=none --disable-network-policy --tls-san <PUBLIC_IP>
+# or
+sudo systemctl edit k3s
+# then add
+  [Service]
+  ExecStart=
+  ExecStart=/usr/local/bin/k3s server --tls-san=<PUBLIC_IP>
+
+# Or if you have /etc/rancher/k3s/config.yaml, add:
+tls-san:
+  - <PUBLIC_IP> 
+
+# finally
+sudo systemctl daemon-reload
+sudo systemctl restart k3s
+```
+
+#### Error from resolve host k3s-master
+```bash
+
+sudo vim /etc/hosts
+# add 
+127.0.0.1   localhost k3s-master
+```
+
+
+# CSC rahti cannot work
+- since it does not allow to config with operator
+
+```bash
+oc login --token=..................... --server=https://api.csc.fi:6443
+
+oc new-project <project_name> --description "csc_project: <project_ID>"
+
+oc delete project <project_name> # and all name-space
+
+```
+
+# check firewall setting
+```bash
+terraform import google_compute_firewall.allow_ssh           projects/aalto-t313-cs-e4640/global/firewalls/allow-ssh
+terraform import google_compute_firewall.allow_ziti          projects/aalto-t313-cs-e4640/global/firewalls/allow-ziti
+terraform import google_compute_firewall.allow_app           projects/aalto-t313-cs-e4640/global/firewalls/allow-app
+terraform import google_compute_firewall.allow_metric        projects/aalto-t313-cs-e4640/global/firewalls/allow-metric
+
+terraform import google_compute_firewall.allow_ssh_internal   projects/aalto-t313-cs-e4640/global/firewalls/allow-ssh-internal
+terraform import google_compute_firewall.allow_ziti_internal  projects/aalto-t313-cs-e4640/global/firewalls/allow-ziti-internal
+terraform import google_compute_firewall.allow_app_internal   projects/aalto-t313-cs-e4640/global/firewalls/allow-app-internal
+terraform import google_compute_firewall.allow_metric_internal projects/aalto-t313-cs-e4640/global/firewalls/allow-metric-internal
+
+
+```
 # settup k8s
 
 ## Install cert-manager && Install trust-manager (separately)
@@ -508,10 +581,8 @@ spec:
       batch:
         send_batch_size: 10000
         timeout: 5s
-
     exporters:
       debug: {}
-
     service:
       pipelines:
         traces:
@@ -573,8 +644,6 @@ kubectl port-forward deployment/jaeger-inmemory-instance-collector 8080:16686
 
 ```
 
-
-
 - apply to helm installation like mongodb
 
 ```yaml
@@ -592,4 +661,57 @@ helm install my-mongodb bitnami/mongodb -f values.yaml --namespace default
 
 ```
 
+- Need to send other OpenTelemetryCollector to jaeger collector
+- loadlbancer for Jaeger in cloud
+```bash
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: observability
+spec:
+  type: LoadBalancer
+  selector:
+    app: jaeger-inmemory-instance  # <- Ensure this label matches pod
+  ports:
+    - name: grpc
+      port: 4317
+      targetPort: 4317
+    - name: http
+      port: 4318
+      targetPort: 4318
+EOF
+```
+
+# setting sidecar for k3s
+```bash
+kubectl apply -f - <<EOF
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: sidecar-for-my-app
+spec:
+  mode: sidecar
+  config:
+    receivers:
+      jaeger:
+        protocols:
+          thrift_compact: {}
+    processors:
+      batch:
+        send_batch_size: 10000
+        timeout: 5s
+    exporters:
+      otlp:
+        endpoint: ${JAEGER_COLLECTOR_IP}:4317
+        tls:
+          insecure: true  # Set to true if not using TLS
+    service:
+      pipelines:
+        traces:
+          receivers: [jaeger]
+          exporters: [otlp]
+EOF
+```
 
