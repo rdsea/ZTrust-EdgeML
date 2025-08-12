@@ -12,8 +12,6 @@ source "$(dirname "$0")/common.sh"
 
 
 setting_k8s(){
-eval "$(cd ../gke/ && terraform output -raw kubeconfig_command)"
-CLUSTER_IP=$(cd ../gke/ && terraform output -raw {{ gke.cluster_name | replace('-', '_') }}_ip)
 CTRL_ADVERTISE="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
 ROUTER_NAMESPACE="router"
 
@@ -134,7 +132,12 @@ EOF
 
 main(){
 
+  eval "$(cd ../gke/ && terraform output -raw kubeconfig_command)"
+
+  CLUSTER_IP=$(cd ../gke/ && terraform output -raw {{ gke.cluster_name | replace('-', '_') }}_ip)
+
   setting_k8s
+
   trust_setup
 
   wait_for_ip_and_advertise PUB_CTRL_IP CTRL_ADVERTISE \
