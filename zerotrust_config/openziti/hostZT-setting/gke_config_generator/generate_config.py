@@ -75,13 +75,14 @@ if __name__ == "__main__":
         "gke_script_setup_cluster.sh.tmpl": "scripts/gke_script_setup_cluster.sh",
         "gke_dns_configmap.yml.tmpl": "scripts/gke_dns_configmap.yml",
         "csc_main_tf.tmpl": "csc/main.tf",
-        "csc_script_setup_cluster.sh.tmpl": "scripts/csc_script_setup_cluster.sh",
+        "csc_script_setup_cluster.sh.tmpl": "csc/csc_script_setup_cluster.sh",
+        "csc_ansible_inventory.yml.tmpl": "csc/csc_ansible_inventory.local.yml",
+        # "csc_script_setup_cluster.sh.tmpl": "scripts/csc_script_setup_cluster.sh",
         "k3s_ansible_inventory.yml.tmpl": "k3s/k3s_ansible_inventory.local.yml",
         "k3s_edge_cluster.sh.tmpl": "k3s/k3s_edge_cluster.sh.tmpl",
         "k3s_edge_setup_router.sh.tmpl": "k3s/k3s_edge_setup_router.sh.tmpl",
         "k3s_ingress.yml.tmpl": "k3s/k3s_ingress.yml",
         "gke_script_firewal_check.sh.tmpl": "gke/gke_script_firewal_check.sh",
-        # "gke_k3s_deployment.yml.tmpl": "k3s/k3s_deployment.yml",
         # "gke_k3s_deployment.yml.tmpl": "gke/gke_deployment.yml",
     }
 
