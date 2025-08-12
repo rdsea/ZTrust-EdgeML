@@ -1,0 +1,319 @@
+terraform {
+  required_providers {
+    openstack = {
+      source  = "terraform-provider-openstack/openstack"
+      version = "~> 1.51"
+    }
+  }
+  required_version = ">= 1.0"
+}
+
+provider "openstack" {
+  # Auth via environment variables # require source the script before running terraform apply 
+}
+
+
+# ------------------------------------------------
+variable "ssh_public_key_path" {
+  type    = string
+  default = "{{ ssh_public_key_path }}"
+}
+
+variable "ssh_private_key_path" {
+  type    = string
+  default = "{{ ssh_private_key_path }}"
+}
+
+variable "image_name" {
+  type    = string
+  default = "{{ cpouta.image }}" # adjust to cPouta image name if different
+}
+
+variable "flavor" {
+  description = "Flavor for instances"
+  default     = "{{ cpouta.machine_type }}"
+}
+
+variable "worker_count" {
+  default = {{ cpouta.node_count }}
+}
+
+variable "network_name" {
+  description = "Network to attach instances to"
+  default     = "{{ cpouta.internal_network }}"
+}
+
+
+variable "allowed_ssh_cidr" {
+  description = "CIDR allowed to SSH and k3s API (for security group). Set your IP/32"
+  default     = "0.0.0.0/0"
+}
+
+variable "master_name" {
+  default = "k3s-master"
+}
+
+variable "worker_name" {
+  default = "k3s-worker"
+}
+
+variable "master_floating_ip" {
+  description = "The existing floating IP to use for the master node"
+  type        = string
+  default     = "{{ cpouta.master_fip }}"
+}
+
+variable "worker_floating_ip" {
+  description = "The existing floating IPs to use for worker nodes"
+  type        = string # list(string)
+  default     = "{{ cpouta.worker_fip }}"
+  # default     = []
+}
+
+variable "network_cidr" {
+  default = "{{ cpouta.network_cidr }}"
+}
+
+variable "external_network_id" {
+    default = "{{ cpouta.network_id }}"
+  } # Public network UUID from OpenStack
+
+#######################################
+# Internal Network + Subnet
+#######################################
+resource "openstack_networking_network_v2" "internal_net" {
+  name = "zt-internal-network"
+}
+
+resource "openstack_networking_subnet_v2" "internal_subnet" {
+  name       = "zt-internal-subnet"
+  network_id = openstack_networking_network_v2.internal_net.id
+  cidr       = var.network_cidr
+  ip_version = 4
+  gateway_ip = cidrhost(var.network_cidr, 1)
+}
+
+#######################################
+# Router to connect internal to public
+#######################################
+resource "openstack_networking_router_v2" "router" {
+  name                = "router-to-public"
+  external_network_id = var.external_network_id
+}
+
+resource "openstack_networking_router_interface_v2" "router_interface" {
+  router_id = openstack_networking_router_v2.router.id
+  subnet_id = openstack_networking_subnet_v2.internal_subnet.id
+}
+
+#######################################
+# Security Group
+#######################################
+
+resource "openstack_compute_keypair_v2" "key" {
+  name       = "k3s-key"
+  public_key = file(var.ssh_public_key_path)
+}
+
+resource "openstack_networking_secgroup_v2" "k3s_sg" {
+  name        = "k3s-sg"
+  description = "Security group for k3s cluster"
+}
+
+
+# ------------------------------------------------
+# External firewall rules (Security Group)
+resource "openstack_networking_secgroup_v2" "external_sg" {
+  name        = "external-firewall"
+  description = "Allow external access for SSH, Ziti, App, and Metrics"
+}
+
+{% for rule in gke.firewall_external %}
+resource "openstack_networking_secgroup_rule_v2" "ext_{{ rule.name | replace('-', '_') }}" {
+  direction         = "ingress"
+  ethertype         = "IPv4"
+  protocol          = "tcp"
+  port_range_min    = {{ rule.ports[0] }}
+  port_range_max    = {{ rule.ports[0] }}
+  remote_ip_prefix  = "{{ rule.source_ranges[0] }}"
+  security_group_id = openstack_networking_secgroup_v2.external_sg.id
+}
+{% endfor %}
+
+# ------------------------------------------------
+# Internal firewall rules (Security Group)
+resource "openstack_networking_secgroup_v2" "internal_sg" {
+  name        = "internal-firewall"
+  description = "Allow internal access for SSH, Ziti, App, and Metrics"
+}
+
+{% for rule in gke.firewall_internal %}
+resource "openstack_networking_secgroup_rule_v2" "int_{{ rule.name | replace('-', '_') }}" {
+  direction         = "ingress"
+  ethertype         = "IPv4"
+  protocol          = "tcp"
+  port_range_min    = {{ rule.ports[0] }}
+  port_range_max    = {{ rule.ports[0] }}
+  remote_ip_prefix  = "{{ rule.cpouta_ranges[0] }}"
+  security_group_id = openstack_networking_secgroup_v2.internal_sg.id
+}
+{% endfor %}
+
+# ------------------------------------------------
+resource "openstack_networking_secgroup_rule_v2" "allow_ssh" {
+  direction         = "ingress"
+  ethertype        = "IPv4"
+  protocol          = "tcp"
+  port_range_min    = 22
+  port_range_max    = 22
+  remote_ip_prefix  = var.allowed_ssh_cidr
+  security_group_id = openstack_networking_secgroup_v2.k3s_sg.id
+}
+
+resource "openstack_networking_secgroup_rule_v2" "allow_kubeapi" {
+  direction         = "ingress"
+  ethertype        = "IPv4"
+  protocol          = "tcp"
+  port_range_min    = 6443
+  port_range_max    = 6443
+  remote_ip_prefix  = var.allowed_ssh_cidr
+  security_group_id = openstack_networking_secgroup_v2.k3s_sg.id
+}
+
+# ------------------------------------------------
+# Master instance
+
+resource "openstack_compute_instance_v2" "master" {
+  name            = var.master_name
+  image_name      = var.image_name
+  flavor_name     = var.flavor
+  key_pair        = openstack_compute_keypair_v2.key.name
+  security_groups = [openstack_networking_secgroup_v2.k3s_sg.name]
+
+  network {
+    uuid = openstack_networking_network_v2.internal_net.id
+  }
+}
+
+
+#######################################
+# Floating IP Association
+#######################################
+resource "openstack_compute_floatingip_associate_v2" "master_fip_assoc" {
+  floating_ip = var.master_floating_ip
+  instance_id = openstack_compute_instance_v2.master.id
+}
+
+#######################################
+# Provision Master with k3s
+#######################################
+resource "null_resource" "provision_master" {
+  depends_on = [openstack_compute_floatingip_associate_v2.master_fip_assoc]
+
+  provisioner "remote-exec" {
+    inline = [
+      "sudo apt-get update -y",
+      "curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644"
+    ]
+
+    connection {
+      type        = "ssh"
+      user        = "ubuntu"
+      private_key = file(var.ssh_private_key_path)
+      host        = var.master_floating_ip
+    }
+  }
+}
+
+
+output "master_floating_ip" {
+  value = var.master_floating_ip
+}
+
+# ------------------------------------------------
+# Worker instance
+#
+
+resource "openstack_compute_instance_v2" "worker" {
+  name            = var.worker_name
+  image_name      = var.image_name
+  flavor_name     = var.flavor
+  key_pair        = openstack_compute_keypair_v2.key.name
+  security_groups = [openstack_networking_secgroup_v2.k3s_sg.name]
+
+  network {
+    uuid = openstack_networking_network_v2.internal_net.id
+  }
+
+  metadata = {
+    role = "worker"
+  }
+
+  # wait for master to be ready; depends_on ensures order
+  depends_on = [openstack_compute_instance_v2.master]
+}
+
+# resource "openstack_compute_instance_v2" "worker" {
+#   name            = var.worker_name
+#   image_name      = var.image_name
+#   flavor_name     = var.flavor
+#   key_pair        = openstack_compute_keypair_v2.key.name
+#   security_groups = [openstack_networking_secgroup_v2.k3s_sg.name]
+# 
+# 
+#   metadata = {
+#     role = "worker"
+#   }
+# 
+#   # wait for master to be ready; depends_on ensures order
+#   depends_on = [openstack_compute_instance_v2.master]
+# 
+#   provisioner "remote-exec" {
+#     inline = [
+#       # fetch the k3s token from master and install k3s as agent
+#       "TOKEN=$(ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ubuntu@${var.master_floating_ip} 'sudo cat /var/lib/rancher/k3s/server/node-token')",
+#       "curl -sfL https://get.k3s.io | K3S_URL=https://${openstack_compute_instance_v2.master.access_ip_v4}:6443 K3S_TOKEN=$${TOKEN} sh -"
+#     ]
+# 
+#     connection {
+#       type        = "ssh"
+#       user        = "ubuntu"
+#       private_key = file(var.ssh_private_key_path)
+#       #host        = self.access_ip_v4
+#       host        = var.worker_floating_ip
+#     }
+#   }
+# }
+
+resource "openstack_compute_floatingip_associate_v2" "worker_fip_assoc" {
+  floating_ip = var.worker_floating_ip
+  instance_id = openstack_compute_instance_v2.worker.id
+}
+
+#######################################
+# Provision Master with k3s
+#######################################
+resource "null_resource" "provision_worker" {
+  depends_on = [openstack_compute_floatingip_associate_v2.worker_fip_assoc]
+
+  provisioner "remote-exec" {
+    inline = [
+      # fetch the k3s token from master and install k3s as agent
+      "TOKEN=$(ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ubuntu@${var.master_floating_ip} 'sudo cat /var/lib/rancher/k3s/server/node-token')",
+      "curl -sfL https://get.k3s.io | K3S_URL=https://${openstack_compute_instance_v2.master.access_ip_v4}:6443 K3S_TOKEN=$${TOKEN} sh -"
+    ]
+
+    connection {
+      type        = "ssh"
+      user        = "ubuntu"
+      private_key = file(var.ssh_private_key_path)
+      host        = var.worker_floating_ip
+    }
+  }
+}
+
+
+output "worker_floating_ip" {
+  value = var.worker_floating_ip
+}
+
