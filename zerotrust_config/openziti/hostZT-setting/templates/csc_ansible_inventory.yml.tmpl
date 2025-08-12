@@ -1,0 +1,17 @@
+k3s_cluster:
+  children:
+    server:
+      hosts:
+      {%- for worker in cpouta.k3s_cluster.ctrl %}
+        {{ worker.ip }}:
+      {%- endfor %}
+    agent:
+      hosts:
+      {%- for worker in cpouta.k3s_cluster.worker %}
+        {{ worker.ip }}:
+      {%- endfor %}
+  vars:
+    {% for key, value in cpouta.k3s_cluster.vars.items() -%}
+    {{ key }}: {{ value }}
+    {% endfor -%}
+    api_endpoint: {{ cpouta.k3s_cluster.ctrl[0].ip }}

@@ -193,6 +193,11 @@ resource "openstack_compute_instance_v2" "master" {
   network {
     uuid = openstack_networking_network_v2.internal_net.id
   }
+
+  metadata = {
+    role = "master"
+  }
+
 }
 
 
@@ -203,28 +208,6 @@ resource "openstack_compute_floatingip_associate_v2" "master_fip_assoc" {
   floating_ip = var.master_floating_ip
   instance_id = openstack_compute_instance_v2.master.id
 }
-
-#######################################
-# Provision Master with k3s
-#######################################
-resource "null_resource" "provision_master" {
-  depends_on = [openstack_compute_floatingip_associate_v2.master_fip_assoc]
-
-  provisioner "remote-exec" {
-    inline = [
-      "sudo apt-get update -y",
-      "curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644"
-    ]
-
-    connection {
-      type        = "ssh"
-      user        = "ubuntu"
-      private_key = file(var.ssh_private_key_path)
-      host        = var.master_floating_ip
-    }
-  }
-}
-
 
 output "master_floating_ip" {
   value = var.master_floating_ip
@@ -253,63 +236,10 @@ resource "openstack_compute_instance_v2" "worker" {
   depends_on = [openstack_compute_instance_v2.master]
 }
 
-# resource "openstack_compute_instance_v2" "worker" {
-#   name            = var.worker_name
-#   image_name      = var.image_name
-#   flavor_name     = var.flavor
-#   key_pair        = openstack_compute_keypair_v2.key.name
-#   security_groups = [openstack_networking_secgroup_v2.k3s_sg.name]
-# 
-# 
-#   metadata = {
-#     role = "worker"
-#   }
-# 
-#   # wait for master to be ready; depends_on ensures order
-#   depends_on = [openstack_compute_instance_v2.master]
-# 
-#   provisioner "remote-exec" {
-#     inline = [
-#       # fetch the k3s token from master and install k3s as agent
-#       "TOKEN=$(ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ubuntu@${var.master_floating_ip} 'sudo cat /var/lib/rancher/k3s/server/node-token')",
-#       "curl -sfL https://get.k3s.io | K3S_URL=https://${openstack_compute_instance_v2.master.access_ip_v4}:6443 K3S_TOKEN=$${TOKEN} sh -"
-#     ]
-# 
-#     connection {
-#       type        = "ssh"
-#       user        = "ubuntu"
-#       private_key = file(var.ssh_private_key_path)
-#       #host        = self.access_ip_v4
-#       host        = var.worker_floating_ip
-#     }
-#   }
-# }
 
 resource "openstack_compute_floatingip_associate_v2" "worker_fip_assoc" {
   floating_ip = var.worker_floating_ip
   instance_id = openstack_compute_instance_v2.worker.id
-}
-
-#######################################
-# Provision Master with k3s
-#######################################
-resource "null_resource" "provision_worker" {
-  depends_on = [openstack_compute_floatingip_associate_v2.worker_fip_assoc]
-
-  provisioner "remote-exec" {
-    inline = [
-      # fetch the k3s token from master and install k3s as agent
-      "TOKEN=$(ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ubuntu@${var.master_floating_ip} 'sudo cat /var/lib/rancher/k3s/server/node-token')",
-      "curl -sfL https://get.k3s.io | K3S_URL=https://${openstack_compute_instance_v2.master.access_ip_v4}:6443 K3S_TOKEN=$${TOKEN} sh -"
-    ]
-
-    connection {
-      type        = "ssh"
-      user        = "ubuntu"
-      private_key = file(var.ssh_private_key_path)
-      host        = var.worker_floating_ip
-    }
-  }
 }
 
 

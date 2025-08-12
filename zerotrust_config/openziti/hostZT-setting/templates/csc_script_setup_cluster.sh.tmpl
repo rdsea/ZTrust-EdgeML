@@ -1,0 +1,207 @@
+#!/bin/bash
+
+set -euo pipefail
+
+source "$(dirname "$0")/../scripts/common.sh"
+
+
+# Assumption
+# It is not normally necessary to obtain publicly trusted certificates for Ziti's TLS servers.
+# Ziti manages the trust relationships between the controller and routers and clients independent of the web's root authorities.
+# See the Alternative Web Server Certificates section for more information.
+
+setting_kubectl_helm(){
+
+  master_floating_ip=$1
+
+  ssh -i {{ ssh_private_key_path }} ubuntu@$master_floating_ip "sudo cat /etc/rancher/k3s/k3s.yaml" > ./k3s.yaml
+
+  sed -i "s/127.0.0.1/${master_floating_ip}/" ./k3s.yaml
+  }
+
+setting_k8s(){
+
+CTRL_ADVERTISE="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
+ROUTER_NAMESPACE="router"
+
+# Create namespace if it doesn't exist
+CTRL_NAMESPACE="{{ gke.namespace }}"
+
+ROUTER_ADVERTISE="{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}"
+ROUTER_ID="ziti-{{ ziti_config.ctrl.cloud_ctrl.router.id | replace('_', '') }}"
+
+if ! kubectl get namespace "$CTRL_NAMESPACE" >/dev/null 2>&1; then
+  echo "Creating namespace: $CTRL_NAMESPACE"
+  kubectl create namespace "$CTRL_NAMESPACE"
+else
+  echo "Namespace $CTRL_NAMESPACE already exists."
+fi
+  }
+
+trust_setup(){
+helm repo add jetstack https://charts.jetstack.io
+
+log "cert-manager"
+helm upgrade --install cert-manager jetstack/cert-manager \
+    --namespace cert-manager --create-namespace \
+    --set crds.enabled=true
+
+wait_for_deployment cert-manager cert-manager
+
+
+log "trust-manager"
+helm upgrade --install trust-manager jetstack/trust-manager \
+    --namespace cert-manager \
+    --set crds.keep=false \
+    --set app.trust.namespace=$CTRL_NAMESPACE
+
+wait_for_deployment cert-manager trust-manager
+
+
+log "zt-ctrl"
+helm install ziti-controller openziti/ziti-controller \
+  --namespace $CTRL_NAMESPACE \
+  --set cert-manager.enabled=false \
+  --set trust-manager.enabled=false \
+  --set clientApi.advertisedHost="$CTRL_ADVERTISE" \
+
+wait_for_deployment "$CTRL_NAMESPACE" ziti-controller
+
+  }
+
+setup_dns(){
+# DNS setting 
+env PUB_CTRL_IP="$PUB_CTRL_IP" envsubst < gke_dns_configmap.yml | kubectl apply -f -
+
+wait_for_deployment kube-system  custom-dns-server
+
+CUSTOM_DNS_IP=$(kubectl get pod -n kube-system -l app=custom-dns-server -o jsonpath='{.items[0].status.podIP}')
+
+kubectl patch configmap kube-dns -n kube-system --type merge -p "{\"data\":{\"stubDomains\":\"{\\\"{{ custom_domain }}\\\":[\\\"$CUSTOM_DNS_IP\\\"]}\"}}"
+
+kubectl delete pods -n kube-system -l k8s-app=kube-dns
+
+wait_for_deployment kube-system  custom-dns-server
+
+}
+
+sidecar_jaeger_gke(){
+
+log "sidecar_jaeger_gke"
+# setting sidecar
+kubectl apply -f - <<EOF
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: sidecar-for-my-app
+spec:
+  mode: sidecar
+  config:
+    receivers:
+      jaeger:
+        protocols:
+          thrift_compact: {}
+    processors:
+      batch:
+        send_batch_size: 10000
+        timeout: 5s
+
+    exporters:
+      debug: {}
+
+    service:
+      pipelines:
+        traces:
+          receivers: [jaeger]
+          exporters: [debug]
+EOF
+
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: observability
+spec:
+  type: LoadBalancer
+  selector:
+    app: jaeger-inmemory-instance  # <- Ensure this label matches pod
+  ports:
+    - name: grpc
+      port: 4317
+      targetPort: 4317
+    - name: http
+      port: 4318
+      targetPort: 4318
+EOF
+  }
+
+
+main(){
+
+  # ssh-keygen -f "/home/hong3nguyen/.ssh/known_hosts" -R "128.214.255.95"
+
+  # ssh-keygen -f "/home/hong3nguyen/.ssh/known_hosts" -R "128.214.255.226"
+
+  ansible-playbook set_dns.yml -i csc_ansible_inventory.local.yml
+
+  ansible-playbook k3s.orchestration.site -i csc_ansible_inventory.local.yml
+
+  log "setup cilium"
+  CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
+  CLI_ARCH=amd64
+  if [ "$(uname -m)" = "aarch64" ]; then CLI_ARCH=arm64; fi
+  curl -L --fail --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+  sha256sum --check cilium-linux-${CLI_ARCH}.tar.gz.sha256sum
+  sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
+  rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+  cilium install --version 1.18.0
+
+  MASTER_IP=$(terraform output -raw master_floating_ip)
+
+  WORKER_IP=$(terraform output -raw worker_floating_ip)
+
+  setting_kubectl_helm $MASTER_IP
+
+  export KUBECONFIG=./k3s.yaml
+
+  setting_k8s
+
+  trust_setup
+
+  wait_for_ip_and_advertise PUB_CTRL_IP CTRL_ADVERTISE \
+    "kubectl get svc ziti-controller-client -n \"$CTRL_NAMESPACE\" -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
+    $CTRL_ADVERTISE
+  
+  CTRL_PASS=$(kubectl -n "$CTRL_NAMESPACE" get secrets ziti-controller-admin-secret -o go-template='{{"{{"}}index .data "admin-password" | base64decode {{"}}"}}')
+
+  setup_localhost "$PUB_CTRL_IP" "$CTRL_ADVERTISE"
+  login_zt "$CTRL_ADVERTISE" "$CTRL_PASS"
+  setup_dns
+  setup_router "$ROUTER_ID" "$ROUTER_NAMESPACE" "$ROUTER_ADVERTISE"
+
+  wait_for_ip_and_advertise PUB_ROUTER_IP ROUTER_ADVERTISE \
+    "kubectl get svc \"$ROUTER_ID-edge\" -n \"$ROUTER_NAMESPACE\" -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
+    $ROUTER_ADVERTISE
+
+  setup_localhost "$PUB_ROUTER_IP" "$ROUTER_ADVERTISE"
+  log "Edge and Sensor deployment complete."
+
+  setup_jaeger
+
+  sidecar_jaeger_gke
+
+  wait_for_ip_and_advertise PUB_JAEGER_IP  \
+    "kubectl get svc otel-collector -n observability -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
+    $ROUTER_ADVERTISE
+
+  export PUB_CTRL_IP PUB_ROUTER_IP CTRL_PASS PUB_JAEGER_IP
+  envsubst '${PUB_CTRL_IP} ${PUB_ROUTER_IP} ${CTRL_PASS} $PUB_JAEGER_IP' < ../k3s/k3s_edge_cluster.sh.tmpl > ../k3s/k3s_edge_cluster.sh
+  envsubst '${PUB_CTRL_IP} ${PUB_ROUTER_IP} ${CTRL_PASS}' < ../k3s/k3s_edge_setup_router.sh.tmpl > ../k3s/k3s_edge_setup_router.sh
+
+
+}
+
+main "$@"
+
+
