@@ -78,6 +78,7 @@ if __name__ == "__main__":
         "k3s_edge_cluster.sh.tmpl": "k3s/k3s_edge_cluster.sh.tmpl",
         "k3s_edge_setup_router.sh.tmpl": "k3s/k3s_edge_setup_router.sh.tmpl",
         "k3s_ingress.yml.tmpl": "k3s/k3s_ingress.yml",
+        "gke_script_firewal_check.sh.tmpl": "gke/gke_script_firewal_check.sh",
         # "gke_k3s_deployment.yml.tmpl": "k3s/k3s_deployment.yml",
         # "gke_k3s_deployment.yml.tmpl": "gke/gke_deployment.yml",
     }

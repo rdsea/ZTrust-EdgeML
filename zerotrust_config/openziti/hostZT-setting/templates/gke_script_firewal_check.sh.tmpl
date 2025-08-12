@@ -1,0 +1,11 @@
+#!/bin/bash
+
+gcloud config set project {{ project_name }}
+
+{% for rule in gke.firewall_internal %}
+terraform import google_compute_firewall.{{ rule.name | replace('-', '_') }} projects/aalto-t313-cs-e4640/global/firewalls/{{ rule.name }}
+{% endfor %}
+
+{% for rule in gke.firewall_external %}
+terraform import google_compute_firewall.{{ rule.name | replace('-', '_') }} projects/aalto-t313-cs-e4640/global/firewalls/{{ rule.name }}
+{% endfor %}
