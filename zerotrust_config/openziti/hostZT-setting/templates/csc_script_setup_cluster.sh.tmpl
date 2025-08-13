@@ -61,9 +61,17 @@ wait_for_deployment cert-manager trust-manager
 log "zt-ctrl"
 helm install ziti-controller openziti/ziti-controller \
   --namespace $CTRL_NAMESPACE \
-  --set cert-manager.enabled=false \
-  --set trust-manager.enabled=false \
-  --set clientApi.advertisedHost="$CTRL_ADVERTISE" \
+  --set cert-manager.enabled=true \
+  --set trust-manager.enabled=true \
+  --set clientApi.advertisedPort=32171 \
+  --set clientApi.service.type=NodePort \
+  --set clientApi.advertisedHost="$CTRL_ADVERTISE" 
+
+# helm install ziti-controller openziti/ziti-controller \
+#   --namespace $CTRL_NAMESPACE \
+#   --set cert-manager.enabled=false \
+#   --set trust-manager.enabled=false \
+#   --set clientApi.advertisedHost="$CTRL_ADVERTISE" 
 
 wait_for_deployment "$CTRL_NAMESPACE" ziti-controller
 
@@ -84,6 +92,69 @@ kubectl delete pods -n kube-system -l k8s-app=kube-dns
 wait_for_deployment kube-system  custom-dns-server
 
 }
+
+setup_traefik(){
+  router_id=$1
+  advertised_address=$2
+  namespace=$1-namespace
+
+setup_router $router_id $namespace $advertised_address
+
+kubectl patch pvc $router_id -n $namespace -p '{"spec":{"storageClassName":"local-path"}}'
+
+# Check if pod is running
+echo "Checking pod status..."
+
+sleep 5
+POD_STATUS=$(kubectl get pod -n $namespace -l app.kubernetes.io/name=ziti-router -o jsonpath="{.items[0].status.phase}" 2>/dev/null || echo "NotFound")
+
+if [[ "$POD_STATUS" != "Running" ]]; then
+  echo "Pod is not running (status: $POD_STATUS). Deleting pod and waiting..."
+  kubectl delete pod -n $namespace -l app.kubernetes.io/name=ziti-router --ignore-not-found
+
+  # Wait for the new pod to be recreated and become Running
+  echo "Waiting for pod to become Running..."
+  for i in {1..30}; do
+    sleep 5
+    POD_STATUS=$(kubectl get pod -n $NAMESPACE -l app.kubernetes.io/name=ziti-router -o jsonpath="{.items[0].status.phase}" 2>/dev/null || echo "NotFound")
+    if [[ "$POD_STATUS" == "Running" ]]; then
+      echo "Pod is now Running."
+      break
+    fi
+  done
+
+  if [[ "$POD_STATUS" != "Running" ]]; then
+    echo "Pod did not reach Running state in time."
+    exit 1
+  fi
+else
+  echo "Pod is already Running."
+fi
+
+kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: $router_id-ingress
+  namespace: $namespace
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  rules:
+  - host: $advertised_address
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: $router_id-edge
+            port:
+              number: 443
+EOF
+  }
+
+
 
 sidecar_jaeger_gke(){
 
@@ -139,31 +210,53 @@ EOF
 
 main(){
 
-  # ssh-keygen -f "/home/hong3nguyen/.ssh/known_hosts" -R "128.214.255.95"
-
-  # ssh-keygen -f "/home/hong3nguyen/.ssh/known_hosts" -R "128.214.255.226"
+  MASTER_IP=$(terraform output -raw master_floating_ip)
+  WORKER_IP=$(terraform output -raw worker_floating_ip)
+  ssh-keyscan $WORKER_IP >> ~/.ssh/known_hosts
+  ssh-keyscan $MASTER_IP >> ~/.ssh/known_hosts
 
   ansible-playbook set_dns.yml -i csc_ansible_inventory.local.yml
 
   ansible-playbook k3s.orchestration.site -i csc_ansible_inventory.local.yml
 
-  log "setup cilium"
-  CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
-  CLI_ARCH=amd64
-  if [ "$(uname -m)" = "aarch64" ]; then CLI_ARCH=arm64; fi
-  curl -L --fail --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
-  sha256sum --check cilium-linux-${CLI_ARCH}.tar.gz.sha256sum
-  sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
-  rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
-  cilium install --version 1.18.0
-
-  MASTER_IP=$(terraform output -raw master_floating_ip)
-
-  WORKER_IP=$(terraform output -raw worker_floating_ip)
-
   setting_kubectl_helm $MASTER_IP
-
   export KUBECONFIG=./k3s.yaml
+
+#   log "setup cilium"
+#   CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
+#   CLI_ARCH=amd64
+#   if [ "$(uname -m)" = "aarch64" ]; then CLI_ARCH=arm64; fi
+#   curl -L --fail --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+#   sha256sum --check cilium-linux-${CLI_ARCH}.tar.gz.sha256sum
+#   sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
+#   rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+#   cilium install --version 1.18.0
+  TARGET_CILIUM_VERSION="1.18.0"
+
+  if command -v cilium >/dev/null 2>&1 && \
+    [ "$(cilium version --client | grep -oP 'cilium-cli/\K[0-9]+\.[0-9]+\.[0-9]+')" = "$TARGET_CILIUM_VERSION" ]; then
+    echo "Cilium CLI $TARGET_CILIUM_VERSION already installed, skipping..."
+  else
+    echo " Installing Cilium CLI $TARGET_CILIUM_VERSION..."
+    CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
+    CLI_ARCH=amd64
+    if [ "$(uname -m)" = "aarch64" ]; then CLI_ARCH=arm64; fi
+    curl -L --fail --remote-name-all \
+      https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+    sha256sum --check cilium-linux-${CLI_ARCH}.tar.gz.sha256sum
+    sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
+    rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+  fi
+
+# Check if Cilium is installed in the cluster
+  if kubectl -n kube-system get ds/cilium >/dev/null 2>&1; then
+    echo "Cilium already installed in the cluster, skipping cilium install."
+  else
+    echo "Installing Cilium into the cluster..."
+    cilium install --version "$TARGET_CILIUM_VERSION"
+  fi
+
+  wait_for_nodes_ready
 
   setting_k8s
 
@@ -198,8 +291,6 @@ main(){
   export PUB_CTRL_IP PUB_ROUTER_IP CTRL_PASS PUB_JAEGER_IP
   envsubst '${PUB_CTRL_IP} ${PUB_ROUTER_IP} ${CTRL_PASS} $PUB_JAEGER_IP' < ../k3s/k3s_edge_cluster.sh.tmpl > ../k3s/k3s_edge_cluster.sh
   envsubst '${PUB_CTRL_IP} ${PUB_ROUTER_IP} ${CTRL_PASS}' < ../k3s/k3s_edge_setup_router.sh.tmpl > ../k3s/k3s_edge_setup_router.sh
-
-
 }
 
 main "$@"
