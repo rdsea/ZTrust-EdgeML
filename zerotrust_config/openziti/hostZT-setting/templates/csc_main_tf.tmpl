@@ -198,6 +198,9 @@ resource "openstack_compute_instance_v2" "master" {
     role = "master"
   }
 
+  depends_on = [
+    openstack_networking_subnet_v2.internal_subnet
+  ]
 }
 
 
