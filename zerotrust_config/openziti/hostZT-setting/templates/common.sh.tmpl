@@ -313,3 +313,30 @@ spec:
         trace_storage: memstore
 EOF
 }
+
+wait_for_nodes_ready() {
+  timeout=300   # seconds
+  interval=5
+  elapsed=0
+
+  echo "Waiting for all nodes to be Ready..."
+
+  while true; do
+    total_nodes=$(kubectl get nodes --no-headers 2>/dev/null | wc -l)
+    ready_nodes=$(kubectl get nodes --no-headers 2>/dev/null | awk '{if($2=="Ready") print $1}' | wc -l)
+
+    if [ "$total_nodes" -gt 0 ] && [ "$total_nodes" -eq "$ready_nodes" ]; then
+      echo "All nodes are Ready."
+      break
+    fi
+
+    if [ "$elapsed" -ge "$timeout" ]; then
+      echo "Timeout waiting for nodes to be Ready."
+      kubectl get nodes
+      exit 1
+    fi
+
+    sleep "$interval"
+    elapsed=$((elapsed + interval))
+  done
+}
