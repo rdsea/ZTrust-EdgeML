@@ -217,10 +217,13 @@ helm upgrade --install \
     --namespace $router_namespace \
     --set-file enrollmentJwt=$router_id.jwt \
     --set ctrl.endpoint=$ctrl_advertise:443 \
-    {%- if ziti_config.ctrl.cloud_ctrl.router.loadbalancer %}
-    --set edge.service.type=LoadBalancer \
-    {%- endif %}
-    --set edge.advertisedHost=$router_advertise
+    --set edge.advertisedHost=$router_advertise \
+    --set clientApi.service.type=ClusterIP \
+    --set clientApi.traefikTcpRoute.enabled=true
+
+    # {%- if ziti_config.ctrl.cloud_ctrl.router.loadbalancer %}
+    #--set edge.service.type=LoadBalancer \
+    #{%- endif %}
 
 }
 
@@ -269,9 +272,11 @@ wait_for_ip_and_advertise() {
 }
 
 setup_jaeger() {
+# install opentelemetry-operator
 log "jaeger-setup"
 kubectl create ns observability
-kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/latest/download/opentelemetry-operator.yaml -n observability
+kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/latest/download/opentelemetry-operator.yaml 
+# -n observability
 
 # Jaeger with in-momory storage
 kubectl apply -f - <<EOF
