@@ -234,34 +234,6 @@ spec:
 EOF
   }
 
-setup_network (){
-  TARGET_CILIUM_VERSION="1.18.0"
-
-  if command -v cilium >/dev/null 2>&1 && \
-    [ "$(cilium version --client | grep -oP 'cilium-cli/\K[0-9]+\.[0-9]+\.[0-9]+')" = "$TARGET_CILIUM_VERSION" ]; then
-    echo "Cilium CLI $TARGET_CILIUM_VERSION already installed, skipping..."
-  else
-    echo " Installing Cilium CLI $TARGET_CILIUM_VERSION..."
-    CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
-    CLI_ARCH=amd64
-    if [ "$(uname -m)" = "aarch64" ]; then CLI_ARCH=arm64; fi
-    curl -L --fail --remote-name-all \
-      https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
-    sha256sum --check cilium-linux-${CLI_ARCH}.tar.gz.sha256sum
-    sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
-    rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
-  fi
-
-# Check if Cilium is installed in the cluster
-  if kubectl -n kube-system get ds/cilium >/dev/null 2>&1; then
-    echo "Cilium already installed in the cluster, skipping cilium install."
-  else
-    echo "Installing Cilium into the cluster..."
-    cilium install --version "$TARGET_CILIUM_VERSION"
-  fi
-
-  wait_for_nodes_ready
-  }
 
 main(){
   # curl -sS https://get.openziti.io/install.bash | sudo bash -s openziti
@@ -279,12 +251,12 @@ main(){
   PUB_JAEGER_IP="{{ cloud.cluster_ip }}"
 
   # setup cilium 
-  # setup_network
+  setup_network
+
   # check ready from nodes 
   wait_for_nodes_ready
 
   setup_cert_ztctrl
-
   # wait_for_ip_and_advertise PUB_CTRL_IP CTRL_ADVERTISE \
   #   "kubectl get svc ziti-controller-client -n \"$CTRL_NAMESPACE\" -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
   #   $CTRL_ADVERTISE
@@ -296,7 +268,6 @@ main(){
   setup_dns $PUB_CTRL_IP $CTRL_ADVERTISE
 
   login_zt "$CTRL_ADVERTISE" "$CTRL_PASS"
-
 
   setup_router_traefik "$ROUTER_ID" "$ROUTER_ADVERTISE"
 
@@ -320,9 +291,6 @@ main(){
   #   "kubectl get svc otel-collector -n observability -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
   #   $ROUTER_ADVERTISE
 
-  # export PUB_CTRL_IP PUB_ROUTER_IP CTRL_PASS PUB_JAEGER_IP
-  # envsubst '${PUB_CTRL_IP} ${PUB_ROUTER_IP} ${CTRL_PASS} $PUB_JAEGER_IP' < ../k3s/k3s_edge_cluster.sh.tmpl > ../k3s/k3s_edge_cluster.sh
-  # envsubst '${PUB_CTRL_IP} ${PUB_ROUTER_IP} ${CTRL_PASS}' < ../k3s/k3s_edge_setup_router.sh.tmpl > ../k3s/k3s_edge_setup_router.sh
 }
 
 main "$@"
