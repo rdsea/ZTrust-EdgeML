@@ -9,13 +9,6 @@
 set -euo pipefail
 source "$(dirname "$0")/common.sh"
 
-setting_kubectl_helm(){
-
-  master_floating_ip=$1
-  ssh -i {{ ssh_private_key_path }} ubuntu@$master_floating_ip "sudo cat /etc/rancher/k3s/k3s.yaml" > ./k3s.yaml
-  sed -i "s/127.0.0.1/${master_floating_ip}/" ./k3s.yaml
-  }
-
 setup_cert_ztctrl(){
 
   if ! kubectl get namespace "$CTRL_NAMESPACE" >/dev/null 2>&1; then
@@ -68,126 +61,66 @@ setup_cert_ztctrl(){
 
   }
 
-setup_dns(){
-  # DNS setting 
-  # env PUB_CTRL_IP="$PUB_CTRL_IP" envsubst < gke_dns_configmap.yml | kubectl apply -f -
-  floating_ip="$1"
-  hostnames="$2" #"ctrl.cloud.hong3nguyen.com router.cloud.hong3nguyen.com"
-
-# Get the existing ConfigMap as JSON
-  kubectl -n kube-system get configmap coredns -o json > coredns.json
-
-# Update NodeHosts safely using jq
-  jq --arg ip "$floating_ip" --arg hosts "$hostnames" \
-    '.data.NodeHosts += "\n\($ip) \($hosts)"' coredns.json > coredns-patched.json
-
-# Apply the patched ConfigMap
-  kubectl -n kube-system apply -f coredns-patched.json
-
-# Restart CoreDNS pods
-  kubectl -n kube-system rollout restart deployment coredns
-
-  wait_for_deployment kube-system coredns
-
-  # CUSTOM_DNS_IP=$(kubectl get pod -n kube-system -l app=custom-dns-server -o jsonpath='{.items[0].status.podIP}')
-  # kubectl patch configmap kube-dns -n kube-system --type merge -p "{\"data\":{\"stubDomains\":\"{\\\"{{ custom_domain }}\\\":[\\\"$CUSTOM_DNS_IP\\\"]}\"}}"
-  # kubectl delete pods -n kube-system -l k8s-app=kube-dns
-  # wait_for_deployment kube-system  custom-dns-server
-
-}
-
-# public router
-setup_router_traefik(){
-  router_id=$1
-  advertised_address=$2
-  namespace=$1-namespace
-
-setup_router $router_id $namespace $advertised_address
-
-kubectl patch pvc $router_id -n $namespace -p '{"spec":{"storageClassName":"local-path"}}'
-
-# Check if pod is running
-echo "Checking pod status..."
-
-sleep 5
-POD_STATUS=$(kubectl get pod -n $namespace -l app.kubernetes.io/name=ziti-router -o jsonpath="{.items[0].status.phase}" 2>/dev/null || echo "NotFound")
-
-if [[ "$POD_STATUS" != "Running" ]]; then
-  echo "Pod is not running (status: $POD_STATUS). Deleting pod and waiting..."
-  kubectl delete pod -n $namespace -l app.kubernetes.io/name=ziti-router --ignore-not-found
-
-  # Wait for the new pod to be recreated and become Running
-  echo "Waiting for pod to become Running..."
-  for i in {1..30}; do
-    sleep 5
-    POD_STATUS=$(kubectl get pod -n $namespace -l app.kubernetes.io/name=ziti-router -o jsonpath="{.items[0].status.phase}" 2>/dev/null || echo "NotFound")
-    if [[ "$POD_STATUS" == "Running" ]]; then
-      echo "Pod is now Running."
-      break
-    fi
-  done
-
-  if [[ "$POD_STATUS" != "Running" ]]; then
-    echo "Pod did not reach Running state in time."
-    exit 1
-  fi
-else
-  echo "Pod is already Running."
-fi
-
-kubectl apply -f - <<EOF
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: $router_id-ingress
-  namespace: $namespace
-  annotations:
-    kubernetes.io/ingress.class: traefik
-spec:
-  rules:
-  - host: $advertised_address
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: $router_id-cloud
-            port:
-              number: 443
-EOF
-  }
-
 
 sidecar_jaeger_gke(){
 # This function sets up sidecars for  applications and exposes the central collector:
 log "sidecar_jaeger_gke"
 # setting sidecar
-kubectl apply -f - <<EOF
+# kubectl apply -f - <<EOF
+# apiVersion: opentelemetry.io/v1beta1
+# kind: OpenTelemetryCollector
+# metadata:
+#   name: sidecar-for-my-app
+# spec:
+#   mode: sidecar
+#   config:
+#     receivers:
+#       jaeger:
+#         protocols:
+#           thrift_compact: {}
+#     processors:
+#       batch:
+#         send_batch_size: 10000
+#         timeout: 5s
+# 
+#     exporters:
+#       debug: {}
+# 
+#     service:
+#       pipelines:
+#         traces:
+#           receivers: [jaeger]
+#           exporters: [debug]
+# EOF
+
+  kubectl apply -f - <<EOF
 apiVersion: opentelemetry.io/v1beta1
 kind: OpenTelemetryCollector
 metadata:
   name: sidecar-for-my-app
+  namespace: observability
 spec:
   mode: sidecar
   config:
     receivers:
       jaeger:
         protocols:
-          thrift_compact: {}
+          thrift_compact: {}  # your app sends Jaeger spans via UDP 6831
     processors:
       batch:
         send_batch_size: 10000
-        timeout: 5s
-
+        timeout: 1s
     exporters:
-      debug: {}
-
+      otlp:
+        endpoint: "jaeger-inmemory-instance-collector.observability.svc.cluster.local:4318"
+        tls:
+          insecure: true
     service:
       pipelines:
         traces:
           receivers: [jaeger]
-          exporters: [debug]
+          processors: [batch]
+          exporters: [otlp]
 EOF
 
 # Setting for loadbalancer
@@ -210,6 +143,23 @@ EOF
 #       targetPort: 4318
 # EOF
 
+# this service is setup with jaeger-inmemory-instance
+#   kubectl apply -f - <<EOF
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: jaeger-query
+#   namespace: observability
+# spec:
+#   type: ClusterIP
+#   selector:
+#     #app: jaeger-inmemory-instance-collector
+#     app.kubernetes.io/name: jaeger-inmemory-instance-collector
+#   ports:
+#     - port: 16686
+#       targetPort: 16686
+# EOF
+
 # Setting for traefik
 kubectl apply -f - <<EOF
 apiVersion: networking.k8s.io/v1
@@ -217,28 +167,56 @@ kind: Ingress
 metadata:
   name: jaeger-ingress
   namespace: observability
-  annotations:
-    kubernetes.io/ingress.class: "traefik"
 spec:
+  ingressClassName: traefik
   rules:
     - host: {{ cloud.jaeger_advertised_address }}
       http:
         paths:
+          - path: /otel
+            pathType: Prefix
+            backend:
+              service:
+                name: jaeger-inmemory-instance-collector
+                port:
+                  number: 4318  # HTTP port of OpenTelemetry Collector
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: otel-collector
+                name: jaeger-inmemory-instance-collector
                 port:
-                  number: 4318  # HTTP port of OpenTelemetry Collector
+                  number: 16686
 EOF
+
+# kubectl apply -f - <<EOF
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: jaeger-query-ingress
+#   namespace: observability
+#   #annotations:
+#   #  kubernetes.io/ingress.class: "traefik"
+# spec:
+#   ingressClassName: traefik
+#   rules:
+#     - host: {{ cloud.jaeger_advertised_address }}
+#       http:
+#         paths:
+#           - path: /
+#             pathType: Prefix
+#             backend:
+#               service:
+#                 name: jaeger-query
+#                 port:
+#                   number: 16686
+# EOF
   }
 
 
 main(){
   # curl -sS https://get.openziti.io/install.bash | sudo bash -s openziti
 
-  
   CTRL_ADVERTISE="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
   ROUTER_ADVERTISE="{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}"
 
