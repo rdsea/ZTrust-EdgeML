@@ -8,102 +8,33 @@ main(){
 
 CTRL_ADVERTISE={{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}
 ROUTER_ADVERTISE={{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}
+JAEGER_ADVERTISE={{ cloud.jaeger_advertised_address }}
+CLOUD_IP={{ cloud.cluster_ip }}
+CTRL_PASS={{ ziti_config.ctrl.cloud_ctrl.password }}
+
+setup_jaeger
+sidecar_jaeger_edge $JAEGER_ADVERTISE
 
 log "setup cluster dns to cloud"
-# setup dns for all nodes go to ctrl.cloud.hong3nguyen.com
-# override NodeHosts
-kubectl patch configmap coredns -n kube-system \
-  --type merge \
-  --patch "$(cat <<EOF
-data:
-  NodeHosts: |
-    {% for worker in k3s_cluster.worker -%}
-    {{ worker.ip }} {{ worker.name }}
-    {% endfor -%}
-    {% for ctrl in k3s_cluster.ctrl -%}
-    {{ ctrl.ip }} {{ ctrl.name }}
-    {% endfor -%}
-    ${PUB_CTRL_IP} $CTRL_ADVERTISE
-    ${PUB_ROUTER_IP} $ROUTER_ADVERTISE
-EOF
-)"
+setup_dns ${CLOUD_IP} "$CTRL_ADVERTISE $ROUTER_ADVERTISE $JAEGER_ADVERTISE"
 
-# Restart CoreDNS to ensure configmap is picked up
-kubectl rollout restart deployment coredns -n kube-system
-
-# Wait for rollout to complete
-wait_for_deployment kube-system coredns
 log "setup /etc/hosts for local machine"
-setup_localhost "$PUB_CTRL_IP" "$CTRL_ADVERTISE"
-setup_localhost "$PUB_ROUTER_IP" "$ROUTER_ADVERTISE"
+setup_localhost "$CLOUD_IP" "$CTRL_ADVERTISE"
+setup_localhost "$CLOUD_IP" "$ROUTER_ADVERTISE"
+
+# login ctrl
+setup_zitiCLI
+login_zt $CTRL_ADVERTISE $CTRL_PASS
 
 sudo chown -R {{ k3s_cluster.vars.ansible_user }}:{{ k3s_cluster.vars.ansible_user }} /home/{{ k3s_cluster.vars.ansible_user }}/.config/ziti
 
 login_zt $CTRL_ADVERTISE $CTRL_PASS
 
-
-
 {% for router in ziti_config.router.edge_router %}
 ROUTER_ID={{ router.id | replace('_', '-')}}
+EDGE_ROUTER_ADVERTISE={{ router.edge_router_advertised_address }}
 # NAMESPACE=$ROUTER_ID-namespace
-setup_router_traefik $ROUTER_ID $ROUTER_ADVERTISE
-
-# setup_router $ROUTER_ID $ROUTER_ID-namespace {{ router.edge_router_advertised_address }}
-# 
-# kubectl patch pvc $ROUTER_ID -n $NAMESPACE -p '{"spec":{"storageClassName":"local-path"}}'
-# 
-# # Check if pod is running
-# echo "Checking pod status..."
-# 
-# sleep 5
-# POD_STATUS=$(kubectl get pod -n $NAMESPACE -l app.kubernetes.io/name=ziti-router -o jsonpath="{.items[0].status.phase}" 2>/dev/null || echo "NotFound")
-# 
-# if [[ "$POD_STATUS" != "Running" ]]; then
-#   echo "Pod is not running (status: $POD_STATUS). Deleting pod and waiting..."
-#   kubectl delete pod -n $NAMESPACE -l app.kubernetes.io/name=ziti-router --ignore-not-found
-# 
-#   # Wait for the new pod to be recreated and become Running
-#   echo "Waiting for pod to become Running..."
-#   for i in {1..30}; do
-#     sleep 5
-#     POD_STATUS=$(kubectl get pod -n $NAMESPACE -l app.kubernetes.io/name=ziti-router -o jsonpath="{.items[0].status.phase}" 2>/dev/null || echo "NotFound")
-#     if [[ "$POD_STATUS" == "Running" ]]; then
-#       echo "Pod is now Running."
-#       break
-#     fi
-#   done
-# 
-#   if [[ "$POD_STATUS" != "Running" ]]; then
-#     echo "Pod did not reach Running state in time."
-#     exit 1
-#   fi
-# else
-#   echo "Pod is already Running."
-# fi
-# 
-# kubectl apply -f - <<EOF
-# apiVersion: networking.k8s.io/v1
-# kind: Ingress
-# metadata:
-#   name: $ROUTER_ID-ingress
-#   namespace: $ROUTER_ID-namespace
-#   annotations:
-#     kubernetes.io/ingress.class: traefik
-# spec:
-#   rules:
-#   - host: {{ router.edge_router_advertised_address }} 
-#     http:
-#       paths:
-#       - path: /
-#         pathType: Prefix
-#         backend:
-#           service:
-#             name: $ROUTER_ID-edge
-#             port:
-#               number: 443
-# EOF
-
-
+setup_router_traefik $ROUTER_ID $EDGE_ROUTER_ADVERTISE
 {% endfor %}
 
 

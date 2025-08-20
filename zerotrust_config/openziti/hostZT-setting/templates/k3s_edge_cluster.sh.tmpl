@@ -4,101 +4,25 @@ set -euo pipefail
 
 source "$(dirname "$0")/../scripts/common.sh"
 
-sidecar_jaeger_k3s(){
-
-log "sidecar-jaeger-k3s"
-kubectl apply -f - <<EOF
-apiVersion: opentelemetry.io/v1beta1
-kind: OpenTelemetryCollector
-metadata:
-  name: sidecar-for-my-app
-spec:
-  mode: sidecar
-  config:
-    receivers:
-      jaeger:
-        protocols:
-          thrift_compact: {}
-    processors:
-      batch:
-        send_batch_size: 10000
-        timeout: 5s
-    exporters:
-      otlp:
-        endpoint: ${PUB_JAEGER_IP}:4317
-        tls:
-          insecure: true  # Set to true if not using TLS
-    service:
-      pipelines:
-        traces:
-          receivers: [jaeger]
-          exporters: [otlp]
-EOF
-  }
-
 main(){
-CTRL_ADVERTISE={{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}
-ROUTER_ADVERTISE={{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}
-JAEGER_ADVERTISE={{ cloud.jaeger_advertise_address }}
-CLOUD_IP={{ cloud.cluster_ip }}
-CTRL_PASS={{ ziti_config.ctrl.cloud_ctrl.password }}
-
 
 # use this command to setting k3s_cluster
 # ansible-playbook k3s.orchestration.site -i edge/k3s_ansible_inventory.local.yml
 
 # TODO: setup_kubectl from common will convert to a function
 log "setup kubectl"
-setup_kubectl "aaltosea" {{ k3s_cluster.ctrl[0].ip }}
-  # ssh aaltosea@{{ k3s_cluster.ctrl[0].ip }} "sudo cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/config
-  # sed -i 's|server: https://.*:6443|server: https://{{ k3s_cluster.ctrl[0].ip }}:6443|' ~/.kube/config
-
-# kubectl config set-cluster default --server=https://{{ k3s_cluster.ctrl[0].ip }}:6443
+setup_kubectl {{ k3s_cluster.vars.ansible_user }} {{ k3s_cluster.ctrl[0].ip }}
 
 log "setup cilium"
 setup_network
-  # CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
-  # CLI_ARCH=amd64
-  # if [ "$(uname -m)" = "aarch64" ]; then CLI_ARCH=arm64; fi
-  # curl -L --fail --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
-  # sha256sum --check cilium-linux-${CLI_ARCH}.tar.gz.sha256sum
-  # sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
-  # rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
-  # cilium install --version 1.18.0
 
-log "setup cluster dns to cloud"
-setup_dns 
-# setup dns for all nodes go to ctrl.cloud.hong3nguyen.com
-# override NodeHosts
-kubectl patch configmap coredns -n kube-system \
-  --type merge \
-  --patch "$(cat <<EOF
-data:
-  NodeHosts: |
-    {% for worker in k3s_cluster.worker -%}
-    {{ worker.ip }} {{ worker.name }}
-    {% endfor -%}
-    {% for ctrl in k3s_cluster.ctrl -%}
-    {{ ctrl.ip }} {{ ctrl.name }}
-    {% endfor -%}
-    ${CLOUD_IP} $CTRL_ADVERTISE
-    ${CLOUD_IP} $ROUTER_ADVERTISE
-    ${CLOUD_IP} $JAEGER_ADVERTISE
-EOF
-)"
+setup_zitiCLI
 
-# Restart CoreDNS to ensure configmap is picked up
-  kubectl rollout restart deployment coredns -n kube-system
+# intsall helm
+setup_helm
 
-# Wait for rollout to complete
-  wait_for_deployment kube-system coredns
-
-log "setup /etc/hosts for local machine"
-setup_localhost "$CLOUD_IP" "$CTRL_ADVERTISE"
-setup_localhost "$CLOUD_IP" "$ROUTER_ADVERTISE"
-
-# login ctrl
-login_zt $CTRL_ADVERTISE $CTRL_PASS
+# setup jaeger side 
+setup_jaeger
 
 
 }
