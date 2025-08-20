@@ -11,9 +11,11 @@ ROUTER_ADVERTISE={{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_a
 JAEGER_ADVERTISE={{ cloud.jaeger_advertised_address }}
 CLOUD_IP={{ cloud.cluster_ip }}
 CTRL_PASS={{ ziti_config.ctrl.cloud_ctrl.password }}
+JAEGER_PORT={{ cloud.jaeger_port }}
 
+setup_trust
 setup_jaeger
-sidecar_jaeger_edge $JAEGER_ADVERTISE
+sidecar_jaeger_edge $JAEGER_ADVERTISE $JAEGER_PORT
 
 log "setup cluster dns to cloud"
 setup_dns ${CLOUD_IP} "$CTRL_ADVERTISE $ROUTER_ADVERTISE $JAEGER_ADVERTISE"
