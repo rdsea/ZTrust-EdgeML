@@ -1,4 +1,5 @@
 # CSC cPouta
+
 - login
 > source a script from API Access → Download OpenStack RC File v4 from the csc.login
 
@@ -9,6 +10,9 @@ openstack token issue
 openstack flavor list
 
 openstack image list --long | grep -i ubuntu
+
+# remove router name and internal network
+openstack router remove subnet router-to-public zt-internal-subnet
 ```
 
 #### Error from certificate
@@ -563,31 +567,258 @@ spec:
       jaeger_storage_exporter:
         trace_storage: memstore
 EOF
+```
 
-# setting sidecar
+
+```bash
+# Jaeger with elasticsearch, need to setup elasticsearch first
+helm repo add elastic https://helm.elastic.co
+#helm install elasticsearch elastic/elasticsearch -n observability # domain elasticsearch-master.observability.svc.cluster.local
+# turn off secure TLS from elasticsearch so then we can skip the security
+# clean everything possible:
+helm install elasticsearch elastic/elasticsearch -n observability -f values_elaticsearch.yml
+kubectl get pvc -n observability
+kubectl delete pvc -l app=elasticsearch -n observability
+kubectl delete pvc -n observability -l app=elasticsearch-master
+helm upgrade --install elasticsearch elastic/elasticsearch -n observability -f values_elasticsearch.yml
+
+values_elasticsearch.yaml
+replicas: 1
+
+esConfig:
+  elasticsearch.yml: |
+    cluster.name: "observability-cluster"
+    node.name: "elasticsearch-master"
+    network.host: 0.0.0.0
+    discovery.type: single-node
+    xpack.security.enabled: false
+    xpack.ml.enabled: false
+
+resources:
+  requests:
+    memory: 512Mi
+    cpu: 250m
+  limits:
+    memory: 1Gi
+    cpu: 500m
+
+volumeClaimTemplate:
+  accessModes: [ "ReadWriteOnce" ]
+  resources:
+    requests:
+      storage: 1Gi
+
+# Disable node roles not needed for a single-node setup
+master:
+  replicas: 1
+data:
+  replicas: 0
+ingest:
+  replicas: 0
+coordinating:
+  replicas: 0
+----
+replicas: 1
+
+image:
+  repository: docker.elastic.co/elasticsearch/elasticsearch
+  tag: "8.13.0"
+
+esconfig:
+  elasticsearch.yml: |
+    cluster.name: "observability-cluster"
+    node.name: "elasticsearch-master"
+    network.host: 0.0.0.0
+    discovery.type: single-node
+    xpack.ml.enabled: false
+    xpack.security.enabled: false
+    xpack.security.http.ssl.enabled: false
+    xpack.security.transport.ssl.enabled: false
+auth:
+  enabled: false
+tls:
+  enabled: false
+resources:
+  requests:
+    memory: 1Gi
+    cpu: 500m
+  limits:
+    memory: 1Gi
+    cpu: 1
+volumeclaimtemplate:
+  accessmodes: [ "readwriteonce" ]
+  storageclassname: local-path  # <-- add this line
+  resources:
+    requests:
+      storage: 1Gi
+# single-node roles
+master:
+  replicas: 1
+data:
+  replicas: 0
+ingest:
+  replicas: 0
+coordinating:
+  replicas: 0
+
+helm upgrade --install elasticsearch elastic/elasticsearch \
+  -n observability -f values_elasticsearch.yaml
+```
+
+- setup tls for connect to elasticsearch
+> kubectl get secret elasticsearch-master-certs -n observability -o jsonpath="{.data['ca\.crt']}" | base64 --decode > ca.crt
+```bash
+kubectl create secret generic jaeger-es-ca \
+  --from-file=ca.crt=./ca.crt \
+  -n observability
+kubectl delete opentelemetrycollector jaeger-elasticsearch -n observability # to apply the new one
 kubectl apply -f - <<EOF
 apiVersion: opentelemetry.io/v1beta1
 kind: OpenTelemetryCollector
 metadata:
+  name: jaeger-elasticsearch
+  namespace: observability
+spec:
+  image: jaegertracing/jaeger:latest
+  ports:
+    - name: jaeger
+      port: 16686
+  config:
+    service:
+      extensions: [jaeger_storage, jaeger_query, healthcheckv2]
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [jaeger_storage_exporter]
+
+    extensions:
+      healthcheckv2:
+        use_v2: true
+        http:
+          endpoint: 0.0.0.0:13133
+
+      jaeger_query:
+        storage:
+          traces: es_storage
+          metrics: es_storage
+          traces_archive: es_archive
+
+      jaeger_storage:
+        backends:
+          es_storage: &es_config
+            elasticsearch:
+              server_urls:
+                - https://elasticsearch-master.observability.svc.cluster.local:9200
+              tls:
+                ca_file: /etc/certs/ca.crt
+              options:
+                username: elastic
+                password: securepass
+              indices:
+                index_prefix: "jaeger-main"
+          es_archive:
+            elasticsearch:
+              server_urls:
+                - https://elasticsearch-master.observability.svc.cluster.local:9200
+              tls:
+                ca_file: /etc/certs/ca.crt
+              options:
+                username: elastic
+                password: securepass
+              indices:
+                index_prefix: "jaeger-archive"
+
+        metric_backends:
+          es_storage: *es_config
+
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+
+    processors:
+      batch: {}
+
+    exporters:
+      jaeger_storage_exporter:
+        trace_storage: es_storage
+
+  volumeMounts:
+    - name: es-ca
+      mountPath: /etc/certs
+      readOnly: true
+  volumes:
+    - name: es-ca
+      secret:
+        secretName: jaeger-es-ca
+EOF
+
+# setting sidecar in a cluster 
+  kubectl apply -f - <<EOF
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
   name: sidecar-for-my-app
+  namespace: observability
+spec:
+  mode: sidecar
+  config:
+    receivers:
+      jaeger:                   # sidecar listens for Jaeger spans
+        protocols:
+          thrift_compact: {}    # on UDP 6831 (default)
+    processors:
+      batch:                    # groups traces before sending
+        send_batch_size: 10000
+        timeout: 1s
+    exporters:
+      otlp:                     # sends traces onward over OTLP
+        endpoint: "jaeger-inmemory-instance-collector.observability.svc.cluster.local:4318" # "jaeger-elasticsearch-collector.observability.svc.cluster.local:4317"
+        tls:
+          insecure: true         # plain HTTP
+    service:
+      pipelines:
+        traces:
+          receivers: [jaeger]   # input = Jaeger UDP spans
+          processors: [batch]   # process
+          exporters: [otlp]     # output = OTLP HTTP to central collector
+EOF
+
+# setting sidecar from another cluster to send trace to a jaeger in a cluster
+  kubectl apply -f - <<EOF
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: sidecar-for-my-app
+  namespace: observability
 spec:
   mode: sidecar
   config:
     receivers:
       jaeger:
         protocols:
-          thrift_compact: {}
+          thrift_compact: {}  # your app sends Jaeger spans via UDP 6831
     processors:
       batch:
         send_batch_size: 10000
-        timeout: 5s
+        timeout: 1s
     exporters:
-      debug: {}
+      otlp:
+        endpoint: "jaeger.hong3nguyen.com:4317" # grpc but does not work
+        tls:
+          insecure: true
+      otlphttp:   # use otlphttp instead of otlp
+        endpoint: "http://jaeger.hong3nguyen.com" # http
     service:
       pipelines:
         traces:
           receivers: [jaeger]
-          exporters: [debug]
+          processors: [batch]
+          exporters: [otlphttp]
 EOF
 
 # apply for a single pod
@@ -596,6 +827,7 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: myapp
+  namespace: observability
   annotations:
     sidecar.opentelemetry.io/inject: "true"
 spec:
@@ -606,6 +838,9 @@ spec:
       - containerPort: 8080
         protocol: TCP
 EOF
+
+kubectl port-forward pod/myapp 8080:8080
+curl http://localhost:8080/
 
 # apply for deployment and statefulset
 kubectl apply -f - <<EOF
@@ -638,7 +873,6 @@ spec:
 EOF
 
 kubectl label namespace test sidecar.opentelemetry.io/inject=enabled
-
 # to accesst via localhost:8080
 kubectl port-forward deployment/jaeger-inmemory-instance-collector 8080:16686
 
@@ -704,7 +938,7 @@ spec:
         timeout: 5s
     exporters:
       otlp:
-        endpoint: ${JAEGER_COLLECTOR_IP}:4317
+        endpoint: ${JAEGER_COLLECTOR_IP}
         tls:
           insecure: true  # Set to true if not using TLS
     service:
@@ -715,3 +949,34 @@ spec:
 EOF
 ```
 
+- traefik configuration
+```bash
+kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jaeger-ingress
+  namespace: observability
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: jaeger.hong3nguyen.com
+      http:
+        paths:
+          - path: /v1/traces
+            pathType: Prefix
+            backend:
+              service:
+                name: jaeger-inmemory-instance-collector # jaeger-elasticsearch-collector
+                port:
+                  number: 4318  # HTTP port of OpenTelemetry Collector
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: jaeger-inmemory-instance-collector # jaeger-elasticsearch-collector
+                port:
+                  number: 16686
+EOF
+
+```
