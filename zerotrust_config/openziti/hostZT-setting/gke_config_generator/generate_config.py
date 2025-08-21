@@ -70,7 +70,7 @@ if __name__ == "__main__":
 
     # --- Files to generate and their new output paths ---
     files_to_generate = {
-        "common.sh.tmpl": "scripts/common.sh",
+        # "common.sh.tmpl": "scripts/common.sh",
         "gke_main_tf.tmpl": "gke/main.tf",
         "gke_script_setup_cluster.sh.tmpl": "scripts/gke_script_setup_cluster.sh",
         "gke_dns_configmap.yml.tmpl": "scripts/gke_dns_configmap.yml",
@@ -79,9 +79,9 @@ if __name__ == "__main__":
         "csc_ansible_inventory.yml.tmpl": "csc/csc_ansible_inventory.local.yml",
         # "csc_script_setup_cluster.sh.tmpl": "scripts/csc_script_setup_cluster.sh",
         "k3s_ansible_inventory.yml.tmpl": "k3s/k3s_ansible_inventory.local.yml",
-        "k3s_edge_cluster.sh.tmpl": "k3s/k3s_edge_cluster.sh.tmpl",
-        "k3s_edge_setup_router.sh.tmpl": "k3s/k3s_edge_setup_router.sh.tmpl",
-        "k3s_ingress.yml.tmpl": "k3s/k3s_ingress.yml",
+        "k3s_edge_cluster.sh.tmpl": "k3s/k3s_edge_cluster.sh",
+        "k3s_edge_setup_router.sh.tmpl": "k3s/k3s_edge_setup_router.sh",
+        # "k3s_ingress.yml.tmpl": "k3s/k3s_ingress.yml",
         "gke_script_firewal_check.sh.tmpl": "gke/gke_script_firewal_check.sh",
         "csc_setup_zt.sh.tmpl": "scripts/csc_setup_zt.sh",
         # "gke_k3s_deployment.yml.tmpl": "gke/gke_deployment.yml",
