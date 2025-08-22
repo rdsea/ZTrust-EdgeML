@@ -1161,11 +1161,11 @@ spec:
         timeout: 1s
     exporters:
       otlp:
-        endpoint: "jaeger-to-jaeger-collector.observability.svc.cluster.local:4317"
+        endpoint: "otel-to-jaeger-collector.observability.svc.cluster.local:4317"
         tls:
           insecure: true
       otlphttp:   # use otlphttp instead of otlp
-        endpoint: "http://jaeger-to-jaeger-collector.observability.svc.cluster.local:4318"
+        endpoint: "http://otel-to-jaeger-collector.observability.svc.cluster.local:4318"
     service:
       pipelines:
         traces:
@@ -1286,4 +1286,76 @@ spec:
     port: 16686
     targetPort: http-query
 
+```
+
+
+
+- avoid using otel-to-jaeger-collector and jaeger-collector together 
+  - use jaeger-collector -- need a test
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jaeger-collector
+  namespace: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jaeger-collector
+  template:
+    metadata:
+      labels:
+        app: jaeger-collector
+    spec:
+      containers:
+      - name: collector
+        image: jaegertracing/jaeger-collector:1.61.0
+        args:
+          - "--span-storage.type=elasticsearch"
+          - "--es.server-urls=https://elasticsearch-master.observability.svc:9200"
+          - "--es.tls.enabled=true"
+          - "--es.username=elastic"
+          - "--es.password=dYfXogEdKMdzWRJ0"
+          - "--es.tls.ca=/etc/certs/ca.crt"
+          - "--collector.otlp.enabled=true"
+          - "--collector.otlp.grpc.host-port=:4317"
+          - "--collector.otlp.http.host-port=:4318"
+          - "--log-level=debug"
+        ports:
+        - name: grpc
+          containerPort: 4317
+        - name: http
+          containerPort: 4318
+        volumeMounts:
+        - name: es-ca
+          mountPath: /etc/certs
+          readOnly: true
+      volumes:
+      - name: es-ca
+        secret:
+          secretName: jaeger-es-ca
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger-simple-collector
+  namespace: observability
+spec:
+  selector: { app: jaeger-simple-collector }
+  ports:
+  - name: grpc
+    port: 14250
+    targetPort: grpc
+  - name: http
+    port: 14268
+    targetPort: http
+  - name: otlp-grpc
+    port: 4317
+    targetPort: 4317
+  - name: otlp-http
+    port: 4318
+    targetPort: 4318
 ```
