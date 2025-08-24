@@ -1070,10 +1070,6 @@ esconfig:
     node.name: "elasticsearch-master"
     network.host: 0.0.0.0
     discovery.type: single-node
-auth:
-  enabled: false
-tls:
-  enabled: false
 resources:
   requests:
     memory: 1Gi
@@ -1097,6 +1093,10 @@ ingest:
 coordinating:
   replicas: 0
 
+# need to check this one
+spec:
+  nodeSelector:
+    node-role.kubernetes.io/worker: "true"
 ```
 
 - take ca
