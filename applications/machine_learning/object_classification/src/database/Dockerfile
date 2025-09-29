@@ -2,18 +2,19 @@ FROM debian:stable-slim
 
 WORKDIR /ml_consumer
 
-
 COPY --from=ghcr.io/astral-sh/uv:0.4.3 /uv /bin/uv
 
-COPY ./*.toml ./
+COPY ./database/*.toml ./
 
 RUN uv sync --compile-bytecode --no-cache
 
-COPY ./*.py .
+COPY ./database/*.py ./ml_consumer/
 
-COPY ./*.yaml .
+COPY ./database/*.yaml ./ml_consumer/
 
-WORKDIR /ml_consumer
+COPY ./util/ ./util
+
+WORKDIR /ml_consumer/ml_consumer
 
 ENV PATH="/ml_consumer/.venv/bin:$PATH"
 

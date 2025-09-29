@@ -8,6 +8,6 @@ rabbitmq:
   password: guest
 
 mongodb:
-  url: database
+  url: database.hong3nguyen.com
   username: guest
   password: guest
