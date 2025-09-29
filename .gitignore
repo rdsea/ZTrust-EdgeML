@@ -47,4 +47,4 @@ terraform.rc
 *.local.yml
 *.local.yaml
 
-/output/*
+./zerotrust_config/openZT/host_vm/config_generator/output/*
