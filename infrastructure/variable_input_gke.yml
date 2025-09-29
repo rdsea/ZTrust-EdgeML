@@ -1,0 +1,24 @@
+project_id: "your-gcp-project-id"
+cluster_name: "my-gke-cluster"
+region: "us-central1"
+gke_node_count: 2
+gke_machine_type: "e2-standard-2"
+
+firewall_rules:
+  - name: "allow-ssh"
+    protocol: "tcp"
+    ports: ["22"]
+    source_ranges: ["0.0.0.0/0"]
+  - name: "allow-ziti"
+    protocol: "tcp"
+    ports:
+      ["1280", "3022", "443", "27017", "6262", "10080", "10000", "8440-8443"]
+    source_ranges: ["0.0.0.0/0"]
+  - name: "allow-app"
+    protocol: "tcp"
+    ports: ["5672", "27017"]
+    source_ranges: ["0.0.0.0/0"]
+  - name: "allow-metric"
+    protocol: "tcp"
+    ports: ["4317", "4318", "16686", "14268", "14250"]
+    source_ranges: ["0.0.0.0/0"]
