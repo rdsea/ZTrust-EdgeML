@@ -47,4 +47,4 @@ terraform.rc
 *.local.yml
 *.local.yaml
 
-output/*
+/output/*
