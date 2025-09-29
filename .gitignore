@@ -50,3 +50,5 @@ terraform.rc
 ./zerotrust_config/openZT/host_vm/config_generator/output/*
 
 /output/
+output/
+**/output/
