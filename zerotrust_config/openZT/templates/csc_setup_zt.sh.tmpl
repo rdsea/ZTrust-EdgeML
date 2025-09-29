@@ -1,0 +1,223 @@
+#!/bin/bash
+
+# Assumption
+# Assuming the cluster is working along with traefik
+# It is not normally necessary to obtain publicly trusted certificates for Ziti's TLS servers.
+# Ziti manages the trust relationships between the controller and routers and clients independent of the web's root authorities.
+# See the Alternative Web Server Certificates section for more information.
+
+set -euo pipefail
+source "$(dirname "$0")/common.sh"
+
+setup_cert_ztctrl(){
+
+  if ! kubectl get namespace "$CTRL_NAMESPACE" >/dev/null 2>&1; then
+    echo "Creating namespace: $CTRL_NAMESPACE"
+    kubectl create namespace "$CTRL_NAMESPACE"
+  else
+    echo "Namespace $CTRL_NAMESPACE already exists."
+  fi
+
+  log "setup_cert_ztctrl"
+  helm repo add jetstack https://charts.jetstack.io
+
+  log "cert-manager"
+  helm upgrade --install cert-manager jetstack/cert-manager \
+      --namespace cert-manager --create-namespace \
+      --set crds.enabled=true
+
+  wait_for_deployment cert-manager cert-manager
+
+
+  log "trust-manager"
+  helm upgrade --install trust-manager jetstack/trust-manager \
+      --namespace cert-manager \
+      --set crds.keep=false \
+      --set app.trust.namespace=$CTRL_NAMESPACE
+
+  wait_for_deployment cert-manager trust-manager
+
+  log "zt-ctrl"
+  helm repo add openziti https://docs.openziti.io/helm-charts/
+  helm install ziti-controller openziti/ziti-controller \
+    --namespace $CTRL_NAMESPACE \
+    --set cert-manager.enabled=true \
+    --set trust-manager.enabled=true \
+    --set clientApi.advertisedHost="$CTRL_ADVERTISE" \
+    --set clientApi.advertisedPort=443 \
+    --set clientApi.service.type=ClusterIP \
+    --set clientApi.traefikTcpRoute.enabled=true
+
+    #--set clientApi.advertisedPort=32171 \
+    #--set clientApi.service.type=NodePort \
+
+  wait_for_deployment "$CTRL_NAMESPACE" ziti-controller
+
+  }
+
+
+sidecar_jaeger_gke(){
+# This function sets up sidecars for  applications and exposes the central collector:
+log "sidecar_jaeger_gke"
+
+  kubectl apply -f - <<EOF
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: sidecar-for-my-app
+  namespace: observability
+spec:
+  mode: sidecar
+  config:
+    receivers:
+      jaeger:
+        protocols:
+          thrift_compact: {}  # your app sends Jaeger spans via UDP 6831
+    processors:
+      batch:
+        send_batch_size: 10000
+        timeout: 1s
+    exporters:
+      otlp:
+        endpoint: "jaeger-inmemory-instance-collector.observability.svc.cluster.local:4317"
+        tls:
+          insecure: true
+      otlphttp:   # use otlphttp instead of otlp
+        endpoint: "http://jaeger-inmemory-instance-collector.observability.svc.cluster.local:4318"
+    service:
+      pipelines:
+        traces:
+          receivers: [jaeger]
+          processors: [batch]
+          exporters: [otlphttp] # otlp for grpc
+EOF
+
+# Setting for loadbalancer
+# kubectl apply -f - <<EOF
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: otel-collector
+#   namespace: observability
+# spec:
+#   type: LoadBalancer
+#   selector:
+#     app: jaeger-inmemory-instance  # <- Ensure this label matches pod
+#   ports:
+#     - name: grpc
+#       port: 4317
+#       targetPort: 4317
+#     - name: http
+#       port: 4318
+#       targetPort: 4318
+# EOF
+
+# Setting for traefik
+kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jaeger-ingress
+  namespace: observability
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: {{ cloud.jaeger_advertised_address }}
+      http:
+        paths:
+          - path: /v1/traces
+            pathType: Prefix
+            backend:
+              service:
+                name: jaeger-inmemory-instance-collector
+                port:
+                  number: 4318  # HTTP port of OpenTelemetry Collector
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: jaeger-inmemory-instance-collector
+                port:
+                  number: 16686
+EOF
+ 
+# NOTE: add this service if want to work with grpc
+# kubectl apply -f - <<EOF
+# apiVersion: traefik.containo.us/v1alpha1
+# kind: IngressRouteTCP
+# metadata:
+#   name: jaeger-grpc
+#   namespace: observability
+# spec:
+#   entryPoints:
+#     - otlp-grpc
+#   routes:
+#     - match: HostSNI(`jaeger.hong3nguyen.com`)
+#       services:
+#         - name: jaeger-inmemory-instance-collector
+#           port: 4317
+# EOF
+
+  }
+
+
+main(){
+  # curl -sS https://get.openziti.io/install.bash | sudo bash -s openziti
+
+  CTRL_ADVERTISE="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
+  ROUTER_ADVERTISE="{{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}"
+
+  ROUTER_NAMESPACE="zt-router"
+  CTRL_NAMESPACE="zt-ctrl"
+
+  ROUTER_ID="ziti-{{ ziti_config.ctrl.cloud_ctrl.router.id | replace('_', '') }}"
+  PUB_CTRL_IP="{{ cloud.cluster_ip }}"
+  PUB_ROUTER_IP="{{ cloud.cluster_ip }}"
+  PUB_JAEGER_IP="{{ cloud.cluster_ip }}"
+
+  # setup cilium 
+  setup_network
+
+  # check ready from nodes 
+  wait_for_nodes_ready
+
+  setup_cert_ztctrl
+  # wait_for_ip_and_advertise PUB_CTRL_IP CTRL_ADVERTISE \
+  #   "kubectl get svc ziti-controller-client -n \"$CTRL_NAMESPACE\" -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
+  #   $CTRL_ADVERTISE
+  
+  CTRL_PASS=$(kubectl -n "$CTRL_NAMESPACE" get secrets ziti-controller-admin-secret -o go-template='{{"{{"}}index .data "admin-password" | base64decode {{"}}"}}')
+
+  setup_localhost "$PUB_CTRL_IP" "$CTRL_ADVERTISE"
+
+  setup_dns $PUB_CTRL_IP $CTRL_ADVERTISE
+
+  login_zt "$CTRL_ADVERTISE" "$CTRL_PASS"
+
+  setup_router_traefik "$ROUTER_ID" "$ROUTER_ADVERTISE"
+
+  # wait_for_ip_and_advertise PUB_ROUTER_IP ROUTER_ADVERTISE \
+  #   "kubectl get svc \"$ROUTER_ID-edge\" -n \"$ROUTER_NAMESPACE\" -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
+  #   $ROUTER_ADVERTISE
+
+  setup_localhost "$PUB_ROUTER_IP" "$ROUTER_ADVERTISE"
+
+  setup_dns $PUB_CTRL_IP $ROUTER_ADVERTISE
+
+  log "Edge and Sensor deployment complete."
+
+  log "setup jaeger"
+  setup_jaeger
+
+  log "setup sidecar"
+  sidecar_jaeger_gke
+
+  # wait_for_ip_and_advertise PUB_JAEGER_IP  \
+  #   "kubectl get svc otel-collector -n observability -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
+  #   $ROUTER_ADVERTISE
+
+}
+
+main "$@"
+
+
