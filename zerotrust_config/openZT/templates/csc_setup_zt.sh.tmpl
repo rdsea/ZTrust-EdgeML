@@ -7,7 +7,7 @@
 # See the Alternative Web Server Certificates section for more information.
 
 set -euo pipefail
-source "$(dirname "$0")/common.sh"
+source "$(dirname "$0")/../scripts/common.sh"
 
 setup_cert_ztctrl(){
 
@@ -161,6 +161,16 @@ EOF
   }
 
 
+# Function to test DNS
+test_dns() {
+    if dig +short google.com >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+
 main(){
   # curl -sS https://get.openziti.io/install.bash | sudo bash -s openziti
 
@@ -175,11 +185,33 @@ main(){
   PUB_ROUTER_IP="{{ cloud.cluster_ip }}"
   PUB_JAEGER_IP="{{ cloud.cluster_ip }}"
 
+  echo "Checking DNS resolution..."
+  if test_dns; then
+      echo "DNS is working. No changes needed."
+  fi
+
+  echo "DNS is not working. Updating /etc/resolv.conf..."
+
+# Create a new resolv.conf with Google and Cloudflare DNS
+  sudo tee /etc/resolv.conf > /dev/null <<EOF
+nameserver 8.8.8.8
+nameserver 1.1.1.1
+EOF
+
+  echo "DNS updated. Current /etc/resolv.conf:"
+  cat /etc/resolv.conf
+
+# Test again
+  if test_dns; then
+      echo "DNS is now working!"
+  else
+      echo "Warning: DNS still not working."
+  fi
   # setup cilium 
-  setup_network
+  #setup_network
 
   # check ready from nodes 
-  wait_for_nodes_ready
+  #wait_for_nodes_ready
 
   setup_cert_ztctrl
   # wait_for_ip_and_advertise PUB_CTRL_IP CTRL_ADVERTISE \
@@ -206,11 +238,11 @@ main(){
 
   log "Edge and Sensor deployment complete."
 
-  log "setup jaeger"
-  setup_jaeger
+  # log "setup jaeger"
+  # setup_jaeger
 
-  log "setup sidecar"
-  sidecar_jaeger
+  # log "setup sidecar"
+  # sidecar_jaeger
 
   # wait_for_ip_and_advertise PUB_JAEGER_IP  \
   #   "kubectl get svc otel-collector -n observability -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
