@@ -1103,7 +1103,14 @@ spec:
 > kubectl get secret elasticsearch-master-certs -n observability -o jsonpath="{.data['ca\.crt']}" | base64 --decode > ca.crt
 - take user pass
 > kubectl get secret -n observability elasticsearch-master-credentials -o yaml
- 
+
+- create jaeger-es-ca
+```bash
+kubectl create secret generic jaeger-es-ca \
+  --from-file=ca.crt=./ca.crt \
+  -n observability
+```
+
 
 ```otel-to-jaeger-collector.yml
 apiVersion: opentelemetry.io/v1beta1
