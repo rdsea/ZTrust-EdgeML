@@ -8,7 +8,7 @@ import yaml
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 INPUT_FILE = os.path.join(SCRIPT_DIR, "variable_input_gke.yml")
 LOCAL_INPUT_FILE = os.path.join(SCRIPT_DIR, "variable_input_gke.local.yml")
-TEMPLATE_DIR = os.path.join(SCRIPT_DIR, "..", "templates")
+TEMPLATE_DIR = os.path.join(SCRIPT_DIR, "", "templates")
 
 
 # --- Helper function for deep merging dictionaries ---
@@ -71,33 +71,33 @@ if __name__ == "__main__":
     # --- Files to generate and their new output paths ---
     files_to_generate = {
         # "common.sh.tmpl": "scripts/common.sh",
-        "gke_main_tf.tmpl": "output/gke/main.tf",
-        "gke_script_setup_cluster.sh.tmpl": "output/scripts/gke_script_setup_cluster.sh",
-        "gke_dns_configmap.yml.tmpl": "output/scripts/gke_dns_configmap.yml",
-        "csc_main_tf.tmpl": "csc/main.tf",
-        "csc_script_setup_cluster.sh.tmpl": "output/csc/csc_script_setup_cluster.sh",
-        "csc_ansible_inventory.yml.tmpl": "output/csc/csc_ansible_inventory.local.yml",
+        # "gke_main_tf.tmpl": "output/gke/main.tf",
+        # "gke_script_setup_cluster.sh.tmpl": "output/scripts/gke_script_setup_cluster.sh",
+        # "gke_dns_configmap.yml.tmpl": "output/scripts/gke_dns_configmap.yml",
+        # "csc_main_tf.tmpl": "csc/main.tf",
+        # "csc_script_setup_cluster.sh.tmpl": "output/csc/csc_script_setup_cluster.sh",
+        # "csc_ansible_inventory.yml.tmpl": "output/csc/csc_ansible_inventory.local.yml",
         # "csc_script_setup_cluster.sh.tmpl": "scripts/csc_script_setup_cluster.sh",
-        "k3s_ansible_inventory.yml.tmpl": "output/edge/k3s_ansible_inventory.local.yml",
-        "k3s_edge_cluster.sh.tmpl": "output/edge/k3s_edge_cluster.sh",
-        "k3s_edge_setup_router.sh.tmpl": "output/edge/k3s_edge_setup_router.sh",
+        "k3s_ansible_inventory.yml.tmpl": "edge/k3s_ansible_inventory.local.yml",
+        # "k3s_edge_cluster.sh.tmpl": "output/edge/k3s_edge_cluster.sh",
+        # "k3s_edge_setup_router.sh.tmpl": "output/edge/k3s_edge_setup_router.sh",
         # "k3s_ingress.yml.tmpl": "edge/k3s_ingress.yml",
-        "gke_script_firewal_check.sh.tmpl": "output/gke/gke_script_firewal_check.sh",
-        "csc_setup_zt.sh.tmpl": "output/scripts/csc_setup_zt.sh",
+        # `"gke_script_firewal_check.sh.tmpl": "output/gke/gke_script_firewal_check.sh",
+        # "csc_setup_zt.sh.tmpl": "output/scripts/csc_setup_zt.sh",
         # "gke_k3s_deployment.yml.tmpl": "gke/gke_deployment.yml",
     }
 
-    ctrl_advertise_name = (
-        config.get("ziti_config", {})
-        .get("ctrl", {})
-        .get("cloud_ctrl", {})
-        .get("ctrl_advertised_address")
-    )
-    print("ctrl name", ctrl_advertise_name)
-    parts = ctrl_advertise_name.split(".")
-    domain = ".".join(parts[-2:])
-    print("domain ", domain)
-    domain_config = deep_merge(config.copy(), {"custom_domain": domain})
+    # ctrl_advertise_name = (
+    #     config.get("ziti_config", {})
+    #     .get("ctrl", {})
+    #     .get("cloud_ctrl", {})
+    #     .get("ctrl_advertised_address")
+    # )
+    # print("ctrl name", ctrl_advertise_name)
+    # parts = ctrl_advertise_name.split(".")
+    # domain = ".".join(parts[-2:])
+    # print("domain ", domain)
+    # domain_config = deep_merge(config.copy(), {"custom_domain": domain})
     # routers = ziti_config.get("router", {})
     #
     # for ctrl_name, ctrl_data in ctrls.items():
@@ -124,41 +124,41 @@ if __name__ == "__main__":
     #
     for template_name, relative_output_path in files_to_generate.items():
         generate_file(
-            env, domain_config, template_name, relative_output_path, OUTPUT_ROOT_DIR
+            env, local_config, template_name, relative_output_path, OUTPUT_ROOT_DIR
         )
 
-    services = config.get("edge_applications", [])
-
-    # Split by location
-    edge_services = [
-        s
-        for s in services
-        if s.get("location") == "edge" and s.get("image") != "default"
-    ]
-    cloud_services = [
-        s
-        for s in services
-        if s.get("location") == "cloud" and s.get("image") != "default"
-    ]
-
-    # Render both to separate files using the same template
-    split_template = "gke_k3s_deployment.yml.tmpl"
-
-    generate_file(
-        env,
-        {"services": edge_services},
-        split_template,
-        "output/edge/edge_deployment.yml",  # Customize as needed
-        OUTPUT_ROOT_DIR,
-    )
-
-    generate_file(
-        env,
-        {"services": cloud_services},
-        split_template,
-        "gke/cloud_deployment.yml",  # Customize as needed
-        OUTPUT_ROOT_DIR,
-    )
+    # services = config.get("edge_applications", [])
+    #
+    # # Split by location
+    # edge_services = [
+    #     s
+    #     for s in services
+    #     if s.get("location") == "edge" and s.get("image") != "default"
+    # ]
+    # cloud_services = [
+    #     s
+    #     for s in services
+    #     if s.get("location") == "cloud" and s.get("image") != "default"
+    # ]
+    #
+    # # Render both to separate files using the same template
+    # split_template = "gke_k3s_deployment.yml.tmpl"
+    #
+    # generate_file(
+    #     env,
+    #     {"services": edge_services},
+    #     split_template,
+    #     "output/edge/edge_deployment.yml",  # Customize as needed
+    #     OUTPUT_ROOT_DIR,
+    # )
+    #
+    # generate_file(
+    #     env,
+    #     {"services": cloud_services},
+    #     split_template,
+    #     "gke/cloud_deployment.yml",  # Customize as needed
+    #     OUTPUT_ROOT_DIR,
+    # )
 
     #
     # # Generate shell scripts for VMs (these also go into the new 'cloud' folder)
@@ -261,4 +261,4 @@ if __name__ == "__main__":
     # with open("cloud/config.yaml", "w") as f:
     #     f.write(final_yaml)
     #
-    # print("Config written to config_output.yaml with correct indentation and comments.")
+# print("Config written to config_output.yaml with correct indentation and comments.")
