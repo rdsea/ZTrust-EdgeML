@@ -56,7 +56,7 @@ setup_cert_ztctrl(){
   }
 
 
-sidecar_jaeger_gke(){
+sidecar_jaeger(){
 # This function sets up sidecars for  applications and exposes the central collector:
 log "sidecar_jaeger_gke"
 
@@ -210,7 +210,7 @@ main(){
   setup_jaeger
 
   log "setup sidecar"
-  sidecar_jaeger_gke
+  sidecar_jaeger
 
   # wait_for_ip_and_advertise PUB_JAEGER_IP  \
   #   "kubectl get svc otel-collector -n observability -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
