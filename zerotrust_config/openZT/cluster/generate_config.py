@@ -70,20 +70,19 @@ if __name__ == "__main__":
 
     # --- Files to generate and their new output paths ---
     files_to_generate = {
-        # "common.sh.tmpl": "scripts/common.sh",
-        "gke_main_tf.tmpl": "output/gke/main.tf",
-        "gke_script_setup_cluster.sh.tmpl": "output/scripts/gke_script_setup_cluster.sh",
-        "gke_dns_configmap.yml.tmpl": "output/scripts/gke_dns_configmap.yml",
-        "csc_main_tf.tmpl": "csc/main.tf",
-        "csc_script_setup_cluster.sh.tmpl": "output/csc/csc_script_setup_cluster.sh",
-        "csc_ansible_inventory.yml.tmpl": "output/csc/csc_ansible_inventory.local.yml",
-        # "csc_script_setup_cluster.sh.tmpl": "scripts/csc_script_setup_cluster.sh",
-        "k3s_ansible_inventory.yml.tmpl": "output/edge/k3s_ansible_inventory.local.yml",
-        "k3s_edge_cluster.sh.tmpl": "output/edge/k3s_edge_cluster.sh",
-        "k3s_edge_setup_router.sh.tmpl": "output/edge/k3s_edge_setup_router.sh",
+        "common.sh.tmpl": "scripts/common.sh",
+        # "gke_main_tf.tmpl": "cloud/gke_main.tf",
+        # "gke_script_setup_cluster.sh.tmpl": "scripts/gke_script_setup_cluster.sh",
+        # "gke_dns_configmap.yml.tmpl": "scripts/gke_dns_configmap.yml",
+        # "gke_script_firewal_check.sh.tmpl": "cloud/gke_script_firewal_check.sh",
+        # "csc_main_tf.tmpl": "cloud/csc_main.tf",
+        # "csc_script_setup_cluster.sh.tmpl": "cloud/csc_script_setup_cluster.sh",
+        # "csc_ansible_inventory.yml.tmpl": "cloud/csc_ansible_inventory.local.yml",
+        "csc_setup_zt.sh.tmpl": "cloud/csc_setup_zt.sh",
+        # "k3s_ansible_inventory.yml.tmpl": "edge/k3s_ansible_inventory.local.yml",
+        "k3s_edge_cluster.sh.tmpl": "edge/k3s_edge_cluster.sh",
+        "k3s_edge_setup_router.sh.tmpl": "edge/k3s_edge_setup_router.sh",
         # "k3s_ingress.yml.tmpl": "edge/k3s_ingress.yml",
-        "gke_script_firewal_check.sh.tmpl": "output/gke/gke_script_firewal_check.sh",
-        "csc_setup_zt.sh.tmpl": "output/scripts/csc_setup_zt.sh",
         # "gke_k3s_deployment.yml.tmpl": "gke/gke_deployment.yml",
     }
 
@@ -148,7 +147,7 @@ if __name__ == "__main__":
         env,
         {"services": edge_services},
         split_template,
-        "output/edge/edge_deployment.yml",  # Customize as needed
+        "edge/edge_deployment.yml",  # Customize as needed
         OUTPUT_ROOT_DIR,
     )
 
@@ -156,7 +155,7 @@ if __name__ == "__main__":
         env,
         {"services": cloud_services},
         split_template,
-        "gke/cloud_deployment.yml",  # Customize as needed
+        "cloud/cloud_deployment.yml",  # Customize as needed
         OUTPUT_ROOT_DIR,
     )
 
