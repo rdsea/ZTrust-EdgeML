@@ -70,7 +70,7 @@ if __name__ == "__main__":
 
     # --- Files to generate and their new output paths ---
     files_to_generate = {
-        # "common.sh.tmpl": "scripts/common.sh",
+        "common.sh.tmpl": "scripts/common.sh",
         # "gke_main_tf.tmpl": "output/gke/main.tf",
         # "gke_script_setup_cluster.sh.tmpl": "output/scripts/gke_script_setup_cluster.sh",
         # "gke_dns_configmap.yml.tmpl": "output/scripts/gke_dns_configmap.yml",
@@ -79,7 +79,7 @@ if __name__ == "__main__":
         # "csc_ansible_inventory.yml.tmpl": "output/csc/csc_ansible_inventory.local.yml",
         # "csc_script_setup_cluster.sh.tmpl": "scripts/csc_script_setup_cluster.sh",
         "k3s_ansible_inventory.yml.tmpl": "edge/k3s_ansible_inventory.local.yml",
-        # "k3s_edge_cluster.sh.tmpl": "output/edge/k3s_edge_cluster.sh",
+        "k3s_edge_cluster.sh.tmpl": "edge/k3s_edge_cluster.sh",
         # "k3s_edge_setup_router.sh.tmpl": "output/edge/k3s_edge_setup_router.sh",
         # "k3s_ingress.yml.tmpl": "edge/k3s_ingress.yml",
         # `"gke_script_firewal_check.sh.tmpl": "output/gke/gke_script_firewal_check.sh",
