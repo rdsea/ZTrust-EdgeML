@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -euo pipefail
+
+source "$(dirname "$0")/../scripts/common.sh"
+
+main(){
+
+# use this command to setting k3s_cluster
+# ansible-playbook k3s.orchestration.site -i edge/k3s_ansible_inventory.local.yml
+
+# TODO: setup_kubectl from common will convert to a function
+log "setup kubectl"
+setup_kubectl {{ k3s_cluster.vars.ansible_user }} {{ k3s_cluster.ctrl[0].ip }}
+
+log "setup cilium"
+setup_network
+
+# intsall helm
+setup_helm
+}
+
+main"$@"
