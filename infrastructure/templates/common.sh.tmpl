@@ -1,0 +1,237 @@
+#!/bin/bash
+
+# --- Log a message ---
+log() {
+  #echo ">>> $(date '+%Y-%m-%d %H:%M:%S') - $1"
+  echo ">>> $(date '+%Y-%m-%d %H:%M:%S.%N') - $1"
+}
+
+wait_for_deployment() {
+  ns=$1
+  deploy=$2
+  echo "Waiting for deployment '$deploy' in namespace '$ns' to be ready..."
+
+  success_msg="deployment \"$deploy\" successfully rolled out"
+  timeout=180 # seconds
+  interval=10 # seconds
+  elapsed=0
+
+  while true; do
+    output=$(kubectl rollout status deployment/"$deploy" -n "$ns" --timeout=5s 2>&1 || true)
+
+    if echo "$output" | grep -q "$success_msg"; then
+      echo "$output"
+      break
+    else
+      echo "Still waiting: $output"
+    fi
+
+    if [ "$elapsed" -ge "$timeout" ]; then
+      echo "Timeout waiting for deployment $deploy in namespace $ns"
+      exit 1
+    fi
+
+    sleep "$interval"
+    elapsed=$((elapsed + interval))
+  done
+}
+
+log() {
+  echo -e "\n====== $1 ======\n"
+}
+
+
+setup_localhost() {
+  ip=$1
+  advertise=$2
+
+  echo "$ip $advertise"
+  log "/etc/hosts"
+  echo "sudo sed -i.bak \"/$advertise/ s/^/# /\" /etc/hosts"
+  sudo sed -i.bak "/$advertise/ s/^/# /" /etc/hosts
+
+  if [ -z "$ip" ]; then
+    echo "External IP is not assigned yet. Exiting or waiting..."
+    exit 1
+  else
+    echo "External IP found: $ip"
+    echo "$ip $advertise" | sudo tee -a /etc/hosts
+  fi
+}
+
+wait_for_ip_and_advertise() {
+  ip_var_name=$1
+  advertise_var_name=$2
+  ip_command=$3
+  advertise_value=$4
+
+  MAX_RETRIES=20
+  RETRY_INTERVAL=5
+  RETRIES=0
+
+  while true; do
+    local ip_value
+    #local advertise_value
+
+    ip_value=$(eval "$ip_command")
+    #advertise_value=$(eval "$advertise_command")
+
+    if [[ -n "$ip_value" && -n "$advertise_value" ]]; then
+      eval "$ip_var_name=\"$ip_value\""
+      eval "$advertise_var_name=\"$advertise_value\""
+      break
+    fi
+
+    echo "Waiting for $ip_var_name or $advertise_var_name to be available..."
+    sleep "$RETRY_INTERVAL"
+    RETRIES=$((RETRIES + 1))
+
+    if [ "$RETRIES" -ge "$MAX_RETRIES" ]; then
+      echo "Timeout waiting for $ip_var_name and $advertise_var_name"
+      exit 1
+    fi
+  done
+}
+
+setup_jaeger() {
+# install opentelemetry-operator
+log "jaeger-setup"
+kubectl create ns observability
+kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/latest/download/opentelemetry-operator.yaml 
+# -n observability
+
+# Jaeger with in-momory storage
+kubectl apply -f - <<EOF
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: jaeger-inmemory-instance
+  namespace: observability
+spec:
+  image: jaegertracing/jaeger:latest
+  ports:
+  - name: jaeger
+    port: 16686
+  config:
+    service:
+      extensions: [jaeger_storage, jaeger_query]
+      pipelines:
+        traces:
+          receivers: [otlp]    
+          exporters: [jaeger_storage_exporter]
+    extensions:
+      jaeger_query:
+        storage:
+          traces: memstore
+      jaeger_storage:
+        backends:
+          memstore:
+            memory:
+              max_traces: 100000
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    exporters:
+      jaeger_storage_exporter:
+        trace_storage: memstore
+EOF
+}
+
+wait_for_nodes_ready() {
+  timeout=300   # seconds
+  interval=5
+  elapsed=0
+
+  echo "Waiting for all nodes to be Ready..."
+
+  while true; do
+    total_nodes=$(kubectl get nodes --no-headers 2>/dev/null | wc -l)
+    ready_nodes=$(kubectl get nodes --no-headers 2>/dev/null | awk '{if($2=="Ready") print $1}' | wc -l)
+
+    if [ "$total_nodes" -gt 0 ] && [ "$total_nodes" -eq "$ready_nodes" ]; then
+      echo "All nodes are Ready."
+      break
+    fi
+
+    if [ "$elapsed" -ge "$timeout" ]; then
+      echo "Timeout waiting for nodes to be Ready."
+      kubectl get nodes
+      exit 1
+    fi
+
+    sleep "$interval"
+    elapsed=$((elapsed + interval))
+  done
+}
+
+setup_kubectl(){
+  user=$1
+  host=$2
+  ssh $user@$host "sudo cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/config
+
+  sed -i 's|server: https://.*:6443|server: https://$host:6443|' ~/.kube/config
+
+  }
+
+setup_dns(){
+  # DNS setting 
+  # env PUB_CTRL_IP="$PUB_CTRL_IP" envsubst < gke_dns_configmap.yml | kubectl apply -f -
+  floating_ip="$1"
+  hostnames="$2" #"ctrl.cloud.hong3nguyen.com router.cloud.hong3nguyen.com"
+
+# Get the existing ConfigMap as JSON
+  kubectl -n kube-system get configmap coredns -o json > coredns.json
+
+# Update NodeHosts safely using jq
+  jq --arg ip "$floating_ip" --arg hosts "$hostnames" \
+    '.data.NodeHosts += "\n\($ip) \($hosts)"' coredns.json > coredns-patched.json
+
+# Apply the patched ConfigMap
+  kubectl -n kube-system apply -f coredns-patched.json
+
+# Restart CoreDNS pods
+  kubectl -n kube-system rollout restart deployment coredns
+
+  wait_for_deployment kube-system coredns
+
+  # CUSTOM_DNS_IP=$(kubectl get pod -n kube-system -l app=custom-dns-server -o jsonpath='{.items[0].status.podIP}')
+  # kubectl patch configmap kube-dns -n kube-system --type merge -p "{\"data\":{\"stubDomains\":\"{\\\"hong3nguyen.com\\\":[\\\"$CUSTOM_DNS_IP\\\"]}\"}}"
+  # kubectl delete pods -n kube-system -l k8s-app=kube-dns
+  # wait_for_deployment kube-system  custom-dns-server
+
+}
+
+# TODO: need to make this function to check if the cilium is already installed
+setup_network (){
+  TARGET_CILIUM_VERSION="1.18.0"
+
+  if command -v cilium >/dev/null 2>&1 && \
+    [ "$(cilium version --client | grep -oP 'cilium-cli/\K[0-9]+\.[0-9]+\.[0-9]+')" = "$TARGET_CILIUM_VERSION" ]; then
+    echo "Cilium CLI $TARGET_CILIUM_VERSION already installed, skipping..."
+  else
+    echo " Installing Cilium CLI $TARGET_CILIUM_VERSION..."
+    CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
+    CLI_ARCH=amd64
+    if [ "$(uname -m)" = "aarch64" ]; then CLI_ARCH=arm64; fi
+    curl -L --fail --remote-name-all \
+      https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+    sha256sum --check cilium-linux-${CLI_ARCH}.tar.gz.sha256sum
+    sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
+    rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+  fi
+
+# Check if Cilium is installed in the cluster
+  if kubectl -n kube-system get ds/cilium >/dev/null 2>&1; then
+    echo "Cilium already installed in the cluster, skipping cilium install."
+  else
+    echo "Installing Cilium into the cluster..."
+    cilium install --version "$TARGET_CILIUM_VERSION"
+  fi
+
+  wait_for_nodes_ready
+  }
+
