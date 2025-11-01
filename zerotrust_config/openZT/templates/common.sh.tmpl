@@ -357,6 +357,8 @@ setup_dns(){
   floating_ip="$1"
   hostnames="$2" #"ctrl.cloud.hong3nguyen.com router.cloud.hong3nguyen.com"
 
+  log "setup_dns"
+
 # Get the existing ConfigMap as JSON
   kubectl -n kube-system get configmap coredns -o json > coredns.json
 
