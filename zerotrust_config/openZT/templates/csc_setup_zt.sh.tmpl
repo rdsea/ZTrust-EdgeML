@@ -24,11 +24,11 @@ setup_cert_ztctrl(){
 
   log "trust-manager"
   helm upgrade --install trust-manager jetstack/trust-manager \
-      --namespace trust-manager \
-      --set crds.keep=false \
+      --namespace trust-manager --create-namespace \
+      --set crds.keep=true \
       --set app.trust.namespace=$CTRL_NAMESPACE
 
-  wait_for_deployment cert-manager trust-manager
+  wait_for_deployment trust-manager trust-manager
 
   log "zt-ctrl"
   helm repo add openziti https://docs.openziti.io/helm-charts/
