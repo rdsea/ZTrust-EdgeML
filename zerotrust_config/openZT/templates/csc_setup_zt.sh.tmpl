@@ -24,7 +24,7 @@ setup_cert_ztctrl(){
 
   log "trust-manager"
   helm upgrade --install trust-manager jetstack/trust-manager \
-      --namespace cert-manager \
+      --namespace trust-manager \
       --set crds.keep=false \
       --set app.trust.namespace=$CTRL_NAMESPACE
 
@@ -39,7 +39,8 @@ setup_cert_ztctrl(){
     --set clientApi.advertisedHost="$CTRL_ADVERTISE" \
     --set clientApi.advertisedPort=443 \
     --set clientApi.service.type=ClusterIP \
-    --set clientApi.traefikTcpRoute.enabled=true
+    --set clientApi.traefikTcpRoute.enabled=true \
+    --set clientApi.traefikTcpRoute.hostName="$CTRL_ADVERTISE"
 
     #--set clientApi.advertisedPort=32171 \
     #--set clientApi.service.type=NodePort \
