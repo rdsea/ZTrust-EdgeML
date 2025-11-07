@@ -207,16 +207,54 @@ else
   echo "Namespace $router_namespace already exists."
 fi
 
-helm upgrade --install \
-  "$router_id"  \
-  openziti/ziti-router \
-    --namespace $router_namespace \
-    --set-file enrollmentJwt=$router_id.jwt \
-    --set ctrl.endpoint=$ctrl_advertise:443 \
-    --set edge.advertisedHost=$router_advertise \
-    --set clientApi.service.type=ClusterIP \
-    --set clientApi.traefikTcpRoute.enabled=true
+#  helm upgrade --install "$router_id" openziti/ziti-router \
+#    --namespace "$router_namespace" \
+#    --set cert-manager.enabled=true \
+#    --set trust-manager.enabled=true \
+#    --set-file enrollmentJwt="${router_id}.jwt" \
+#    --set ctrl.endpoint="ctrl.cloud.hong3nguyen.com:443" \
+#    --set-file ctrl.certificateAuthority=<( \
+#        kubectl get secret ziti-controller-edge-root-secret -n zt-ctrl \
+#        -o jsonpath='{.data.ca\.crt}' | base64 -d \
+#      ) \
+#    --set edge.advertisedHost="$router_advertise" \
+#    --set edge.tls.enabled=true \
+#    --set edge.service.type=ClusterIP \
+#    --set transport.advertisedAddress="tls:${router_advertise}:3022" \
+#    --set transport.listenerBinding="tls:0.0.0.0:3022" \
+#    --set transport.enabled=true
 
+#  # 4. Install router with proper advertised ports and TLS trust
+#  helm upgrade --install "$router_id" openziti/ziti-router \
+#    --namespace "$router_namespace" \
+#    --set-file enrollmentJwt="${router_id}.jwt" \
+#    --set ctrl.endpoint="ctrl.cloud.hong3nguyen.com:443" \
+#    --set-file ctrl.certificateAuthority=<(kubectl get secret ziti-controller-edge-root-secret -n zt-ctrl -o jsonpath='{.data.ca\.crt}' | base64 -d) \
+#    --set edge.advertisedHost="$router_advertise" \
+#    --set edge.tls.enabled=true \
+#    --set edge.service.type=LoadBalancer \
+#    --set transport.advertisedAddress="tls:${router_advertise}:3022" \
+#    --set transport.listenerBinding="tls:0.0.0.0:3022" \
+#    --set transport.enabled=true \
+#    --set clientApi.service.type=ClusterIP \
+#    --set clientApi.traefikTcpRoute.enabled=true \
+#    --set clientApi.traefikTcpRoute.hostName="$router_advertise"
+   helm upgrade --install \
+     "$router_id"  \
+     openziti/ziti-router \
+       --namespace $router_namespace \
+       --set-file enrollmentJwt=$router_id.jwt \
+       --set ctrl.endpoint=$ctrl_advertise:443 \
+       --set edge.advertisedHost=$router_advertise \
+       --set clientApi.service.type=ClusterIP \
+       --set clientApi.traefikTcpRoute.enabled=true \
+       --set clientApi.traefikTcpRoute.hostName=$router_advertise
+
+    #--set edge.tls.enabled=true \
+    # --set edge.advertisedHost=$router_advertise \
+    # --set clientApi.service.type=ClusterIP \
+    # --set clientApi.traefikTcpRoute.enabled=true
+    #--set clientApi.traefikTcpRoute.hostName=$router_advertise
     # {%- if ziti_config.ctrl.cloud_ctrl.router.loadbalancer %}
     #--set edge.service.type=LoadBalancer \
     #{%- endif %}
@@ -385,7 +423,7 @@ setup_dns(){
 setup_router_traefik(){
   router_id=$1
   advertised_address=$2
-  namespace=$1-namespace
+  namespace="zt-ctrl"
 
 setup_router $router_id $namespace $advertised_address
 
@@ -420,27 +458,44 @@ else
   echo "Pod is already Running."
 fi
 
-kubectl apply -f - <<EOF
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+  kubectl apply -f - <<EOF
+apiVersion: traefik.io/v1alpha1
+kind: IngressRouteTCP
 metadata:
-  name: $router_id-ingress
+  name: $router_id-tcp
   namespace: $namespace
-  annotations:
-    kubernetes.io/ingress.class: traefik
 spec:
-  rules:
-  - host: $advertised_address
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: $router_id-cloud
-            port:
-              number: 443
+  entryPoints:
+    - websecure
+  routes:
+    - match: HostSNI(\`$advertised_address\`)
+      services:
+        - name: $router_id-cloud
+          port: 443
+  tls:
+    passthrough: true
 EOF
+# kubectl apply -f - <<EOF
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: $router_id-ingress
+#   namespace: $namespace
+#   annotations:
+#     kubernetes.io/ingress.class: traefik
+# spec:
+#   rules:
+#   - host: $advertised_address
+#     http:
+#       paths:
+#       - path: /
+#         pathType: Prefix
+#         backend:
+#           service:
+#             name: $router_id-cloud
+#             port:
+#               number: 443
+# EOF
   }
 
 # TODO: need to make this function to check if the cilium is already installed
