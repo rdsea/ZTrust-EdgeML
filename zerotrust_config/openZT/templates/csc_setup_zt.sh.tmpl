@@ -11,7 +11,32 @@ setup_cert_ztctrl(){
     echo "Namespace $CTRL_NAMESPACE already exists."
   fi
 
+  log "metallb"
+  helm repo add metallb https://metallb.github.io/metallb
+  helm install metallb metallb/metallb \
+    --namespace metallb-system --create-namespace
+
+  wait_for_deployment metallb-system metallb-controller
+
+  cat <<EOF | kubectl apply -f -
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: default
+  namespace: metallb-system
+spec:
+  addresses:
+  - ${PUB_CTRL_IP}-${PUB_CTRL_IP}
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: default
+  namespace: metallb-system
+EOF
+
   log "setup_cert_ztctrl"
+
   helm repo add jetstack https://charts.jetstack.io
 
   log "cert-manager"
@@ -21,31 +46,49 @@ setup_cert_ztctrl(){
 
   wait_for_deployment cert-manager cert-manager
 
-
   log "trust-manager"
   helm upgrade --install trust-manager jetstack/trust-manager \
-      --namespace trust-manager --create-namespace \
-      --set crds.keep=true \
+      --namespace cert-manager \
+      --set crds.keep=false \
       --set app.trust.namespace=$CTRL_NAMESPACE
 
-  wait_for_deployment trust-manager trust-manager
+  wait_for_deployment cert-manager  trust-manager
+
+  helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx/
+
+  log "nginx"
+  helm install ingress-nginx ingress-nginx/ingress-nginx \
+    --namespace ingress-nginx \
+    --create-namespace \
+    --set controller.service.type=LoadBalancer \
+    --set controller.extraArgs.enable-ssl-passthrough=true
+
+  wait_for_deployment ingress-nginx  ingress-nginx-controller
 
   log "zt-ctrl"
   helm repo add openziti https://docs.openziti.io/helm-charts/
+
   helm install ziti-controller openziti/ziti-controller \
     --namespace $CTRL_NAMESPACE \
-    --set cert-manager.enabled=true \
-    --set trust-manager.enabled=true \
-    --set clientApi.advertisedHost="$CTRL_ADVERTISE" \
-    --set clientApi.advertisedPort=443 \
-    --set clientApi.service.type=ClusterIP \
-    --set clientApi.traefikTcpRoute.enabled=true \
-    --set clientApi.traefikTcpRoute.hostName="$CTRL_ADVERTISE"
+    --values ctrl_config_cluster.yml
+    # --set cert-manager.enabled=true \
+    # --set trust-manager.enabled=true \
+    # --set clientApi.advertisedHost="$CTRL_ADVERTISE" \
+    # --set clientApi.advertisedPort=443 \
+    # --set clientApi.service.type=ClusterIP \
+
+    #--set clientApi.traefikTcpRoute.enabled=true 
+    #\
+    #--set clientApi.traefikTcpRoute.hostName="$CTRL_ADVERTISE"
 
     #--set clientApi.advertisedPort=32171 \
     #--set clientApi.service.type=NodePort \
 
   wait_for_deployment "$CTRL_NAMESPACE" ziti-controller
+
+  # update trust manger
+  # kubectl rollout restart deployment trust-manager -n trust-manager
+  # wait_for_deployment trust-manager trust-manager
 
   }
 
@@ -221,15 +264,15 @@ EOF
 
   login_zt "$CTRL_ADVERTISE" "$CTRL_PASS"
 
-  setup_router_traefik "$ROUTER_ID" "$ROUTER_ADVERTISE"
+  # setup_router_traefik "$ROUTER_ID" "$ROUTER_ADVERTISE"
 
   # wait_for_ip_and_advertise PUB_ROUTER_IP ROUTER_ADVERTISE \
   #   "kubectl get svc \"$ROUTER_ID-edge\" -n \"$ROUTER_NAMESPACE\" -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
   #   $ROUTER_ADVERTISE
 
-  setup_localhost "$PUB_ROUTER_IP" "$ROUTER_ADVERTISE"
+  # setup_localhost "$PUB_ROUTER_IP" "$ROUTER_ADVERTISE"
 
-  setup_dns $PUB_CTRL_IP $ROUTER_ADVERTISE
+  # setup_dns $PUB_CTRL_IP $ROUTER_ADVERTISE
 
   log "ZT on cloud deployment complete."
 
