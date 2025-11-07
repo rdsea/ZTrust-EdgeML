@@ -79,6 +79,8 @@ if __name__ == "__main__":
         # "csc_script_setup_cluster.sh.tmpl": "cloud/csc_script_setup_cluster.sh",
         # "csc_ansible_inventory.yml.tmpl": "cloud/csc_ansible_inventory.local.yml",
         "csc_setup_zt.sh.tmpl": "cloud/csc_setup_zt.sh",
+        "cloud_ctrl_zt_cluster.yml.tmpl": "cloud/ctrl_config_cluster.yml",
+        "cloud_router_zt_cluster.yml.tmpl": "cloud/router_config_cluster.yml",
         # "k3s_ansible_inventory.yml.tmpl": "edge/k3s_ansible_inventory.local.yml",
         "k3s_edge_cluster.sh.tmpl": "edge/k3s_edge_cluster.sh",
         "k3s_edge_setup_router.sh.tmpl": "edge/k3s_edge_setup_router.sh",
