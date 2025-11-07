@@ -1,0 +1,13 @@
+ctrl:
+  endpoint: {{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}
+advertisedHost: {{ ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address }}
+edge:
+  advertisedPort: 443
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      kubernetes.io/ingress.allow-http: "false"
+      nginx.ingress.kubernetes.io/ssl-passthrough: "true"
