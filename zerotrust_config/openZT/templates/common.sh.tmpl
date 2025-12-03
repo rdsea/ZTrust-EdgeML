@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# # Ziti configuration from variable_input.yml
-# ZITI_HOME="{{ ziti_config.ctrl.cloud_ctrl.home }}"
-# ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
-# ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_port }}"
-# ZITI_USER="{{ ziti_config.ctrl.cloud_ctrl.user }}"
-# ZITI_PWD="{{ ziti_config.ctrl.cloud_ctrl.password }}"
+ # Ziti configuration from variable_input.yml
+ ZITI_HOME="{{ ziti_config.ctrl.cloud_ctrl.home }}"
+ ZITI_CTRL_ADVERTISED_ADDRESS="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address }}"
+ ZITI_CTRL_ADVERTISED_PORT="{{ ziti_config.ctrl.cloud_ctrl.ctrl_advertised_port }}"
+ ZITI_USER="{{ ziti_config.ctrl.cloud_ctrl.user }}"
+ ZITI_PWD="{{ ziti_config.ctrl.cloud_ctrl.password }}"
 
 # --- Log a message ---
 log() {
@@ -49,22 +49,22 @@ install_ziti_edge_tunnel() {
 
 }
 
-# # --- Add Ziti DNS entries to /etc/hosts ---
-# add_ziti_dns_entries() {
-#   log "Adding Ziti DNS entries to /etc/hosts"
-#   cloud_ip="$1"
-# 
-#   # Ensure the entries are not already present
-#   if ! grep -q "{{  ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address  }}" /etc/hosts; then
-#     echo "$cloud_ip {{  ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address  }}" | sudo tee -a /etc/hosts
-#     echo "$cloud_ip {{  ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address  }}" | sudo tee -a /etc/hosts
-#   fi
-#   {% for edge in ziti_config.router.edge_router %}
-#   if ! grep -q "{{  edge.edge_router_advertised_address }}" /etc/hosts; then
-#     echo "{{ edge.edge_router_ip }} {{ edge.edge_router_advertised_address }}" | sudo tee -a /etc/hosts
-#   fi
-#   {% endfor %}
-# }
+ # --- Add Ziti DNS entries to /etc/hosts ---
+ add_ziti_dns_entries() {
+   log "Adding Ziti DNS entries to /etc/hosts"
+   cloud_ip="$1"
+ 
+   # Ensure the entries are not already present
+   if ! grep -q "{{  ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address  }}" /etc/hosts; then
+     echo "$cloud_ip {{  ziti_config.ctrl.cloud_ctrl.ctrl_advertised_address  }}" | sudo tee -a /etc/hosts
+     echo "$cloud_ip {{  ziti_config.ctrl.cloud_ctrl.router.cloud_router_advertised_address  }}" | sudo tee -a /etc/hosts
+   fi
+   {% for edge in ziti_config.router.edge_router %}
+   if ! grep -q "{{  edge.edge_router_advertised_address }}" /etc/hosts; then
+     echo "{{ edge.edge_router_ip }} {{ edge.edge_router_advertised_address }}" | sudo tee -a /etc/hosts
+   fi
+   {% endfor %}
+ }
 
 
 # --- Create and enroll a Ziti identity ---

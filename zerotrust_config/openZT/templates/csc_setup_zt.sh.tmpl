@@ -11,6 +11,26 @@ setup_cert_ztctrl(){
     echo "Namespace $CTRL_NAMESPACE already exists."
   fi
 
+
+  log "setup_cert_ztctrl"
+
+  helm repo add jetstack https://charts.jetstack.io
+
+  log "cert-manager"
+  helm upgrade --install cert-manager jetstack/cert-manager \
+      --namespace cert-manager --create-namespace \
+      --set crds.enabled=true
+
+  wait_for_deployment cert-manager cert-manager
+
+  log "trust-manager"
+  helm upgrade --install trust-manager jetstack/trust-manager \
+      --namespace cert-manager \
+      --set crds.keep=false \
+      --set app.trust.namespace=$CTRL_NAMESPACE
+
+  wait_for_deployment cert-manager  trust-manager
+
   log "metallb"
   helm repo add metallb https://metallb.github.io/metallb
   helm install metallb metallb/metallb \
@@ -34,25 +54,6 @@ metadata:
   name: default
   namespace: metallb-system
 EOF
-
-  log "setup_cert_ztctrl"
-
-  helm repo add jetstack https://charts.jetstack.io
-
-  log "cert-manager"
-  helm upgrade --install cert-manager jetstack/cert-manager \
-      --namespace cert-manager --create-namespace \
-      --set crds.enabled=true
-
-  wait_for_deployment cert-manager cert-manager
-
-  log "trust-manager"
-  helm upgrade --install trust-manager jetstack/trust-manager \
-      --namespace cert-manager \
-      --set crds.keep=false \
-      --set app.trust.namespace=$CTRL_NAMESPACE
-
-  wait_for_deployment cert-manager  trust-manager
 
   helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx/
 
@@ -222,27 +223,21 @@ main(){
   PUB_ROUTER_IP="{{ cloud.cluster_ip }}"
   PUB_JAEGER_IP="{{ cloud.cluster_ip }}"
 
-  echo "Checking DNS resolution..."
   if test_dns; then
       echo "DNS is working. No changes needed."
-  fi
-
-  echo "DNS is not working. Updating /etc/resolv.conf..."
-
-# Create a new resolv.conf with Google and Cloudflare DNS
-  sudo tee /etc/resolv.conf > /dev/null <<EOF
-nameserver 8.8.8.8
-nameserver 1.1.1.1
-EOF
-
-  echo "DNS updated. Current /etc/resolv.conf:"
-  cat /etc/resolv.conf
-
-# Test again
-  if test_dns; then
-      echo "DNS is now working!"
   else
-      echo "Warning: DNS still not working."
+      echo "DNS is not working. Adding fallback DNS entries..."
+
+      sudo cp /etc/resolv.conf /etc/resolv.conf.backup.$(date +%F_%T)
+
+      for ns in 8.8.8.8 8.8.4.4 1.1.1.1; do
+          if ! grep -q "$ns" /etc/resolv.conf; then
+              echo "nameserver $ns" | sudo tee -a /etc/resolv.conf > /dev/null
+          fi
+      done
+
+      echo "DNS entries added. Current /etc/resolv.conf:"
+      cat /etc/resolv.conf
   fi
   # setup cilium 
   #setup_network

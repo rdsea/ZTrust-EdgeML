@@ -60,6 +60,8 @@ create_and_enroll_ziti_identities() {
   "${ZITI_HOME}/bin/ziti" edge login "https://${ZITI_CTRL_ADVERTISED_ADDRESS}:${ZITI_CTRL_ADVERTISED_PORT}" --yes --username "${ZITI_USER}" --password "${ZITI_PWD}"
 
   rm -rf $CURRENT_DIR/*.json $CURRENT_DIR/*.jwt
+  
+  chmod +x ${CURRENT_DIR}/create_id_entities.sh
 
   # Execute the templated create_id_entities.sh script
   "${CURRENT_DIR}/create_id_entities.sh"
