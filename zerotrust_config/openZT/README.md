@@ -169,8 +169,9 @@ ziti edge create config testapi-intercept-config intercept.v1 '{"protocols":["tc
 
 ziti edge update service testapi.ziti --configs testapi-intercept-config,testapi-host-config
 
-ziti edge create service web-api-service \
-  --configs web-service-intercept-config,web-service-host-config
+# ziti edge create service web-api-service \
+#   --configs web-service-intercept-config,web-service-host-config
+
 ziti edge create service-edge-router-policy testapi.ziti-routers --edge-router-roles '#all' --service-roles '@testapi.ziti'
 ziti edge create service-policy testapi.ziti-bind Bind --identity-roles '#testapi-servers' --service-roles '@testapi.ziti'
 ziti edge create service-policy testapi.ziti-dial Dial --identity-roles '#testapi-clients' --service-roles '@testapi.ziti'
@@ -412,3 +413,224 @@ This is the standard Kubernetes approach.
 
 
 - 
+
+```bash
+
+setup_router(){
+  router_id=$1
+  router_namespace=$2
+  router_advertise=$3
+
+log "router"
+# get a router enrollment token from the controller's management API
+ziti edge create edge-router "$router_id" \
+  --tunneler-enabled --jwt-output-file $router_id.jwt
+
+# subscribe to the openziti Helm repo
+if ! helm repo list | grep -q "^openziti"; then
+  echo "Adding Helm repo 'openziti'..."
+  helm repo add "openziti" "https://openziti.github.io/helm-charts/"
+else
+  echo "Helm repo 'openziti' already exists. Skipping."
+fi
+
+
+# install the router chart with a public address
+
+if ! kubectl get namespace "$router_namespace" >/dev/null 2>&1; then
+  echo "Creating namespace: $router_namespace"
+  kubectl create namespace "$router_namespace"
+else
+  echo "Namespace $router_namespace already exists."
+fi
+
+   helm upgrade --install \
+     "$router_id"  \
+     openziti/ziti-router \
+       --namespace $router_namespace \
+       --set-file enrollmentJwt=$router_id.jwt \
+       --set ctrl.endpoint=$ctrl_advertise:443 \
+       --set edge.advertisedHost=$router_advertise \
+       --set clientApi.service.type=ClusterIP \
+       --set clientApi.traefikTcpRoute.enabled=true \
+       --set clientApi.traefikTcpRoute.hostName=$router_advertise
+}
+
+setup_router_traefik(){
+  router_id=$1
+  advertised_address=$2
+  namespace="zt-ctrl"
+
+setup_router $router_id $namespace $advertised_address
+
+kubectl patch pvc $router_id -n $namespace -p '{"spec":{"storageClassName":"local-path"}}'
+
+# Check if pod is running
+echo "Checking pod status..."
+
+sleep 5
+POD_STATUS=$(kubectl get pod -n $namespace -l app.kubernetes.io/name=ziti-router -o jsonpath="{.items[0].status.phase}" 2>/dev/null || echo "NotFound")
+
+if [[ "$POD_STATUS" != "Running" ]]; then
+  echo "Pod is not running (status: $POD_STATUS). Deleting pod and waiting..."
+  kubectl delete pod -n $namespace -l app.kubernetes.io/name=ziti-router --ignore-not-found
+
+  # Wait for the new pod to be recreated and become Running
+  echo "Waiting for pod to become Running..."
+  for i in {1..30}; do
+    sleep 5
+    POD_STATUS=$(kubectl get pod -n $namespace -l app.kubernetes.io/name=ziti-router -o jsonpath="{.items[0].status.phase}" 2>/dev/null || echo "NotFound")
+    if [[ "$POD_STATUS" == "Running" ]]; then
+      echo "Pod is now Running."
+      break
+    fi
+  done
+
+  if [[ "$POD_STATUS" != "Running" ]]; then
+    echo "Pod did not reach Running state in time."
+    exit 1
+  fi
+else
+  echo "Pod is already Running."
+fi
+
+kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: $router_id-ingress
+  namespace: $namespace
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  rules:
+  - host: $advertised_address
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: $router_id-cloud
+            port:
+              number: 443
+EOF
+  }
+```
+
+
+```bash
+
+#kubectl create namespace ingress-nginx
+
+# kubectl patch deployment "ingress-nginx-controller" \
+#     --namespace ingress-nginx \
+#     --type json \
+#     --patch '[{"op": "add",
+#         "path": "/spec/template/spec/containers/0/args/-",
+#         "value":"--enable-ssl-passthrough"
+#     }]'
+# get a router enrollment token from the controller's management API
+ROUTER_ID=router
+
+ziti edge create edge-router $ROUTER_ID \
+  --tunneler-enabled --jwt-output-file ${ROUTER_ID}.jwt
+
+# subscribe to the openziti Helm repo
+helm repo add openziti https://openziti.github.io/helm-charts/
+
+# install the router chart with a public address
+helm upgrade \
+  --install \
+  --version "^1.0.0" \
+  $ROUTER_ID \
+  --namespace zt-ctrl \
+  openziti/ziti-router \
+    --set-file enrollmentJwt=${ROUTER_ID}.jwt \
+    --set ctrl.endpoint=ctrl.cloud.hong3nguyen.com:443 \
+    --set edge.advertisedHost=${ROUTER_ID}.cloud.hong3nguyen.com
+
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx/
+
+helm install ingress-nginx ingress-nginx/ingress-nginx \
+  --namespace ingress-nginx \
+  --create-namespace \
+  --set controller.extraArgs.enable-ssl-passthrough=true
+
+# install ingress-nginx
+# helm install \
+#   --namespace ingress-nginx --create-namespace --generate-name \
+#   ingress-nginx/ingress-nginx \
+#     --set controller.extraArgs.enable-ssl-passthrough=true
+```
+
+
+```yaml
+# ${ROUTER_ID}.yaml
+ctrl:
+  endpoint: ctrl.cloud.hong3nguyen.com:443
+advertisedHost: router12.cloud.hong3nguyen.com
+edge:
+  advertisedPort: 443
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      kubernetes.io/ingress.allow-http: "false"
+      nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+    hosts:
+      - host: router12.cloud.hong3nguyen.com
+        paths:
+          - /
+```
+
+Now upgrade your router chart release with the values file.
+
+```bash
+# will attempt enrollment again if it failed initially
+helm upgrade \
+  --install \
+  --version "^1.0.0" \
+  --namespace zt-ctrl $ROUTER_ID \
+  openziti/ziti-router \
+    --set-file enrollmentJwt=${ROUTER_ID}.jwt \
+    --values ${ROUTER_ID}.yaml
+
+helm upgrade \
+  --install \
+  --version "^1.0.0" \
+  --namespace zt-ctrl $ROUTER_ID \
+  openziti/ziti-router \
+  --set ctrl.endpoint=ctrl.cloud.hong3nguyen.com:443 \
+  --set-file enrollmentJwt=${ROUTER_ID}.jwt \
+  --set edge.ingress.enabled=true \
+  --set edge.ingress.hosts[0].host=${ROUTER_ID}.cloud.hong3nguyen.com \
+  --set edge.ingress.hosts[0].paths[0]=/ \
+  --set edge.ingress.ingressClassName=nginx \
+  --values ${ROUTER_ID}.yaml
+
+  --set edge.ingress.annotations."nginx\.ingress\.kubernetes\.io/ssl-passthrough"="\"true\""
+  --set edge.ingress.annotations."nginx\.ingress\.kubernetes\.io/ssl-passthrough"=true
+```
+
+
+dissable traefik
+> /home/hong3nguyen/.ansible/collections/ansible_collections/k3s/orchestration/roles/k3s_server/defaults
+
+```yml
+k3s_server_location: "/var/lib/rancher/k3s"
+systemd_dir: "/etc/systemd/system"  # noqa var-naming[no-role-prefix]
+api_port: 6443  # noqa var-naming[no-role-prefix]
+kubeconfig: ~/.kube/config.new  # noqa var-naming[no-role-prefix]
+user_kubectl: true  # noqa var-naming[no-role-prefix]
+cluster_context: k3s-ansible  # noqa var-naming[no-role-prefix]
+server_group: server  # noqa var-naming[no-role-prefix]
+agent_group: agent  # noqa var-naming[no-role-prefix]
+use_external_database: false # noqa var-naming[no-role-prefix]
+extra_server_args: "--disable traefik --disable servicelb"
+  #extra_server_arg: "" # noqa var-naming[no-role-prefix]
+
+
+```

@@ -8,7 +8,7 @@ import yaml
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 INPUT_FILE = os.path.join(SCRIPT_DIR, "variable_input.yml")
 LOCAL_INPUT_FILE = os.path.join(SCRIPT_DIR, "variable_input.local.yml")
-TEMPLATE_DIR = os.path.join(SCRIPT_DIR, "../..", "templates")
+TEMPLATE_DIR = os.path.join(SCRIPT_DIR, "../", "templates")
 
 
 # --- Helper function for deep merging dictionaries ---
@@ -241,7 +241,8 @@ if __name__ == "__main__":
         + "\n\n"
         + "\n".join(mongodb_block)
     )
-    with open("cloud/config.yaml", "w") as f:
+
+    with open(OUTPUT_ROOT_DIR + "/cloud/config.yaml", "w") as f:
         f.write(final_yaml)
 
     print("Config written to config_output.yaml with correct indentation and comments.")
