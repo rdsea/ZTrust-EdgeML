@@ -9,7 +9,7 @@ services:
     image: {% if service.environment.DOCKER == "true" -%}
            {{ service.image }}:docker
          {%- elif service.environment.OPENZITI == "true" -%}
-           {{ service.image }}_ziti:latest
+           {{ service.image }}
          {%- else %}
            {{ service.image }}:default
         {%- endif %}
