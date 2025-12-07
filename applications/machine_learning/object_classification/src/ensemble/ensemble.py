@@ -111,6 +111,7 @@ if os.environ.get("OPENZITI"):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if SEND_TO_QUEUE:
+        print("Sending to queue is enabled", RABBITMQ_URL)
         connection = await aio_pika.connect_robust(RABBITMQ_URL)
         channel = await connection.channel()
         queue_name = app.state.config["rabbitmq"]["queue_name"]
