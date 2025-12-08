@@ -39,3 +39,4 @@ WORKDIR /ensemble/ensemble
 ENV PATH="/ensemble/.venv/bin:$PATH"
 
 ENTRYPOINT [ "./ziti_start.sh" ]
+#ENTRYPOINT [ "tail", "-f", "/dev/null" ]
