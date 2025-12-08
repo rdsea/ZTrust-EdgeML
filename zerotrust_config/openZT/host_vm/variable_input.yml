@@ -1,12 +1,13 @@
-project_name: "YOUR_PROJECT_NAME"
-region: "europe-north1"
-zone: "europe-north1-a"
-machine_type: "e2-medium"
-image: "ubuntu-os-cloud/ubuntu-2204-lts"
-ssh_user: "YOUR_SSH_USER"
-ssh_public_key_path: "YOUR_SSH_PUBLIC_KEY_PATH"
-ssh_private_key_path: "YOUR_SSH_PRIVATE_KEY_PATH"
-dir_default: "YOUR_DEFAULT_DIR"
+gcp:
+  project_name: "YOUR_PROJECT_NAME"
+  region: "europe-north1"
+  zone: "europe-north1-a"
+  machine_type: "e2-medium"
+  image: "ubuntu-os-cloud/ubuntu-2204-lts"
+  ssh_user: "YOUR_SSH_USER"
+  ssh_public_key_path: "YOUR_SSH_PUBLIC_KEY_PATH"
+  ssh_private_key_path: "YOUR_SSH_PRIVATE_KEY_PATH"
+  dir_default: "YOUR_DEFAULT_DIR"
 
 vms:
   - name: "ziti-controller-router"
