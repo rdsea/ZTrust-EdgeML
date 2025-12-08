@@ -1,0 +1,104 @@
+provider "google" {
+  project = "{{ project_name }}"
+  region  = "{{ region }}"
+  zone    = "{{ zone }}"
+}
+
+# ---------------------------------------------------------
+# 1. NETWORK & SUBNETWORK (Added to fix "default not found")
+# ---------------------------------------------------------
+resource "google_compute_network" "ziti_network" {
+  name                    = "ziti-vpc"
+  auto_create_subnetworks = false
+}
+
+resource "google_compute_subnetwork" "ziti_subnet" {
+  name          = "ziti-subnet"
+  ip_cidr_range = "10.0.1.0/24"
+  region        = "{{ region }}"
+  network       = google_compute_network.ziti_network.id
+}
+
+# ---------------------------------------------------------
+# 2. VM Instances
+# ---------------------------------------------------------
+{% for vm in vms %}
+resource "google_compute_instance" "{{ vm.name | replace('-', '_') }}" {
+  name         = "{{ vm.name }}"
+  machine_type = "{{ machine_type }}"
+  zone         = "{{ zone }}"
+  tags         = [{% for tag in vm.tags %}"{{ tag }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+
+  boot_disk {
+    initialize_params {
+      image = "{{ image }}"
+    }
+  }
+
+  {% if vm.provisioner_source_path is defined %}
+  provisioner "remote-exec" {
+    inline = [
+      "mkdir -p {{ vm.provisioner_destination_path }}"
+    ]
+  }
+  provisioner "file" {
+    source      = "{{ vm.provisioner_source_path }}/"
+    destination = "{{ vm.provisioner_destination_path }}"
+  }
+  provisioner "file" {
+    source      = "{{ vm.config_file }}"
+    destination = "{{ vm.provisioner_destination_path }}/{{ vm.config_file }}"
+  }
+  connection {
+    type        = "ssh"
+    user        = "{{ ssh_user }}"
+    private_key = file("{{ ssh_private_key_path }}")
+    host        = self.network_interface[0].access_config[0].nat_ip
+    agent       = true
+  }
+  {% endif %}
+
+  # --- UPDATED NETWORK INTERFACE ---
+  network_interface {
+    network    = google_compute_network.ziti_network.id
+    subnetwork = google_compute_subnetwork.ziti_subnet.id
+    access_config {}
+  }
+  # ---------------------------------
+
+  metadata = {
+    ssh-keys = "{{ ssh_user }}:${file("{{ ssh_public_key_path }}")}"
+  }
+
+  metadata_startup_script = {% if vm.use_template %}templatefile("{{ vm.provisioner_script }}", {
+    controller_ip = google_compute_instance.{{ vm.ctrl_name }}.network_interface[0].network_ip
+    router_ip     = google_compute_instance.{{ vm.ctrl_name }}.network_interface[0].network_ip
+  }){% else %}file("{{ vm.provisioner_script }}"){% endif %}
+}
+{% endfor %}
+
+# ---------------------------------------------------------
+# 3. Firewall Rules
+# ---------------------------------------------------------
+{% for rule in firewall_rules %}
+resource "google_compute_firewall" "{{ rule.name | replace('-', '_') }}" {
+  name    = "{{ rule.name }}"
+  network = google_compute_network.ziti_network.name # <--- UPDATED
+
+  allow {
+    protocol = "{{ rule.protocol }}"
+    ports    = [{% for port in rule.ports %}"{{ port }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+  }
+
+  source_ranges = [{% for range in rule.source_ranges %}"{{ range }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+}
+{% endfor %}
+
+# ---------------------------------------------------------
+# 4. Outputs
+# ---------------------------------------------------------
+{% for vm in vms %}
+output "{{ vm.name | replace('-', '_') }}_ip" {
+  value = google_compute_instance.{{ vm.name | replace('-', '_') }}.network_interface[0].access_config[0].nat_ip
+}
+{% endfor %}
